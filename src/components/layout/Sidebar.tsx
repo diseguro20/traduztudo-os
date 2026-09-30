@@ -30,6 +30,7 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
+  GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -50,6 +51,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Dashboard',
           href: '/',
           icon: LayoutDashboard,
+        },
+        {
+          label: 'Tutorial Interativo',
+          href: '/tutorial',
+          icon: GraduationCap,
+          badge: 'Guia',
         },
       ],
     },
