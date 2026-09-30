@@ -53,10 +53,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           icon: LayoutDashboard,
         },
         {
-          label: 'Tutorial Interativo',
+          label: 'Tour do Lead (Imersivo)',
           href: '/tutorial',
-          icon: GraduationCap,
-          badge: 'Guia',
+          icon: Sparkles,
+          badge: 'Simulador',
         },
       ],
     },

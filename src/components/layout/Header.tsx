@@ -12,6 +12,7 @@ import {
   User,
   LogOut,
   Building,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlobalSearchModal } from './GlobalSearchModal';
@@ -62,6 +63,15 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
         {/* Right: Quick actions, notifications, user menu */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Immersive Lead Tour Link */}
+          <Link
+            href="/tutorial"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs transition-all ring-1 ring-blue-400/40"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
+            <span>Tour Imersivo do Lead</span>
+          </Link>
+
           {/* Quick Action (+) button */}
           <Button
             size="sm"
