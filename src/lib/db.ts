@@ -17,6 +17,8 @@ import {
   AuditLog,
   Tenant,
   User,
+  UserRole,
+  UserStatus,
 } from '@/types';
 import {
   INITIAL_TENANT,
@@ -99,15 +101,123 @@ class DatabaseStore {
     return [...this.users];
   }
 
-  createUser(userData: Omit<User, 'id' | 'createdAt'>): User {
+  getUserById(id: string): User | undefined {
+    return this.users.find((u) => u.id === id);
+  }
+
+  getUserByEmail(email: string): User | undefined {
+    return this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  createUser(userData: Omit<User, 'id' | 'createdAt' | 'status'> & { status?: UserStatus }): User {
     const newUser: User = {
       ...userData,
       id: `usr-${Date.now()}`,
+      status: userData.status || 'PENDING',
       createdAt: new Date().toISOString(),
     };
     this.users.unshift(newUser);
     this.syncFirestore('users', newUser.id, newUser);
+    this.createNotification({
+      title: 'Nova Solicitação de Cadastro',
+      message: `${newUser.name} se cadastrou como ${newUser.requestedRole || newUser.role} e aguarda aprovação no Painel Admin.`,
+      type: 'warning',
+      link: '/admin',
+    });
+    this.logAudit(newUser.name, 'Solicitação de Cadastro', 'User', newUser.id, `Novo usuário registrado no sistema`);
     return newUser;
+  }
+
+  updateUser(id: string, data: Partial<User>): User | undefined {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return undefined;
+    this.users[idx] = { ...this.users[idx], ...data };
+    this.syncFirestore('users', id, this.users[idx]);
+    this.logAudit('Carlos Silva (Admin)', 'Atualização de Usuário', 'User', id, `Atualizou dados/cargo do usuário ${this.users[idx].name}`);
+    return this.users[idx];
+  }
+
+  approveUser(id: string, role: UserRole, permissions?: string[]): User | undefined {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return undefined;
+    this.users[idx] = {
+      ...this.users[idx],
+      role,
+      permissions: permissions || this.users[idx].permissions,
+      status: 'ACTIVE',
+      active: true,
+      approvedAt: new Date().toISOString(),
+      approvedBy: 'Carlos Silva (Owner/Admin)',
+    };
+    this.syncFirestore('users', id, this.users[idx]);
+    this.createNotification({
+      title: 'Usuário Aprovado no Painel Admin',
+      message: `O cadastro de ${this.users[idx].name} foi aprovado com o cargo ${role}.`,
+      type: 'success',
+      link: '/admin',
+    });
+    this.logAudit('Carlos Silva (Admin)', 'Aprovação de Cadastro', 'User', id, `Aprovou o usuário ${this.users[idx].name} com o cargo ${role}`);
+    return this.users[idx];
+  }
+
+  rejectUser(id: string): boolean {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return false;
+    this.users[idx].status = 'REJECTED';
+    this.users[idx].active = false;
+    this.syncFirestore('users', id, this.users[idx]);
+    this.logAudit('Carlos Silva (Admin)', 'Rejeição de Cadastro', 'User', id, `Rejeitou a solicitação do usuário ${this.users[idx].name}`);
+    return true;
+  }
+
+  blockUser(id: string): User | undefined {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return undefined;
+    this.users[idx].status = 'BLOCKED';
+    this.users[idx].active = false;
+    this.syncFirestore('users', id, this.users[idx]);
+    this.logAudit('Carlos Silva (Admin)', 'Bloqueio de Usuário', 'User', id, `Bloqueou o acesso do usuário ${this.users[idx].name}`);
+    return this.users[idx];
+  }
+
+  unblockUser(id: string): User | undefined {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return undefined;
+    this.users[idx].status = 'ACTIVE';
+    this.users[idx].active = true;
+    this.syncFirestore('users', id, this.users[idx]);
+    this.logAudit('Carlos Silva (Admin)', 'Desbloqueio de Usuário', 'User', id, `Reativou o usuário ${this.users[idx].name}`);
+    return this.users[idx];
+  }
+
+  deleteUser(id: string): boolean {
+    const idx = this.users.findIndex((u) => u.id === id);
+    if (idx === -1) return false;
+    const name = this.users[idx].name;
+    this.users.splice(idx, 1);
+    this.logAudit('Carlos Silva (Admin)', 'Exclusão de Usuário', 'User', id, `Removeu o usuário ${name} da empresa`);
+    return true;
+  }
+
+  private currentUserId: string = 'user-carlos';
+
+  getCurrentUser(): User {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('traduztudo_current_user_id');
+      if (savedId) {
+        const found = this.users.find((u) => u.id === savedId);
+        if (found) return found;
+      }
+    }
+    const fallback = this.users.find((u) => u.id === this.currentUserId) || this.users[0];
+    return fallback;
+  }
+
+  setCurrentUser(user: User): void {
+    this.currentUserId = user.id;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('traduztudo_current_user_id', user.id);
+    }
   }
 
   // --- CUSTOMERS ---

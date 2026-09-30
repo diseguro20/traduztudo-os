@@ -36,6 +36,8 @@ export interface Tenant {
   updatedAt: string;
 }
 
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'BLOCKED';
+
 export interface User {
   id: string;
   tenantId: string;
@@ -45,9 +47,13 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   active: boolean;
+  status: UserStatus;
+  requestedRole?: string;
   permissions?: string[];
   lastLoginAt?: string;
   createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
 }
 
 export type CustomerType = 'PF' | 'PJ';
@@ -453,5 +459,6 @@ export interface AuditLog {
   details: string;
   oldValue?: string;
   newValue?: string;
+  ipAddress?: string;
   createdAt: string;
 }

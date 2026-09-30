@@ -13,12 +13,14 @@ import {
   LogOut,
   Building,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { QuickActionModal } from './QuickActionModal';
 import { databaseStore } from '@/lib/db';
 import { launchSystemTour } from '@/components/tour/SystemTourModal';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 interface HeaderProps {
@@ -26,6 +28,7 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleMobileMenu }: HeaderProps) {
+  const { user, isAdmin, logout } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -33,6 +36,7 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
   const notifications = databaseStore.getNotifications();
   const unreadNotifs = notifications.filter((n) => !n.read);
+  const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
 
   return (
     <>
@@ -72,6 +76,22 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
             <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
             <span>Tour Guiado (Pop-ups)</span>
           </button>
+
+          {/* Admin Panel Quick Link */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-all border border-slate-700 relative"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>Painel Admin</span>
+              {pendingCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] flex items-center justify-center animate-pulse">
+                  {pendingCount}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* Quick Action (+) button */}
           <Button
@@ -155,30 +175,53 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                CS
+                {(user?.name || 'Carlos Silva').slice(0, 2).toUpperCase()}
               </div>
               <div className="text-left hidden md:block">
                 <p className="text-xs font-semibold text-slate-800 leading-tight">
-                  Carlos Silva
+                  {user?.name || 'Carlos Silva'}
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
-                  Diretor / Administrador
+                  {user?.role || 'OWNER'} · {user?.status === 'PENDING' ? '⏳ Pendente' : 'Ativo'}
                 </p>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
             </button>
 
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-4 py-2.5 border-b border-slate-100">
-                  <p className="text-xs font-semibold text-slate-900">Carlos Silva</p>
-                  <p className="text-[11px] text-slate-500 truncate">carlos@traduztudo.com.br</p>
+                  <p className="text-xs font-semibold text-slate-900">{user?.name || 'Carlos Silva'}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{user?.email || 'carlos@traduztudo.com.br'}</p>
                   <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                    OWNER • Tenant Matriz
+                    {user?.role || 'OWNER'} • {user?.status === 'PENDING' ? 'Aguardando Liberação' : 'Acesso Liberado'}
                   </span>
                 </div>
 
                 <div className="py-1">
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs text-blue-700 font-bold hover:bg-blue-50"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-blue-600" />
+                      <span>Painel Admin & Liberações</span>
+                      {pendingCount > 0 && (
+                        <span className="ml-auto px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-slate-950 font-black">
+                          {pendingCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+                  <Link
+                    href="/configuracoes/usuarios"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    <User className="w-4 h-4 text-slate-400" />
+                    Gerenciar Equipe (RBAC)
+                  </Link>
                   <Link
                     href="/configuracoes/empresa"
                     onClick={() => setIsProfileOpen(false)}
@@ -188,14 +231,6 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
                     Dados da Empresa
                   </Link>
                   <Link
-                    href="/configuracoes/usuarios"
-                    onClick={() => setIsProfileOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
-                  >
-                    <User className="w-4 h-4 text-slate-400" />
-                    Gerenciar Equipe
-                  </Link>
-                  <Link
                     href="https://traduztudo.vercel.app"
                     target="_blank"
                     className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
@@ -203,6 +238,17 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
                     <ExternalLink className="w-4 h-4 text-slate-400" />
                     Site Público TraduzTudo
                   </Link>
+                  <div className="border-t border-slate-100 my-1" />
+                  <button
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 text-left font-medium"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-500" />
+                    Sair do Sistema / Logout
+                  </button>
                 </div>
               </div>
             )}

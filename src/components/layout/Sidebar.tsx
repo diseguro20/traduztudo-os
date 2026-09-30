@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { databaseStore } from '@/lib/db';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -42,6 +43,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
 
   const navSections = [
     {
@@ -180,6 +182,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       title: 'Configurações SaaS',
       items: [
+        {
+          label: 'Painel Admin (Cargos)',
+          href: '/admin',
+          icon: ShieldCheck,
+          badge: pendingCount > 0 ? `${pendingCount} Pendentes` : 'Admin',
+        },
         {
           label: 'Empresa & Tenant',
           href: '/configuracoes/empresa',

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import React, { Suspense } from 'react';
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 import { SystemTourModal } from '@/components/tour/SystemTourModal';
 
 export const metadata: Metadata = {
@@ -20,10 +21,12 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="h-full">
       <body className="h-full bg-slate-50 text-slate-900 font-sans antialiased">
-        {children}
-        <Suspense fallback={null}>
-          <SystemTourModal />
-        </Suspense>
+        <AuthProvider>
+          {children}
+          <Suspense fallback={null}>
+            <SystemTourModal />
+          </Suspense>
+        </AuthProvider>
       </body>
     </html>
   );
