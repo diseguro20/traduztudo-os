@@ -53,10 +53,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           icon: LayoutDashboard,
         },
         {
-          label: 'Tour do Lead (Imersivo)',
+          label: 'Tour Guiado (Pop-ups)',
           href: '/tutorial',
           icon: Sparkles,
-          badge: 'Simulador',
+          badge: '7 Etapas',
         },
       ],
     },

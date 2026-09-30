@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import React, { Suspense } from 'react';
 import './globals.css';
+import { SystemTourModal } from '@/components/tour/SystemTourModal';
 
 export const metadata: Metadata = {
   title: 'TraduzTudo OS — Gestão Inteligente para Empresas de Tradução',
@@ -19,6 +21,9 @@ export default function RootLayout({
     <html lang="pt-BR" className="h-full">
       <body className="h-full bg-slate-50 text-slate-900 font-sans antialiased">
         {children}
+        <Suspense fallback={null}>
+          <SystemTourModal />
+        </Suspense>
       </body>
     </html>
   );

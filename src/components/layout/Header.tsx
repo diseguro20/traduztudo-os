@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { QuickActionModal } from './QuickActionModal';
 import { databaseStore } from '@/lib/db';
+import { launchSystemTour } from '@/components/tour/SystemTourModal';
 import Link from 'next/link';
 
 interface HeaderProps {
@@ -63,14 +64,14 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
         {/* Right: Quick actions, notifications, user menu */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Immersive Lead Tour Link */}
-          <Link
-            href="/tutorial"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs transition-all ring-1 ring-blue-400/40"
+          {/* Immersive Pop-up Tour Trigger */}
+          <button
+            onClick={() => launchSystemTour(0)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs transition-all ring-1 ring-blue-400/40 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-            <span>Tour Imersivo do Lead</span>
-          </Link>
+            <span>Tour Guiado (Pop-ups)</span>
+          </button>
 
           {/* Quick Action (+) button */}
           <Button
