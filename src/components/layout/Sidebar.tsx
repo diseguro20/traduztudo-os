@@ -35,6 +35,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { databaseStore } from '@/lib/db';
+import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -43,7 +44,12 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const tenant = databaseStore.getTenant();
   const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
+  const leadsCount = databaseStore.getLeads().length;
+  const activeOrdersCount = databaseStore.getWorkOrders().filter((o) => o.status !== 'entregue' && o.status !== 'cancelado').length;
+  const unreadNotifsCount = databaseStore.getNotifications().filter((n) => !n.read).length;
 
   const navSections = [
     {
@@ -54,12 +60,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           href: '/',
           icon: LayoutDashboard,
         },
-        {
-          label: 'Tour Guiado (Pop-ups)',
-          href: '/tutorial',
-          icon: Sparkles,
-          badge: '7 Etapas',
-        },
       ],
     },
     {
@@ -69,7 +69,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Leads (Pipeline)',
           href: '/crm/leads',
           icon: UserPlus,
-          badge: '4',
+          badge: leadsCount > 0 ? String(leadsCount) : undefined,
         },
         {
           label: 'Clientes',
@@ -85,8 +85,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Solicitações (Site)',
           href: '/operacao/solicitacoes',
           icon: Inbox,
-          badge: 'Novo',
-          badgeVariant: 'info' as const,
         },
         {
           label: 'Orçamentos',
@@ -97,7 +95,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Ordens de Serviço',
           href: '/operacao/ordens-servico',
           icon: FileCheck2,
-          badge: '3 ativas',
+          badge: activeOrdersCount > 0 ? `${activeOrdersCount} ativas` : undefined,
           badgeVariant: 'purple' as const,
         },
         {
@@ -164,7 +162,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Notificações',
           href: '/comunicacao/notificacoes',
           icon: Bell,
-          badge: '2',
+          badge: unreadNotifsCount > 0 ? String(unreadNotifsCount) : undefined,
           badgeVariant: 'warning' as const,
         },
         {
@@ -326,12 +324,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </Link>
 
           <div className="flex items-center gap-3 px-2 pt-1">
-            <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs">
-              CS
+            <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs uppercase">
+              {(user?.name || 'Administrador').slice(0, 2)}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-medium text-white truncate">Carlos Silva</p>
-              <p className="text-[10px] text-slate-400 truncate">TraduzTudo Matriz (PRO)</p>
+              <p className="text-xs font-medium text-white truncate">{user?.name || 'Administrador'}</p>
+              <p className="text-[10px] text-slate-400 truncate">{tenant.name} · {user?.role || 'ADMIN'}</p>
             </div>
           </div>
         </div>

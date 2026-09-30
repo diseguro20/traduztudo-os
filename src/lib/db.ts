@@ -56,7 +56,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-const STORAGE_KEY = 'traduztudo_db_state_v3';
+const STORAGE_KEY = 'traduztudo_db_state_v5';
 
 // In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
@@ -247,18 +247,7 @@ class DatabaseStore {
       localStorage.setItem('traduztudo_current_user_id', adminUser.id);
     }
 
-    this.notifications = [
-      {
-        id: `notif-${Date.now()}`,
-        tenantId: this.tenant.id,
-        title: '🚀 Modo Produção Limpo Ativado',
-        message: 'Todos os registros fictícios foram removidos. O sistema está 100% pronto para a operação real da sua empresa.',
-        type: 'success',
-        link: '/configuracoes/empresa',
-        read: false,
-        createdAt: new Date().toISOString(),
-      },
-    ];
+    this.notifications = [];
 
     this.auditLogs = [
       {
@@ -266,10 +255,10 @@ class DatabaseStore {
         tenantId: this.tenant.id,
         userId: adminUser.id,
         userName: adminUser.name,
-        action: 'Zerar Base para Produção',
+        action: 'Limpeza de Dados',
         entity: 'System',
         entityId: this.tenant.id,
-        details: 'Banco de dados zerado com sucesso. Modo de Produção Limpo ativado sem dados fictícios.',
+        details: 'Base de dados resetada pelo administrador.',
         createdAt: new Date().toISOString(),
       },
     ];

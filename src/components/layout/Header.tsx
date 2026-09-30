@@ -6,22 +6,17 @@ import {
   Search,
   Plus,
   Bell,
-  CheckCircle,
   ExternalLink,
   ChevronDown,
   User,
   LogOut,
   Building,
-  Sparkles,
   ShieldCheck,
-  Trash2,
-  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { QuickActionModal } from './QuickActionModal';
 import { databaseStore } from '@/lib/db';
-import { launchSystemTour } from '@/components/tour/SystemTourModal';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -44,7 +39,6 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
   const notifications = databaseStore.getNotifications();
   const unreadNotifs = notifications.filter((n) => !n.read);
   const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
-  const hasMock = databaseStore.hasMockData();
 
   return (
     <>
@@ -76,37 +70,6 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
         {/* Right: Quick actions, notifications, user menu */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Production vs Demo Mode Indicator */}
-          {hasMock ? (
-            <button
-              onClick={() => {
-                if (confirm('Zerar dados fictícios de demonstração agora e iniciar a produção limpa com sua empresa?')) {
-                  databaseStore.clearAllMockData();
-                  alert('Base de dados zerada com sucesso! O sistema está pronto para trabalhar.');
-                }
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-              title="Clique para zerar dados fictícios e iniciar produção limpa"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-amber-600" />
-              <span>Zerar Dados Fictícios</span>
-            </button>
-          ) : (
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Modo Produção Limpo</span>
-            </div>
-          )}
-
-          {/* Immersive Pop-up Tour Trigger */}
-          <button
-            onClick={() => launchSystemTour(0)}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs transition-all ring-1 ring-blue-400/40 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-            <span>Tour Guiado</span>
-          </button>
-
           {/* Admin Panel Quick Link */}
           {isAdmin && (
             <Link

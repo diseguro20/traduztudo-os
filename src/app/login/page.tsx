@@ -4,15 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ShieldCheck,
   Lock,
   Mail,
   ArrowRight,
-  Sparkles,
   AlertCircle,
   Clock,
-  UserCheck,
-  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
@@ -114,10 +110,13 @@ export default function LoginPage() {
 
             <div className="pt-2 flex flex-col gap-2">
               <Button
-                onClick={() => handleQuick('user-carlos')}
+                onClick={() => {
+                  const admin = databaseStore.getUsers().find((u) => u.role === 'OWNER' || u.role === 'ADMIN') || databaseStore.getCurrentUser();
+                  handleQuick(admin.id);
+                }}
                 className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
               >
-                <span>Entrar como Administrador (Carlos Silva) para Liberar</span>
+                <span>Entrar como Administrador para Liberar</span>
                 <ArrowRight className="w-4 h-4" />
               </Button>
               <button
@@ -220,35 +219,6 @@ export default function LoginPage() {
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
               </button>
-
-              {databaseStore.hasMockData() && (
-                <div className="grid grid-cols-3 gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleQuick('user-mariana')}
-                    className="p-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-[11px] transition-colors"
-                  >
-                    <div className="font-bold text-white truncate">💼 Mariana</div>
-                    <div className="text-[9px] text-indigo-400 truncate">Gerente</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuick('user-rodrigo')}
-                    className="p-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-[11px] transition-colors"
-                  >
-                    <div className="font-bold text-white truncate">💰 Rodrigo</div>
-                    <div className="text-[9px] text-emerald-400 truncate">Financeiro</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuick('user-pendente-fernanda', true)}
-                    className="p-1.5 rounded-lg bg-amber-950/30 hover:bg-amber-950/50 border border-amber-800/40 text-left text-[11px] transition-colors"
-                  >
-                    <div className="font-bold text-amber-300 truncate">⏳ Fernanda</div>
-                    <div className="text-[9px] text-amber-400 truncate">Pendente</div>
-                  </button>
-                </div>
-              )}
             </div>
 
             <div className="pt-2 text-center text-xs text-slate-400">

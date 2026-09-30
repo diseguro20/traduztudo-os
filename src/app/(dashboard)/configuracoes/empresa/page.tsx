@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Building2, Save, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Building2, Save, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { databaseStore } from '@/lib/db';
 
@@ -138,27 +138,6 @@ export default function EmpresaConfigPage() {
           </Button>
         </div>
       </form>
-
-      {/* Database Mode Card */}
-      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              Ambiente de Dados do Sistema
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Controle se o seu SaaS está operando em Modo de Produção Limpo ou Modo Demonstração.
-            </p>
-          </div>
-          <a
-            href="/admin"
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 text-center"
-          >
-            Abrir Gestor de Dados no Admin →
-          </a>
-        </div>
-      </div>
     </div>
   );
 }

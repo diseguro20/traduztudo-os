@@ -1021,7 +1021,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
 export const CLEAN_PRODUCTION_USER: User = {
   id: 'user-admin',
   tenantId: 'traduztudo-matriz',
-  name: 'Administrador Master',
+  name: 'Administrador',
   email: 'admin@traduztudo.com.br',
   role: 'OWNER',
   phone: '(11) 98765-4321',
@@ -1033,23 +1033,24 @@ export const CLEAN_PRODUCTION_USER: User = {
 export const CLEAN_PRODUCTION_NOTIFICATION: NotificationItem = {
   id: 'notif-welcome',
   tenantId: 'traduztudo-matriz',
-  title: '🚀 TraduzTudo OS Pronto para Produção!',
-  message: 'Sua base de dados está limpa, sem registros fictícios. Configure sua empresa e cadastre seus clientes reais.',
-  type: 'success',
-  link: '/configuracoes/empresa',
-  read: false,
-  createdAt: '2026-09-30T12:00:00.000Z',
+  title: 'Bem-vindo ao TraduzTudo OS',
+  message: 'Sistema operacional configurado e pronto para uso.',
+  type: 'info',
+  link: '/crm/clientes',
+  read: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
 };
 
 export const CLEAN_PRODUCTION_AUDIT: AuditLog = {
   id: 'aud-clean-init',
   tenantId: 'traduztudo-matriz',
   userId: 'user-admin',
-  userName: 'Administrador Master',
-  action: 'Inicialização de Produção',
+  userName: 'Administrador',
+  action: 'Inicialização do Sistema',
   entity: 'System',
   entityId: 'traduztudo-matriz',
-  details: 'Ambiente pronto para operação real em produção. Zero dados fictícios.',
-  createdAt: '2026-09-30T12:00:00.000Z',
+  details: 'Sistema iniciado com sucesso.',
+  createdAt: '2026-01-01T00:00:00.000Z',
 };
+
 

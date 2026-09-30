@@ -158,58 +158,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Onboarding Clean Production Guide if system has no orders */}
-      {workOrders.length === 0 && quotes.length === 0 && (
-        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-blue-900 animate-in fade-in">
-          <div className="max-w-3xl space-y-2">
-            <span className="px-3 py-1 rounded-full bg-blue-500/20 text-cyan-300 text-xs font-bold border border-blue-400/30 uppercase tracking-wider inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300" /> Ambiente Pronto para Operação Real
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Sua base está limpa e pronta para trabalhar!
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Nenhum dado fictício ativo. Siga os 3 passos abaixo para cadastrar sua empresa, seus clientes reais e emitir seu primeiro orçamento de tradução:
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4">
-              <Link
-                href="/configuracoes/empresa"
-                className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all group block"
-              >
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-xs mb-2 group-hover:scale-105 transition-transform">
-                  1
-                </div>
-                <p className="font-bold text-xs text-white">Configurar Empresa</p>
-                <p className="text-[11px] text-blue-200 mt-0.5">CNPJ, WhatsApp comercial e chave PIX para propostas.</p>
-              </Link>
-
-              <Link
-                href="/crm/clientes"
-                className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all group block"
-              >
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-xs mb-2 group-hover:scale-105 transition-transform">
-                  2
-                </div>
-                <p className="font-bold text-xs text-white">Cadastrar Clientes</p>
-                <p className="text-[11px] text-blue-200 mt-0.5">Adicione empresas ou pessoas físicas contratantes.</p>
-              </Link>
-
-              <Link
-                href="/operacao/orcamentos/novo"
-                className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all group block"
-              >
-                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-xs mb-2 group-hover:scale-105 transition-transform">
-                  3
-                </div>
-                <p className="font-bold text-xs text-white">Emitir Orçamento</p>
-                <p className="text-[11px] text-blue-200 mt-0.5">Envie link de aprovação com assinatura e PIX.</p>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* KPI Cards (6 Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* Faturamento */}
