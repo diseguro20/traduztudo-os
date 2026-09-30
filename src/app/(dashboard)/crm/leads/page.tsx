@@ -95,7 +95,7 @@ export default function LeadsPage() {
   const handleConvertLead = (leadId: string) => {
     const res = databaseStore.convertLeadToCustomer(leadId);
     if (res) {
-      alert(`Lead ${res.lead.name} convertido com sucesso em cliente ID ${res.customer.id}!`);
+      alert(`Lead ${res.name} convertido com sucesso em cliente cadastrado!`);
       setRefreshKey((k) => k + 1);
     }
   };

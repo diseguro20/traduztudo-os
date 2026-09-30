@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   UserCheck,
@@ -21,6 +21,10 @@ import {
   Mail,
   Phone,
   Trash2,
+  Database,
+  Download,
+  Upload,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -29,11 +33,12 @@ import { databaseStore } from '@/lib/db';
 import { User, UserRole, UserStatus } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import Link from 'next/link';
 
 export default function AdminControlPanelPage() {
   const { user: currentAdmin } = useAuth();
   const [refresh, setRefresh] = useState(0);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'audit'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'audit' | 'production'>('pending');
 
   const users = databaseStore.getUsers();
   const auditLogs = databaseStore.getAuditLogs();
@@ -41,6 +46,64 @@ export default function AdminControlPanelPage() {
   const pendingUsers = users.filter((u) => u.status === 'PENDING');
   const activeUsers = users.filter((u) => u.status === 'ACTIVE' || !u.status);
   const blockedUsers = users.filter((u) => u.status === 'BLOCKED');
+
+  const hasMock = databaseStore.hasMockData();
+  const stats = databaseStore.getStatsSummary();
+
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [adminNameInput, setAdminNameInput] = useState(currentAdmin?.name || 'Administrador Master');
+  const [adminEmailInput, setAdminEmailInput] = useState(currentAdmin?.email || 'admin@traduztudo.com.br');
+  const [adminPhoneInput, setAdminPhoneInput] = useState(currentAdmin?.phone || '(11) 98765-4321');
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
+  const handleClearData = () => {
+    databaseStore.clearAllMockData({
+      name: adminNameInput,
+      email: adminEmailInput,
+      phone: adminPhoneInput,
+    });
+    setIsClearModalOpen(false);
+    alert('Base de dados zerada com sucesso! O sistema está limpo e 100% pronto para uso em produção.');
+  };
+
+  const handleLoadDemo = () => {
+    if (confirm('Deseja recarregar os dados de demonstração (clientes, orçamentos e ordens de teste)?')) {
+      databaseStore.loadDemoData();
+      alert('Dados de demonstração carregados com sucesso.');
+    }
+  };
+
+  const handleExportBackup = () => {
+    const jsonStr = databaseStore.exportDatabaseJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `traduztudo-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result as string;
+      if (content) {
+        const success = databaseStore.importDatabaseJson(content);
+        if (success) {
+          alert('Backup restaurado com sucesso!');
+        } else {
+          alert('Falha ao restaurar arquivo de backup. Formato JSON inválido.');
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Modal State for Approving / Assigning Role
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -188,6 +251,30 @@ export default function AdminControlPanelPage() {
         </div>
       </div>
 
+      {/* Alert banner if mock data detected */}
+      {hasMock && (
+        <div className="p-4 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-xs text-amber-950">Ambiente com dados fictícios de demonstração detectados</p>
+              <p className="text-[11px] text-amber-800">
+                Deseja zerar os registros de teste e deixar o TraduzTudo OS 100% pronto para a operação real da sua empresa?
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setIsClearModalOpen(true)}
+            className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 shadow-xs"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Zerar Base & Iniciar Produção
+          </Button>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
@@ -229,10 +316,10 @@ export default function AdminControlPanelPage() {
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-px">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-px overflow-x-auto">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
             activeTab === 'pending'
               ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -249,7 +336,7 @@ export default function AdminControlPanelPage() {
 
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
             activeTab === 'users'
               ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -260,15 +347,32 @@ export default function AdminControlPanelPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('production')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
+            activeTab === 'production'
+              ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Base de Dados & Produção</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            hasMock ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            {hasMock ? '🟡 Amostras' : '🟢 Produção'}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('audit')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
             activeTab === 'audit'
               ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <Shield className="w-4 h-4" />
-          <span>Logs de Acesso & Auditoria em Tempo Real</span>
+          <span>Logs de Auditoria & LGPD</span>
         </button>
       </div>
 
@@ -547,6 +651,225 @@ export default function AdminControlPanelPage() {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: BASE DE DADOS & MODO DE PRODUÇÃO REAL                             */}
+      {/* ========================================================================= */}
+      {activeTab === 'production' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Status Header Card */}
+          <div className={`p-6 rounded-3xl border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 ${
+            hasMock
+              ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 border-amber-800/60 text-white'
+              : 'bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border-blue-800/60 text-white'
+          }`}>
+            <div className="space-y-2 max-w-xl">
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                  hasMock
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                }`}>
+                  {hasMock ? '🟡 Modo Demonstração Ativo' : '🟢 Modo Produção Limpo Ativo'}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">Status da Base</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {hasMock ? 'Ambiente Contém Dados de Exemplo' : 'Ambiente 100% Preparado para Uso Real'}
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {hasMock
+                  ? 'O sistema contém clientes, propostas e tarefas de demonstração. Você pode zerar tudo com 1 clique para começar a operar com sua empresa real.'
+                  : 'Nenhum dado fictício ativo. Todos os cadastros, clientes, orçamentos e financeiro registrados a partir de agora pertencem à sua operação real.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              <Button
+                onClick={() => setIsClearModalOpen(true)}
+                className="gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-900/30 py-2.5 px-4"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Zerar Base para Produção</span>
+              </Button>
+
+              <Button
+                onClick={handleLoadDemo}
+                variant="outline"
+                className="gap-2 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold"
+              >
+                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <span>Carregar Dados Demo</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Database Summary Grid */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-blue-600" />
+                  Inventário Atual do Banco de Dados
+                </h3>
+                <p className="text-xs text-slate-500">Volume de registros armazenados em tempo real na base de dados.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleExportBackup} className="gap-1.5 text-xs">
+                  <Download className="w-3.5 h-3.5 text-blue-600" /> Exportar Backup (JSON)
+                </Button>
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs">
+                    <Upload className="w-3.5 h-3.5 text-indigo-600" /> Restaurar Backup
+                  </span>
+                  <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Clientes</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.customersCount}</p>
+                <Link href="/crm/clientes" className="text-[10px] text-blue-600 hover:underline block mt-1">Ver Clientes →</Link>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Leads no Funil</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.leadsCount}</p>
+                <Link href="/crm/leads" className="text-[10px] text-blue-600 hover:underline block mt-1">Ver Leads →</Link>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Orçamentos</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.quotesCount}</p>
+                <Link href="/operacao/orcamentos" className="text-[10px] text-blue-600 hover:underline block mt-1">Ver Orçamentos →</Link>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Ordens de Serviço</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.workOrdersCount}</p>
+                <Link href="/operacao/ordens-servico" className="text-[10px] text-blue-600 hover:underline block mt-1">Ver Ordens →</Link>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Financeiro</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.receivablesCount + stats.payablesCount}</p>
+                <Link href="/financeiro/contas-receber" className="text-[10px] text-blue-600 hover:underline block mt-1">Ver Títulos →</Link>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Usuários & Equipe</span>
+                <p className="text-xl font-black text-slate-900 mt-1">{stats.usersCount}</p>
+                <button onClick={() => setActiveTab('users')} className="text-[10px] text-blue-600 hover:underline block mt-1 text-left">Gerenciar →</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Start Guide */}
+          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-sm border border-slate-800 space-y-4">
+            <div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/30 uppercase">
+                Guia Rápido
+              </span>
+              <h3 className="text-lg font-bold text-white mt-2">Pronto para Trabalhar com a sua Empresa</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Siga estas 3 etapas recomendadas para iniciar a operação real:</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-sm">1</div>
+                <h4 className="font-bold text-sm text-white">Dados Oficiais da Empresa</h4>
+                <p className="text-xs text-slate-300">Cadastre a Razão Social, CNPJ, WhatsApp e Chave PIX da empresa para constar nos orçamentos.</p>
+                <Link href="/configuracoes/empresa" className="inline-block pt-1 text-xs text-blue-400 font-bold hover:underline">Configurar Empresa →</Link>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">2</div>
+                <h4 className="font-bold text-sm text-white">Cadastre seu Primeiro Cliente</h4>
+                <p className="text-xs text-slate-300">Adicione pessoas físicas ou jurídicas para emitir orçamentos formais e contratos.</p>
+                <Link href="/crm/clientes" className="inline-block pt-1 text-xs text-blue-400 font-bold hover:underline">Ir para Clientes →</Link>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">3</div>
+                <h4 className="font-bold text-sm text-white">Emita o Primeiro Orçamento</h4>
+                <p className="text-xs text-slate-300">Calcule laudas ou palavras, gere link de aprovação com assinatura digital e receba via PIX.</p>
+                <Link href="/operacao/orcamentos/novo" className="inline-block pt-1 text-xs text-blue-400 font-bold hover:underline">Novo Orçamento →</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CONFIRMAR LIMPEZA DE DADOS FICTÍCIOS                                */}
+      {/* ========================================================================= */}
+      <Modal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        title="🧹 Zerar Base & Iniciar Modo de Produção Limpo"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 space-y-1">
+            <p className="font-bold flex items-center gap-1.5 text-xs text-rose-900">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              Atenção: Esta ação limpa os registros de demonstração!
+            </p>
+            <p className="text-[11px] leading-relaxed">
+              Serão removidos: clientes fictícios, leads, orçamentos, ordens de serviço, minutas e cadastros pendentes de teste. Seu catálogo de idiomas e serviços de tradução será preservado.
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            <p className="font-bold text-slate-800 uppercase text-[11px]">
+              Dados do seu Usuário Administrador Master Principal:
+            </p>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Seu Nome Completo:</label>
+              <input
+                type="text"
+                value={adminNameInput}
+                onChange={(e) => setAdminNameInput(e.target.value)}
+                placeholder="Ex: Seu Nome ou Administrador"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Seu E-mail Oficial de Acesso:</label>
+              <input
+                type="email"
+                value={adminEmailInput}
+                onChange={(e) => setAdminEmailInput(e.target.value)}
+                placeholder="seu.email@empresa.com.br"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Telefone / WhatsApp Comercial:</label>
+              <input
+                type="text"
+                value={adminPhoneInput}
+                onChange={(e) => setAdminPhoneInput(e.target.value)}
+                placeholder="(11) 98765-4321"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <Button variant="outline" size="sm" onClick={() => setIsClearModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleClearData} className="bg-rose-600 hover:bg-rose-700 text-white font-bold gap-1.5">
+              <Trash2 className="w-3.5 h-3.5" /> Confirmar e Zerar Base Agora
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ========================================================================= */}
       {/* MODAL: APROVAR CADASTRO E ATRIBUIR CARGO                                   */}

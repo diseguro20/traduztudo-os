@@ -38,6 +38,9 @@ import {
   INITIAL_EXPENSES,
   INITIAL_NOTIFICATIONS,
   INITIAL_AUDIT_LOGS,
+  CLEAN_PRODUCTION_USER,
+  CLEAN_PRODUCTION_NOTIFICATION,
+  CLEAN_PRODUCTION_AUDIT,
 } from './seedData';
 import { db } from './firebase';
 import {
@@ -53,26 +56,120 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-// In-memory persistent fallback store to ensure zero-latency UI and offline resilience
+const STORAGE_KEY = 'traduztudo_db_state_v3';
+
+// In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
-  private tenant: Tenant = INITIAL_TENANT;
-  private users: User[] = [...INITIAL_USERS];
-  private customers: Customer[] = [...INITIAL_CUSTOMERS];
-  private leads: Lead[] = [...INITIAL_LEADS];
+  private tenant: Tenant = { ...INITIAL_TENANT };
+  private users: User[] = [{ ...CLEAN_PRODUCTION_USER }];
+  private customers: Customer[] = [];
+  private leads: Lead[] = [];
   private services: TranslationService[] = [...INITIAL_SERVICES];
   private languages: Language[] = [...INITIAL_LANGUAGES];
   private requests: InboundRequest[] = [];
-  private quotes: Quote[] = [...INITIAL_QUOTES];
-  private workOrders: WorkOrder[] = [...INITIAL_WORK_ORDERS];
-  private documents: DocumentItem[] = [...INITIAL_DOCUMENTS];
-  private tasks: OrderTask[] = [...INITIAL_TASKS];
-  private translators: Translator[] = [...INITIAL_TRANSLATORS];
-  private reviewers: Reviewer[] = [...INITIAL_REVIEWERS];
-  private receivables: AccountReceivable[] = [...INITIAL_RECEIVABLES];
-  private payables: AccountPayable[] = [...INITIAL_PAYABLES];
-  private expenses: Expense[] = [...INITIAL_EXPENSES];
-  private notifications: NotificationItem[] = [...INITIAL_NOTIFICATIONS];
-  private auditLogs: AuditLog[] = [...INITIAL_AUDIT_LOGS];
+  private quotes: Quote[] = [];
+  private workOrders: WorkOrder[] = [];
+  private documents: DocumentItem[] = [];
+  private tasks: OrderTask[] = [];
+  private translators: Translator[] = [];
+  private reviewers: Reviewer[] = [];
+  private receivables: AccountReceivable[] = [];
+  private payables: AccountPayable[] = [];
+  private expenses: Expense[] = [];
+  private notifications: NotificationItem[] = [{ ...CLEAN_PRODUCTION_NOTIFICATION }];
+  private auditLogs: AuditLog[] = [{ ...CLEAN_PRODUCTION_AUDIT }];
+  private isDemoMode: boolean = false;
+  private currentUserId: string = 'user-admin';
+  private listeners: Array<() => void> = [];
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.hydrateFromLocalStorage();
+    }
+  }
+
+  private hydrateFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.tenant) this.tenant = parsed.tenant;
+        if (Array.isArray(parsed.users) && parsed.users.length > 0) this.users = parsed.users;
+        if (Array.isArray(parsed.customers)) this.customers = parsed.customers;
+        if (Array.isArray(parsed.leads)) this.leads = parsed.leads;
+        if (Array.isArray(parsed.services) && parsed.services.length > 0) this.services = parsed.services;
+        if (Array.isArray(parsed.languages) && parsed.languages.length > 0) this.languages = parsed.languages;
+        if (Array.isArray(parsed.requests)) this.requests = parsed.requests;
+        if (Array.isArray(parsed.quotes)) this.quotes = parsed.quotes;
+        if (Array.isArray(parsed.workOrders)) this.workOrders = parsed.workOrders;
+        if (Array.isArray(parsed.documents)) this.documents = parsed.documents;
+        if (Array.isArray(parsed.tasks)) this.tasks = parsed.tasks;
+        if (Array.isArray(parsed.translators)) this.translators = parsed.translators;
+        if (Array.isArray(parsed.reviewers)) this.reviewers = parsed.reviewers;
+        if (Array.isArray(parsed.receivables)) this.receivables = parsed.receivables;
+        if (Array.isArray(parsed.payables)) this.payables = parsed.payables;
+        if (Array.isArray(parsed.expenses)) this.expenses = parsed.expenses;
+        if (Array.isArray(parsed.notifications)) this.notifications = parsed.notifications;
+        if (Array.isArray(parsed.auditLogs)) this.auditLogs = parsed.auditLogs;
+        if (typeof parsed.isDemoMode === 'boolean') this.isDemoMode = parsed.isDemoMode;
+        if (parsed.currentUserId) this.currentUserId = parsed.currentUserId;
+      } else {
+        // First run: save clean production state
+        this.saveToLocalStorage();
+      }
+    } catch (e) {
+      console.warn('Storage hydration notice:', e);
+    }
+  }
+
+  private saveToLocalStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const payload = {
+        tenant: this.tenant,
+        users: this.users,
+        customers: this.customers,
+        leads: this.leads,
+        services: this.services,
+        languages: this.languages,
+        requests: this.requests,
+        quotes: this.quotes,
+        workOrders: this.workOrders,
+        documents: this.documents,
+        tasks: this.tasks,
+        translators: this.translators,
+        reviewers: this.reviewers,
+        receivables: this.receivables,
+        payables: this.payables,
+        expenses: this.expenses,
+        notifications: this.notifications,
+        auditLogs: this.auditLogs,
+        isDemoMode: this.isDemoMode,
+        currentUserId: this.currentUserId,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
+    };
+  }
+
+  private persistAndNotify() {
+    this.saveToLocalStorage();
+    this.listeners.forEach((fn) => {
+      try {
+        fn();
+      } catch (e) {
+        console.warn('Listener error in db store:', e);
+      }
+    });
+  }
 
   // Helper to sync to Firestore in background without blocking UI
   private async syncFirestore(collectionName: string, id: string, data: any) {
@@ -86,6 +183,184 @@ class DatabaseStore {
     }
   }
 
+  // --- PRODUCTION & DEMO DATA MANAGEMENT ---
+  isCleanProductionMode(): boolean {
+    return !this.isDemoMode;
+  }
+
+  hasMockData(): boolean {
+    return (
+      this.isDemoMode ||
+      this.customers.some((c) => c.id.startsWith('cust-') || c.name.includes('TechCorp')) ||
+      this.quotes.some((q) => q.code.includes('ORC-2026') || q.code === 'ORC-000001') ||
+      this.workOrders.some((o) => o.code.includes('OS-2026') || o.code === 'OS-000001') ||
+      this.users.some((u) => u.id === 'user-carlos' || u.name === 'Carlos Silva')
+    );
+  }
+
+  getStatsSummary() {
+    return {
+      customersCount: this.customers.length,
+      leadsCount: this.leads.length,
+      quotesCount: this.quotes.length,
+      workOrdersCount: this.workOrders.length,
+      usersCount: this.users.length,
+      pendingUsersCount: this.users.filter((u) => u.status === 'PENDING').length,
+      receivablesCount: this.receivables.length,
+      payablesCount: this.payables.length,
+      isDemoMode: this.isDemoMode,
+      hasMockData: this.hasMockData(),
+    };
+  }
+
+  clearAllMockData(customAdmin?: { name?: string; email?: string; phone?: string }) {
+    this.customers = [];
+    this.leads = [];
+    this.quotes = [];
+    this.workOrders = [];
+    this.documents = [];
+    this.tasks = [];
+    this.translators = [];
+    this.reviewers = [];
+    this.receivables = [];
+    this.payables = [];
+    this.expenses = [];
+    this.requests = [];
+
+    // Ensure active admin user exists
+    const current = this.getCurrentUser();
+    const adminUser: User = {
+      id: current && current.id !== 'user-carlos' ? current.id : 'user-admin',
+      tenantId: this.tenant.id,
+      name: customAdmin?.name || (current && current.id !== 'user-carlos' ? current.name : 'Administrador Master'),
+      email: customAdmin?.email || (current && current.id !== 'user-carlos' ? current.email : 'admin@traduztudo.com.br'),
+      role: 'OWNER',
+      phone: customAdmin?.phone || (current && current.id !== 'user-carlos' ? current.phone : '(11) 98765-4321'),
+      active: true,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.users = [adminUser];
+    this.currentUserId = adminUser.id;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('traduztudo_current_user_id', adminUser.id);
+    }
+
+    this.notifications = [
+      {
+        id: `notif-${Date.now()}`,
+        tenantId: this.tenant.id,
+        title: '🚀 Modo Produção Limpo Ativado',
+        message: 'Todos os registros fictícios foram removidos. O sistema está 100% pronto para a operação real da sua empresa.',
+        type: 'success',
+        link: '/configuracoes/empresa',
+        read: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    this.auditLogs = [
+      {
+        id: `aud-${Date.now()}`,
+        tenantId: this.tenant.id,
+        userId: adminUser.id,
+        userName: adminUser.name,
+        action: 'Zerar Base para Produção',
+        entity: 'System',
+        entityId: this.tenant.id,
+        details: 'Banco de dados zerado com sucesso. Modo de Produção Limpo ativado sem dados fictícios.',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    this.isDemoMode = false;
+    this.persistAndNotify();
+  }
+
+  loadDemoData() {
+    this.tenant = { ...INITIAL_TENANT };
+    this.users = [...INITIAL_USERS];
+    this.customers = [...INITIAL_CUSTOMERS];
+    this.leads = [...INITIAL_LEADS];
+    this.services = [...INITIAL_SERVICES];
+    this.languages = [...INITIAL_LANGUAGES];
+    this.quotes = [...INITIAL_QUOTES];
+    this.workOrders = [...INITIAL_WORK_ORDERS];
+    this.documents = [...INITIAL_DOCUMENTS];
+    this.tasks = [...INITIAL_TASKS];
+    this.translators = [...INITIAL_TRANSLATORS];
+    this.reviewers = [...INITIAL_REVIEWERS];
+    this.receivables = [...INITIAL_RECEIVABLES];
+    this.payables = [...INITIAL_PAYABLES];
+    this.expenses = [...INITIAL_EXPENSES];
+    this.notifications = [...INITIAL_NOTIFICATIONS];
+    this.auditLogs = [...INITIAL_AUDIT_LOGS];
+    this.isDemoMode = true;
+    this.currentUserId = 'user-carlos';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('traduztudo_current_user_id', 'user-carlos');
+    }
+    this.persistAndNotify();
+  }
+
+  exportDatabaseJson(): string {
+    return JSON.stringify(
+      {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        tenant: this.tenant,
+        users: this.users,
+        customers: this.customers,
+        leads: this.leads,
+        services: this.services,
+        languages: this.languages,
+        quotes: this.quotes,
+        workOrders: this.workOrders,
+        documents: this.documents,
+        tasks: this.tasks,
+        translators: this.translators,
+        reviewers: this.reviewers,
+        receivables: this.receivables,
+        payables: this.payables,
+        expenses: this.expenses,
+        notifications: this.notifications,
+        auditLogs: this.auditLogs,
+      },
+      null,
+      2
+    );
+  }
+
+  importDatabaseJson(jsonStr: string): boolean {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (data.tenant) this.tenant = data.tenant;
+      if (Array.isArray(data.users)) this.users = data.users;
+      if (Array.isArray(data.customers)) this.customers = data.customers;
+      if (Array.isArray(data.leads)) this.leads = data.leads;
+      if (Array.isArray(data.services)) this.services = data.services;
+      if (Array.isArray(data.languages)) this.languages = data.languages;
+      if (Array.isArray(data.quotes)) this.quotes = data.quotes;
+      if (Array.isArray(data.workOrders)) this.workOrders = data.workOrders;
+      if (Array.isArray(data.documents)) this.documents = data.documents;
+      if (Array.isArray(data.tasks)) this.tasks = data.tasks;
+      if (Array.isArray(data.translators)) this.translators = data.translators;
+      if (Array.isArray(data.reviewers)) this.reviewers = data.reviewers;
+      if (Array.isArray(data.receivables)) this.receivables = data.receivables;
+      if (Array.isArray(data.payables)) this.payables = data.payables;
+      if (Array.isArray(data.expenses)) this.expenses = data.expenses;
+      if (Array.isArray(data.notifications)) this.notifications = data.notifications;
+      if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
+      this.isDemoMode = false;
+      this.persistAndNotify();
+      return true;
+    } catch (e) {
+      console.error('Failed to import JSON database:', e);
+      return false;
+    }
+  }
+
   // --- TENANT & USERS ---
   getTenant(): Tenant {
     return this.tenant;
@@ -94,6 +369,7 @@ class DatabaseStore {
   updateTenant(data: Partial<Tenant>): Tenant {
     this.tenant = { ...this.tenant, ...data, updatedAt: new Date().toISOString() };
     this.syncFirestore('settings', 'profile', this.tenant);
+    this.persistAndNotify();
     return this.tenant;
   }
 
@@ -125,6 +401,7 @@ class DatabaseStore {
       link: '/admin',
     });
     this.logAudit(newUser.name, 'Solicitação de Cadastro', 'User', newUser.id, `Novo usuário registrado no sistema`);
+    this.persistAndNotify();
     return newUser;
   }
 
@@ -133,13 +410,15 @@ class DatabaseStore {
     if (idx === -1) return undefined;
     this.users[idx] = { ...this.users[idx], ...data };
     this.syncFirestore('users', id, this.users[idx]);
-    this.logAudit('Carlos Silva (Admin)', 'Atualização de Usuário', 'User', id, `Atualizou dados/cargo do usuário ${this.users[idx].name}`);
+    this.logAudit(this.getCurrentUser().name, 'Atualização de Usuário', 'User', id, `Atualizou dados/cargo do usuário ${this.users[idx].name}`);
+    this.persistAndNotify();
     return this.users[idx];
   }
 
   approveUser(id: string, role: UserRole, permissions?: string[]): User | undefined {
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) return undefined;
+    const adminName = this.getCurrentUser().name;
     this.users[idx] = {
       ...this.users[idx],
       role,
@@ -147,7 +426,7 @@ class DatabaseStore {
       status: 'ACTIVE',
       active: true,
       approvedAt: new Date().toISOString(),
-      approvedBy: 'Carlos Silva (Owner/Admin)',
+      approvedBy: adminName,
     };
     this.syncFirestore('users', id, this.users[idx]);
     this.createNotification({
@@ -156,37 +435,44 @@ class DatabaseStore {
       type: 'success',
       link: '/admin',
     });
-    this.logAudit('Carlos Silva (Admin)', 'Aprovação de Cadastro', 'User', id, `Aprovou o usuário ${this.users[idx].name} com o cargo ${role}`);
+    this.logAudit(adminName, 'Aprovação de Cadastro', 'User', id, `Aprovou o usuário ${this.users[idx].name} com o cargo ${role}`);
+    this.persistAndNotify();
     return this.users[idx];
   }
 
   rejectUser(id: string): boolean {
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) return false;
+    const adminName = this.getCurrentUser().name;
     this.users[idx].status = 'REJECTED';
     this.users[idx].active = false;
     this.syncFirestore('users', id, this.users[idx]);
-    this.logAudit('Carlos Silva (Admin)', 'Rejeição de Cadastro', 'User', id, `Rejeitou a solicitação do usuário ${this.users[idx].name}`);
+    this.logAudit(adminName, 'Rejeição de Cadastro', 'User', id, `Rejeitou a solicitação do usuário ${this.users[idx].name}`);
+    this.persistAndNotify();
     return true;
   }
 
   blockUser(id: string): User | undefined {
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) return undefined;
+    const adminName = this.getCurrentUser().name;
     this.users[idx].status = 'BLOCKED';
     this.users[idx].active = false;
     this.syncFirestore('users', id, this.users[idx]);
-    this.logAudit('Carlos Silva (Admin)', 'Bloqueio de Usuário', 'User', id, `Bloqueou o acesso do usuário ${this.users[idx].name}`);
+    this.logAudit(adminName, 'Bloqueio de Usuário', 'User', id, `Bloqueou o acesso do usuário ${this.users[idx].name}`);
+    this.persistAndNotify();
     return this.users[idx];
   }
 
   unblockUser(id: string): User | undefined {
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) return undefined;
+    const adminName = this.getCurrentUser().name;
     this.users[idx].status = 'ACTIVE';
     this.users[idx].active = true;
     this.syncFirestore('users', id, this.users[idx]);
-    this.logAudit('Carlos Silva (Admin)', 'Desbloqueio de Usuário', 'User', id, `Reativou o usuário ${this.users[idx].name}`);
+    this.logAudit(adminName, 'Desbloqueio de Usuário', 'User', id, `Reativou o usuário ${this.users[idx].name}`);
+    this.persistAndNotify();
     return this.users[idx];
   }
 
@@ -194,12 +480,12 @@ class DatabaseStore {
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) return false;
     const name = this.users[idx].name;
+    const adminName = this.getCurrentUser().name;
     this.users.splice(idx, 1);
-    this.logAudit('Carlos Silva (Admin)', 'Exclusão de Usuário', 'User', id, `Removeu o usuário ${name} da empresa`);
+    this.logAudit(adminName, 'Exclusão de Usuário', 'User', id, `Removeu o usuário ${name} da empresa`);
+    this.persistAndNotify();
     return true;
   }
-
-  private currentUserId: string = 'user-carlos';
 
   getCurrentUser(): User {
     if (typeof window !== 'undefined') {
@@ -209,7 +495,12 @@ class DatabaseStore {
         if (found) return found;
       }
     }
-    const fallback = this.users.find((u) => u.id === this.currentUserId) || this.users[0];
+    const fallback =
+      this.users.find((u) => u.id === this.currentUserId) ||
+      this.users[0] || {
+        ...CLEAN_PRODUCTION_USER,
+        tenantId: this.tenant.id,
+      };
     return fallback;
   }
 
@@ -218,6 +509,7 @@ class DatabaseStore {
     if (typeof window !== 'undefined') {
       localStorage.setItem('traduztudo_current_user_id', user.id);
     }
+    this.persistAndNotify();
   }
 
   // --- CUSTOMERS ---
@@ -242,7 +534,8 @@ class DatabaseStore {
     };
     this.customers.unshift(newCustomer);
     this.syncFirestore('customers', newCustomer.id, newCustomer);
-    this.logAudit('Carlos Silva', 'Criação de Cliente', 'Customer', newCustomer.id, `Cadastrou o cliente ${newCustomer.name}`);
+    this.logAudit(this.getCurrentUser().name, 'Criação de Cliente', 'Customer', newCustomer.id, `Cadastrou o cliente ${newCustomer.name}`);
+    this.persistAndNotify();
     return newCustomer;
   }
 
@@ -255,7 +548,8 @@ class DatabaseStore {
       updatedAt: new Date().toISOString(),
     };
     this.syncFirestore('customers', id, this.customers[idx]);
-    this.logAudit('Carlos Silva', 'Atualização de Cliente', 'Customer', id, `Atualizou os dados do cliente ${this.customers[idx].name}`);
+    this.logAudit(this.getCurrentUser().name, 'Atualização de Cliente', 'Customer', id, `Atualizou os dados do cliente ${this.customers[idx].name}`);
+    this.persistAndNotify();
     return this.customers[idx];
   }
 
@@ -264,7 +558,8 @@ class DatabaseStore {
     if (idx === -1) return false;
     this.customers[idx].deletedAt = new Date().toISOString();
     this.syncFirestore('customers', id, this.customers[idx]);
-    this.logAudit('Carlos Silva', 'Exclusão de Cliente', 'Customer', id, `Removeu o cliente ${this.customers[idx].name}`);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Cliente', 'Customer', id, `Removeu o cliente ${this.customers[idx].name}`);
+    this.persistAndNotify();
     return true;
   }
 
@@ -286,62 +581,49 @@ class DatabaseStore {
     };
     this.leads.unshift(newLead);
     this.syncFirestore('leads', newLead.id, newLead);
-    this.logAudit('Juliana Mendes', 'Novo Lead', 'Lead', newLead.id, `Novo lead registrado: ${newLead.name} via ${newLead.origin}`);
+    this.logAudit(this.getCurrentUser().name, 'Novo Lead', 'Lead', newLead.id, `Novo lead registrado: ${newLead.name} via ${newLead.origin}`);
     this.createNotification({
       title: 'Novo Lead',
       message: `${newLead.name} entrou em contato via ${newLead.origin}.`,
       type: 'info',
       link: '/crm/leads',
     });
+    this.persistAndNotify();
     return newLead;
   }
 
   updateLead(id: string, data: Partial<Lead>): Lead | undefined {
     const idx = this.leads.findIndex((l) => l.id === id);
     if (idx === -1) return undefined;
-    this.leads[idx] = {
-      ...this.leads[idx],
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
+    this.leads[idx] = { ...this.leads[idx], ...data, updatedAt: new Date().toISOString() };
     this.syncFirestore('leads', id, this.leads[idx]);
+    this.persistAndNotify();
     return this.leads[idx];
   }
 
-  convertLeadToCustomer(leadId: string): { customer: Customer; lead: Lead } | undefined {
+  convertLeadToCustomer(leadId: string): Customer | undefined {
     const lead = this.getLeadById(leadId);
     if (!lead) return undefined;
 
-    const customer = this.createCustomer({
+    const newCustomer = this.createCustomer({
       tenantId: this.tenant.id,
       type: lead.type,
       name: lead.name,
+      companyName: lead.type === 'PJ' ? lead.name : undefined,
       email: lead.email,
       phone: lead.phone,
       whatsapp: lead.whatsapp,
-      notes: `Convertido do Lead ${lead.name}. Interesse: ${lead.interestedServiceName || 'N/A'}. Obs: ${lead.notes || ''}`,
+      notes: `Convertido de Lead (${lead.origin}). Obs originais: ${lead.notes || ''}`,
     });
 
-    this.updateLead(leadId, {
-      status: 'convertido',
-      customerId: customer.id,
-    });
-
-    this.logAudit('Juliana Mendes', 'Conversão de Lead', 'Lead', leadId, `Lead ${lead.name} convertido em cliente ID ${customer.id}`);
-    return { customer, lead };
-  }
-
-  deleteLead(id: string): boolean {
-    const idx = this.leads.findIndex((l) => l.id === id);
-    if (idx === -1) return false;
-    this.leads[idx].deletedAt = new Date().toISOString();
-    this.syncFirestore('leads', id, this.leads[idx]);
-    return true;
+    this.updateLead(leadId, { status: 'convertido' });
+    this.logAudit(this.getCurrentUser().name, 'Conversão de Lead', 'Lead', leadId, `Lead ${lead.name} convertido em Cliente ${newCustomer.name}`);
+    return newCustomer;
   }
 
   // --- SERVICES & LANGUAGES ---
   getServices(): TranslationService[] {
-    return this.services;
+    return this.services.filter((s) => s.active);
   }
 
   createService(data: Omit<TranslationService, 'id' | 'createdAt'>): TranslationService {
@@ -352,6 +634,7 @@ class DatabaseStore {
     };
     this.services.push(newService);
     this.syncFirestore('services', newService.id, newService);
+    this.persistAndNotify();
     return newService;
   }
 
@@ -360,6 +643,7 @@ class DatabaseStore {
     if (idx === -1) return undefined;
     this.services[idx] = { ...this.services[idx], ...data };
     this.syncFirestore('services', id, this.services[idx]);
+    this.persistAndNotify();
     return this.services[idx];
   }
 
@@ -378,6 +662,7 @@ class DatabaseStore {
     };
     this.languages.push(newLang);
     this.syncFirestore('languages', newLang.id, newLang);
+    this.persistAndNotify();
     return newLang;
   }
 
@@ -418,6 +703,7 @@ class DatabaseStore {
       link: '/operacao/solicitacoes',
     });
 
+    this.persistAndNotify();
     return newReq;
   }
 
@@ -426,6 +712,7 @@ class DatabaseStore {
     if (!req) return undefined;
     req.status = status;
     this.syncFirestore('requests', id, req);
+    this.persistAndNotify();
     return req;
   }
 
@@ -460,7 +747,8 @@ class DatabaseStore {
     };
     this.quotes.unshift(newQuote);
     this.syncFirestore('quotes', newQuote.id, newQuote);
-    this.logAudit('Juliana Mendes', 'Criação de Orçamento', 'Quote', newQuote.id, `Criou o orçamento ${code} para ${newQuote.customerName} total R$ ${newQuote.total.toFixed(2)}`);
+    this.logAudit(this.getCurrentUser().name, 'Criação de Orçamento', 'Quote', newQuote.id, `Criou o orçamento ${code} para ${newQuote.customerName} total R$ ${newQuote.total.toFixed(2)}`);
+    this.persistAndNotify();
     return newQuote;
   }
 
@@ -473,6 +761,7 @@ class DatabaseStore {
       updatedAt: new Date().toISOString(),
     };
     this.syncFirestore('quotes', id, this.quotes[idx]);
+    this.persistAndNotify();
     return this.quotes[idx];
   }
 
@@ -499,6 +788,7 @@ class DatabaseStore {
       link: `/operacao/ordens-servico/${workOrder.id}`,
     });
 
+    this.persistAndNotify();
     return { quote, workOrder };
   }
 
@@ -511,6 +801,7 @@ class DatabaseStore {
     quote.updatedAt = new Date().toISOString();
     this.syncFirestore('quotes', quote.id, quote);
     this.logAudit('Cliente', 'Recusa de Orçamento', 'Quote', quote.id, `Orçamento ${quote.code} recusado. Motivo: ${quote.rejectedReason}`);
+    this.persistAndNotify();
     return quote;
   }
 
@@ -598,6 +889,7 @@ class DatabaseStore {
       status: 'a_fazer',
     });
 
+    this.persistAndNotify();
     return newOrder;
   }
 
@@ -614,7 +906,8 @@ class DatabaseStore {
     };
     this.workOrders.unshift(newOrder);
     this.syncFirestore('workOrders', newOrder.id, newOrder);
-    this.logAudit('Mariana Costa', 'Criação de Ordem de Serviço', 'WorkOrder', newOrder.id, `Criou a ${code} para ${newOrder.customerName}`);
+    this.logAudit(this.getCurrentUser().name, 'Criação de Ordem de Serviço', 'WorkOrder', newOrder.id, `Criou a ${code} para ${newOrder.customerName}`);
+    this.persistAndNotify();
     return newOrder;
   }
 
@@ -627,6 +920,7 @@ class DatabaseStore {
       updatedAt: new Date().toISOString(),
     };
     this.syncFirestore('workOrders', id, this.workOrders[idx]);
+    this.persistAndNotify();
     return this.workOrders[idx];
   }
 
@@ -649,6 +943,7 @@ class DatabaseStore {
     this.documents.unshift(newDoc);
     this.syncFirestore('documents', newDoc.id, newDoc);
     this.logAudit(data.uploaderName, 'Upload de Documento', 'Document', newDoc.id, `Arquivo enviado: ${newDoc.name} (${newDoc.category})`);
+    this.persistAndNotify();
     return newDoc;
   }
 
@@ -656,6 +951,7 @@ class DatabaseStore {
     const idx = this.documents.findIndex((d) => d.id === id);
     if (idx === -1) return false;
     this.documents.splice(idx, 1);
+    this.persistAndNotify();
     return true;
   }
 
@@ -675,6 +971,7 @@ class DatabaseStore {
     };
     this.tasks.push(newTask);
     this.syncFirestore('tasks', newTask.id, newTask);
+    this.persistAndNotify();
     return newTask;
   }
 
@@ -683,6 +980,7 @@ class DatabaseStore {
     if (idx === -1) return undefined;
     this.tasks[idx] = { ...this.tasks[idx], ...data };
     this.syncFirestore('tasks', id, this.tasks[idx]);
+    this.persistAndNotify();
     return this.tasks[idx];
   }
 
@@ -690,6 +988,7 @@ class DatabaseStore {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx === -1) return false;
     this.tasks.splice(idx, 1);
+    this.persistAndNotify();
     return true;
   }
 
@@ -709,6 +1008,7 @@ class DatabaseStore {
     };
     this.translators.push(newTranslator);
     this.syncFirestore('translators', newTranslator.id, newTranslator);
+    this.persistAndNotify();
     return newTranslator;
   }
 
@@ -727,6 +1027,7 @@ class DatabaseStore {
     };
     this.reviewers.push(newRev);
     this.syncFirestore('reviewers', newRev.id, newRev);
+    this.persistAndNotify();
     return newRev;
   }
 
@@ -743,6 +1044,7 @@ class DatabaseStore {
     };
     this.receivables.unshift(newRec);
     this.syncFirestore('accountsReceivable', newRec.id, newRec);
+    this.persistAndNotify();
     return newRec;
   }
 
@@ -765,7 +1067,8 @@ class DatabaseStore {
       }
     }
 
-    this.logAudit('Rodrigo Rocha', 'Liquidação de Recebimento', 'AccountReceivable', id, `Confirmou pagamento de R$ ${paidVal.toFixed(2)} referente a ${rec.description}`);
+    this.logAudit(this.getCurrentUser().name, 'Liquidação de Recebimento', 'AccountReceivable', id, `Confirmou pagamento de R$ ${paidVal.toFixed(2)} referente a ${rec.description}`);
+    this.persistAndNotify();
     return rec;
   }
 
@@ -781,6 +1084,7 @@ class DatabaseStore {
     };
     this.payables.unshift(newPay);
     this.syncFirestore('accountsPayable', newPay.id, newPay);
+    this.persistAndNotify();
     return newPay;
   }
 
@@ -790,7 +1094,8 @@ class DatabaseStore {
     pay.status = 'pago';
     pay.paidAt = new Date().toISOString();
     this.syncFirestore('accountsPayable', id, pay);
-    this.logAudit('Rodrigo Rocha', 'Liquidação de Conta a Pagar', 'AccountPayable', id, `Baixou conta a pagar de R$ ${pay.amount.toFixed(2)} (${pay.description})`);
+    this.logAudit(this.getCurrentUser().name, 'Liquidação de Conta a Pagar', 'AccountPayable', id, `Baixou conta a pagar de R$ ${pay.amount.toFixed(2)} (${pay.description})`);
+    this.persistAndNotify();
     return pay;
   }
 
@@ -806,6 +1111,7 @@ class DatabaseStore {
     };
     this.expenses.unshift(newExp);
     this.syncFirestore('expenses', newExp.id, newExp);
+    this.persistAndNotify();
     return newExp;
   }
 
@@ -824,12 +1130,16 @@ class DatabaseStore {
     };
     this.notifications.unshift(notif);
     this.syncFirestore('notifications', notif.id, notif);
+    this.persistAndNotify();
     return notif;
   }
 
   markNotificationRead(id: string) {
     const n = this.notifications.find((notif) => notif.id === id);
-    if (n) n.read = true;
+    if (n) {
+      n.read = true;
+      this.persistAndNotify();
+    }
   }
 
   // --- AUDIT LOGS ---
@@ -841,7 +1151,7 @@ class DatabaseStore {
     const log: AuditLog = {
       id: `aud-${Date.now()}`,
       tenantId: this.tenant.id,
-      userId: 'system-user',
+      userId: this.currentUserId,
       userName,
       action,
       entity,
@@ -853,6 +1163,7 @@ class DatabaseStore {
     };
     this.auditLogs.unshift(log);
     this.syncFirestore('auditLogs', log.id, log);
+    this.persistAndNotify();
   }
 }
 

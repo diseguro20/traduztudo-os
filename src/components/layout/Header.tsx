@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   Search,
@@ -14,6 +14,8 @@ import {
   Building,
   Sparkles,
   ShieldCheck,
+  Trash2,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlobalSearchModal } from './GlobalSearchModal';
@@ -29,14 +31,20 @@ interface HeaderProps {
 
 export function Header({ onToggleMobileMenu }: HeaderProps) {
   const { user, isAdmin, logout } = useAuth();
+  const [refresh, setRefresh] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const notifications = databaseStore.getNotifications();
   const unreadNotifs = notifications.filter((n) => !n.read);
   const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
+  const hasMock = databaseStore.hasMockData();
 
   return (
     <>
@@ -68,13 +76,35 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
         {/* Right: Quick actions, notifications, user menu */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Production vs Demo Mode Indicator */}
+          {hasMock ? (
+            <button
+              onClick={() => {
+                if (confirm('Zerar dados fictícios de demonstração agora e iniciar a produção limpa com sua empresa?')) {
+                  databaseStore.clearAllMockData();
+                  alert('Base de dados zerada com sucesso! O sistema está pronto para trabalhar.');
+                }
+              }}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+              title="Clique para zerar dados fictícios e iniciar produção limpa"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-amber-600" />
+              <span>Zerar Dados Fictícios</span>
+            </button>
+          ) : (
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Modo Produção Limpo</span>
+            </div>
+          )}
+
           {/* Immersive Pop-up Tour Trigger */}
           <button
             onClick={() => launchSystemTour(0)}
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold shadow-xs transition-all ring-1 ring-blue-400/40 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-            <span>Tour Guiado (Pop-ups)</span>
+            <span>Tour Guiado</span>
           </button>
 
           {/* Admin Panel Quick Link */}
@@ -175,11 +205,11 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                {(user?.name || 'Carlos Silva').slice(0, 2).toUpperCase()}
+                {(user?.name || 'Administrador').slice(0, 2).toUpperCase()}
               </div>
               <div className="text-left hidden md:block">
                 <p className="text-xs font-semibold text-slate-800 leading-tight">
-                  {user?.name || 'Carlos Silva'}
+                  {user?.name || 'Administrador'}
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
                   {user?.role || 'OWNER'} · {user?.status === 'PENDING' ? '⏳ Pendente' : 'Ativo'}
@@ -191,8 +221,8 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-4 py-2.5 border-b border-slate-100">
-                  <p className="text-xs font-semibold text-slate-900">{user?.name || 'Carlos Silva'}</p>
-                  <p className="text-[11px] text-slate-500 truncate">{user?.email || 'carlos@traduztudo.com.br'}</p>
+                  <p className="text-xs font-semibold text-slate-900">{user?.name || 'Administrador'}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{user?.email || 'admin@traduztudo.com.br'}</p>
                   <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                     {user?.role || 'OWNER'} • {user?.status === 'PENDING' ? 'Aguardando Liberação' : 'Acesso Liberado'}
                   </span>
