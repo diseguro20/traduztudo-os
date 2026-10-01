@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -45,6 +45,12 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const tenant = databaseStore.getTenant();
   const pendingCount = databaseStore.getUsers().filter((u) => u.status === 'PENDING').length;
   const leadsCount = databaseStore.getLeads().length;

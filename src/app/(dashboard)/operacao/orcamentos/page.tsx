@@ -28,6 +28,10 @@ export default function OrcamentosPage() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const quotes = databaseStore.getQuotes().filter((q) => {
     const matchesStatus = statusFilter === 'ALL' || q.status === statusFilter;
     if (!matchesStatus) return false;

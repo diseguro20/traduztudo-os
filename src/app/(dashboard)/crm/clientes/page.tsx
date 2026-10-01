@@ -28,6 +28,10 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   // Form State
   const [type, setType] = useState<CustomerType>('PF');
   const [name, setName] = useState('');

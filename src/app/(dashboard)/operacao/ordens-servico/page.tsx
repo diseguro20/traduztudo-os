@@ -40,6 +40,10 @@ export default function OrdensServicoPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   // New OS Form state
   const customers = databaseStore.getCustomers();
   const translators = databaseStore.getTranslators();

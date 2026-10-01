@@ -20,6 +20,10 @@ export default function DespesasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState<Expense['category']>('marketing');
   const [amount, setAmount] = useState('450.00');

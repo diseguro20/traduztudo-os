@@ -21,6 +21,10 @@ export default function ContasPagarPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const [recipientName, setRecipientName] = useState('');
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('576.00');

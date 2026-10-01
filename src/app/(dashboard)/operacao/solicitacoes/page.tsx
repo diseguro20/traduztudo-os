@@ -29,6 +29,10 @@ export default function SolicitacoesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   // Form State
   const [customerName, setCustomerName] = useState('');
   const [email, setEmail] = useState('');

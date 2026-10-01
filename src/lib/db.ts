@@ -53,6 +53,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  onSnapshot,
   query,
   where,
   orderBy,
@@ -87,10 +88,13 @@ class DatabaseStore {
   private isDemoMode: boolean = false;
   private currentUserId: string = 'user-ygor';
   private listeners: Array<() => void> = [];
+  private isSyncingFromRemote: boolean = false;
+  private hasStartedRealtime: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.hydrateFromLocalStorage();
+      this.startRealtimeSync();
     }
   }
 
@@ -252,14 +256,149 @@ class DatabaseStore {
 
   // Helper to sync to Firestore in background without blocking UI
   private async syncFirestore(collectionName: string, id: string, data: any) {
+    if (this.isSyncingFromRemote) return;
     try {
       if (typeof window !== 'undefined' || process.env.NODE_ENV === 'test') {
-        const docRef = doc(db, 'tenants', this.tenant.id, collectionName, id);
+        const docRef = doc(db, 'traduztudo_' + collectionName, id);
         await setDoc(docRef, JSON.parse(JSON.stringify(data)), { merge: true });
       }
     } catch (e) {
       console.warn(`Firestore sync note for ${collectionName}/${id}:`, e);
     }
+  }
+
+  private async deleteFirestore(collectionName: string, id: string) {
+    if (this.isSyncingFromRemote) return;
+    try {
+      if (typeof window !== 'undefined' || process.env.NODE_ENV === 'test') {
+        const docRef = doc(db, 'traduztudo_' + collectionName, id);
+        await deleteDoc(docRef);
+      }
+    } catch (e) {
+      console.warn(`Firestore delete note for ${collectionName}/${id}:`, e);
+    }
+  }
+
+  private ensureMasterAccounts() {
+    const masters: Array<{ id: string; name: string; email: string; password: string; phone: string }> = [
+      {
+        id: 'user-diego',
+        name: 'Diego',
+        email: 'diego@traduztudo.com',
+        password: 'diego2001',
+        phone: '(11) 98765-4323',
+      },
+      {
+        id: 'user-iago',
+        name: 'Iago',
+        email: 'iago@traduztudo.com',
+        password: 'iago123',
+        phone: '(11) 98765-4322',
+      },
+      {
+        id: 'user-ygor',
+        name: 'Ygor',
+        email: 'ygor@traduztudo.com',
+        password: 'ygor123',
+        phone: '(11) 98765-4321',
+      },
+    ];
+
+    masters.forEach((m) => {
+      const idx = this.users.findIndex((u) => u.email.toLowerCase() === m.email.toLowerCase());
+      if (idx >= 0) {
+        this.users[idx].password = m.password;
+        this.users[idx].role = 'OWNER';
+        this.users[idx].status = 'ACTIVE';
+        this.users[idx].active = true;
+      } else {
+        this.users.unshift({
+          id: m.id,
+          tenantId: this.tenant.id,
+          name: m.name,
+          email: m.email,
+          password: m.password,
+          role: 'OWNER',
+          phone: m.phone,
+          active: true,
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        });
+      }
+    });
+  }
+
+  private startRealtimeSync() {
+    if (typeof window === 'undefined' || this.hasStartedRealtime) return;
+    this.hasStartedRealtime = true;
+
+    const syncCollection = <T extends { id: string }>(
+      name: string,
+      getList: () => T[],
+      setList: (items: T[]) => void,
+      postProcess?: () => void
+    ) => {
+      try {
+        const colRef = collection(db, 'traduztudo_' + name);
+        onSnapshot(
+          colRef,
+          (snapshot) => {
+            let hasChanged = false;
+            const currentList = [...getList()];
+
+            snapshot.docChanges().forEach((change) => {
+              const item = change.doc.data() as T;
+              if (!item || !item.id) return;
+
+              const idx = currentList.findIndex((x) => x.id === item.id);
+              if (change.type === 'added' || change.type === 'modified') {
+                if (idx >= 0) {
+                  currentList[idx] = { ...currentList[idx], ...item };
+                } else {
+                  currentList.unshift(item);
+                }
+                hasChanged = true;
+              } else if (change.type === 'removed') {
+                if (idx >= 0) {
+                  currentList.splice(idx, 1);
+                  hasChanged = true;
+                }
+              }
+            });
+
+            if (hasChanged) {
+              setList(currentList);
+              if (postProcess) postProcess();
+              this.isSyncingFromRemote = true;
+              this.persistAndNotify();
+              this.isSyncingFromRemote = false;
+            }
+          },
+          (err) => {
+            console.warn(`Realtime onSnapshot note for ${name}:`, err);
+          }
+        );
+      } catch (err) {
+        console.warn(`Realtime setup note for ${name}:`, err);
+      }
+    };
+
+    syncCollection('quotes', () => this.quotes, (l) => { this.quotes = l; });
+    syncCollection('workOrders', () => this.workOrders, (l) => { this.workOrders = l; });
+    syncCollection('customers', () => this.customers, (l) => { this.customers = l; });
+    syncCollection('leads', () => this.leads, (l) => { this.leads = l; });
+    syncCollection('documents', () => this.documents, (l) => { this.documents = l; });
+    syncCollection('tasks', () => this.tasks, (l) => { this.tasks = l; });
+    syncCollection('translators', () => this.translators, (l) => { this.translators = l; });
+    syncCollection('reviewers', () => this.reviewers, (l) => { this.reviewers = l; });
+    syncCollection('receivables', () => this.receivables, (l) => { this.receivables = l; });
+    syncCollection('payables', () => this.payables, (l) => { this.payables = l; });
+    syncCollection('expenses', () => this.expenses, (l) => { this.expenses = l; });
+    syncCollection('notifications', () => this.notifications, (l) => { this.notifications = l; });
+    syncCollection('auditLogs', () => this.auditLogs, (l) => { this.auditLogs = l; });
+    syncCollection('users', () => this.users, (l) => { this.users = l; }, () => {
+      this.ensureMasterAccounts();
+    });
   }
 
   // --- PRODUCTION & DEMO DATA MANAGEMENT ---
@@ -1072,6 +1211,7 @@ class DatabaseStore {
     const idx = this.documents.findIndex((d) => d.id === id);
     if (idx === -1) return false;
     this.documents.splice(idx, 1);
+    this.deleteFirestore('documents', id);
     this.persistAndNotify();
     return true;
   }
@@ -1109,6 +1249,7 @@ class DatabaseStore {
     const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx === -1) return false;
     this.tasks.splice(idx, 1);
+    this.deleteFirestore('tasks', id);
     this.persistAndNotify();
     return true;
   }

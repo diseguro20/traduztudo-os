@@ -23,6 +23,10 @@ export default function ContasReceberPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   // Form
   const customers = databaseStore.getCustomers();
   const [customerId, setCustomerId] = useState(customers[0]?.id || '');

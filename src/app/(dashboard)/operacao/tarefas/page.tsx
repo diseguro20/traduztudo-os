@@ -15,6 +15,10 @@ export default function TarefasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const [title, setTitle] = useState('');
   const [assignedTo, setAssignedTo] = useState('Mariana Costa');
   const [dueDate, setDueDate] = useState(

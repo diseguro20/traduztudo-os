@@ -22,6 +22,10 @@ export default function DocumentosPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const [docName, setDocName] = useState('');
   const [category, setCategory] = useState<DocumentCategory>('original');
 

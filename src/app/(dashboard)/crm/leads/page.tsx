@@ -40,6 +40,10 @@ export default function LeadsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefreshKey] = useState(0);
 
+  React.useEffect(() => {
+    return databaseStore.subscribe(() => setRefreshKey((r) => r + 1));
+  }, []);
+
   // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState<'PF' | 'PJ'>('PF');
