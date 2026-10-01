@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserCheck,
   Plus,
@@ -20,6 +20,10 @@ export default function RevisoresPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

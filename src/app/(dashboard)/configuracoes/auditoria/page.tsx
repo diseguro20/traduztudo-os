@@ -1,12 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { History, Search, ShieldCheck, Clock, User } from 'lucide-react';
 import { databaseStore } from '@/lib/db';
 import { formatDateTime } from '@/lib/utils';
 
 export default function AuditoriaPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const logs = databaseStore.getAuditLogs().filter((l) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();

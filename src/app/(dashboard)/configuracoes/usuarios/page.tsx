@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Plus, User, Mail, Phone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -10,9 +9,14 @@ import { UserRole } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 export default function UsuariosPage() {
-  const users = databaseStore.getUsers();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
+  const users = databaseStore.getUsers();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

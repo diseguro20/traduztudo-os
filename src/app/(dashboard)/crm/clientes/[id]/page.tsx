@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -31,6 +31,11 @@ export default function ClienteDossiePage() {
   const router = useRouter();
   const id = params?.id as string;
   const [activeTab, setActiveTab] = useState<'resumo' | 'historico' | 'timeline'>('resumo');
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
 
   const customer = databaseStore.getCustomerById(id);
 

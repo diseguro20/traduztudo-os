@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CircleDollarSign,
   TrendingUp,
@@ -25,6 +25,11 @@ import {
 
 export default function FluxoCaixaPage() {
   const [period, setPeriod] = useState<'mes' | 'semana' | 'ano'>('mes');
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
 
   const receivables = databaseStore.getReceivables();
   const payables = databaseStore.getPayables();

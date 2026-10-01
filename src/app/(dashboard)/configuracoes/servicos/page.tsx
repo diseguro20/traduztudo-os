@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sliders, Plus, Languages, DollarSign, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -9,9 +9,14 @@ import { BillingUnit } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 export default function ServicosIdiomasPage() {
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const services = databaseStore.getServices();
   const languages = databaseStore.getLanguages();
-  const [, setRefresh] = useState(0);
 
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);

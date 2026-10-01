@@ -332,6 +332,9 @@ class DatabaseStore {
     if (typeof window === 'undefined' || this.hasStartedRealtime) return;
     this.hasStartedRealtime = true;
 
+    // Track remote IDs seen from Firestore to prevent reviving deleted items
+    const knownRemoteIdsByCollection = new Map<string, Set<string>>();
+
     const syncCollection = <T extends { id: string }>(
       name: string,
       getList: () => T[],
@@ -339,40 +342,52 @@ class DatabaseStore {
       postProcess?: () => void
     ) => {
       try {
+        if (!knownRemoteIdsByCollection.has(name)) {
+          knownRemoteIdsByCollection.set(name, new Set<string>());
+        }
+        const knownRemoteIds = knownRemoteIdsByCollection.get(name)!;
         const colRef = collection(db, 'traduztudo_' + name);
+
         onSnapshot(
           colRef,
           (snapshot) => {
-            let hasChanged = false;
-            const currentList = [...getList()];
+            const remoteItemsMap = new Map<string, T>();
+            snapshot.docs.forEach((d) => {
+              const data = d.data() as T;
+              if (data && data.id) {
+                remoteItemsMap.set(data.id, data);
+                knownRemoteIds.add(data.id);
+              }
+            });
 
-            snapshot.docChanges().forEach((change) => {
-              const item = change.doc.data() as T;
-              if (!item || !item.id) return;
+            const currentLocal = getList();
+            const pendingUpload: T[] = [];
 
-              const idx = currentList.findIndex((x) => x.id === item.id);
-              if (change.type === 'added' || change.type === 'modified') {
-                if (idx >= 0) {
-                  currentList[idx] = { ...currentList[idx], ...item };
-                } else {
-                  currentList.unshift(item);
-                }
-                hasChanged = true;
-              } else if (change.type === 'removed') {
-                if (idx >= 0) {
-                  currentList.splice(idx, 1);
-                  hasChanged = true;
+            currentLocal.forEach((item) => {
+              if (item && item.id) {
+                // If this local item was never seen in Firestore, push it to Firestore so all clients get it
+                if (!remoteItemsMap.has(item.id) && !knownRemoteIds.has(item.id)) {
+                  pendingUpload.push(item);
+                  this.syncFirestore(name, item.id, item);
                 }
               }
             });
 
-            if (hasChanged) {
-              setList(currentList);
-              if (postProcess) postProcess();
-              this.isSyncingFromRemote = true;
-              this.persistAndNotify();
-              this.isSyncingFromRemote = false;
-            }
+            // Authoritative list is remote items + any pending local uploads
+            const reconciledList: T[] = [...Array.from(remoteItemsMap.values()), ...pendingUpload];
+
+            // Order by createdAt descending when present
+            reconciledList.sort((a: any, b: any) => {
+              const timeA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+              const timeB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+              return timeB - timeA;
+            });
+
+            setList(reconciledList);
+            if (postProcess) postProcess();
+            this.isSyncingFromRemote = true;
+            this.persistAndNotify();
+            this.isSyncingFromRemote = false;
           },
           (err) => {
             console.warn(`Realtime onSnapshot note for ${name}:`, err);
@@ -391,14 +406,37 @@ class DatabaseStore {
     syncCollection('tasks', () => this.tasks, (l) => { this.tasks = l; });
     syncCollection('translators', () => this.translators, (l) => { this.translators = l; });
     syncCollection('reviewers', () => this.reviewers, (l) => { this.reviewers = l; });
-    syncCollection('receivables', () => this.receivables, (l) => { this.receivables = l; });
-    syncCollection('payables', () => this.payables, (l) => { this.payables = l; });
+    syncCollection('accountsReceivable', () => this.receivables, (l) => { this.receivables = l; });
+    syncCollection('accountsPayable', () => this.payables, (l) => { this.payables = l; });
     syncCollection('expenses', () => this.expenses, (l) => { this.expenses = l; });
     syncCollection('notifications', () => this.notifications, (l) => { this.notifications = l; });
     syncCollection('auditLogs', () => this.auditLogs, (l) => { this.auditLogs = l; });
+    syncCollection('requests', () => this.requests, (l) => { this.requests = l; });
+    syncCollection('services', () => this.services, (l) => { this.services = l; });
+    syncCollection('languages', () => this.languages, (l) => { this.languages = l; });
     syncCollection('users', () => this.users, (l) => { this.users = l; }, () => {
       this.ensureMasterAccounts();
     });
+
+    // Realtime subscription for tenant settings
+    try {
+      const settingsRef = doc(db, 'traduztudo_settings', 'profile');
+      onSnapshot(settingsRef, (snap) => {
+        if (snap.exists()) {
+          const remoteTenant = snap.data() as Tenant;
+          if (remoteTenant && remoteTenant.id) {
+            this.tenant = { ...this.tenant, ...remoteTenant };
+            this.isSyncingFromRemote = true;
+            this.persistAndNotify();
+            this.isSyncingFromRemote = false;
+          }
+        } else {
+          this.syncFirestore('settings', 'profile', this.tenant);
+        }
+      });
+    } catch (e) {
+      console.warn('Settings realtime note:', e);
+    }
   }
 
   // --- PRODUCTION & DEMO DATA MANAGEMENT ---
@@ -721,6 +759,7 @@ class DatabaseStore {
     const name = this.users[idx].name;
     const adminName = this.getCurrentUser().name;
     this.users.splice(idx, 1);
+    this.deleteFirestore('users', id);
     this.logAudit(adminName, 'Exclusão de Usuário', 'User', id, `Removeu o usuário ${name} da empresa`);
     this.persistAndNotify();
     return true;
@@ -859,6 +898,17 @@ class DatabaseStore {
     this.syncFirestore('leads', id, this.leads[idx]);
     this.persistAndNotify();
     return this.leads[idx];
+  }
+
+  deleteLead(id: string): boolean {
+    const idx = this.leads.findIndex((l) => l.id === id);
+    if (idx === -1) return false;
+    const leadName = this.leads[idx].name;
+    this.leads[idx].deletedAt = new Date().toISOString();
+    this.syncFirestore('leads', id, this.leads[idx]);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Lead', 'Lead', id, `Removeu o lead ${leadName}`);
+    this.persistAndNotify();
+    return true;
   }
 
   convertLeadToCustomer(leadId: string): Customer | undefined {

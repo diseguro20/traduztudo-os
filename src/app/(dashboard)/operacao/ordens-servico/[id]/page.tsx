@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -39,6 +39,10 @@ export default function WorkOrderDossierPage() {
   const router = useRouter();
   const id = params?.id as string;
   const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
 
   const [activeTab, setActiveTab] = useState<
     'resumo' | 'documentos' | 'tarefas' | 'traducao' | 'revisao' | 'financeiro' | 'comunicacao' | 'historico'

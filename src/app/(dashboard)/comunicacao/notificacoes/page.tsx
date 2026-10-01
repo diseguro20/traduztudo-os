@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Bell,
@@ -16,6 +16,11 @@ import { formatDate, formatDateTime } from '@/lib/utils';
 
 export default function NotificacoesPage() {
   const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
+
   const notifications = databaseStore.getNotifications();
 
   const handleMarkAllRead = () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   Download,
@@ -26,6 +26,11 @@ import {
 
 export default function RelatoriosPage() {
   const [reportType, setReportType] = useState<'faturamento' | 'servicos' | 'tradutores'>('faturamento');
+  const [, setRefresh] = useState(0);
+
+  useEffect(() => {
+    return databaseStore.subscribe(() => setRefresh((r) => r + 1));
+  }, []);
 
   const receivables = databaseStore.getReceivables();
   const payables = databaseStore.getPayables();
