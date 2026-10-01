@@ -39,6 +39,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_AUDIT_LOGS,
   CLEAN_PRODUCTION_USER,
+  CLEAN_PRODUCTION_USER_IAGO,
   CLEAN_PRODUCTION_NOTIFICATION,
   CLEAN_PRODUCTION_AUDIT,
 } from './seedData';
@@ -56,12 +57,15 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-const STORAGE_KEY = 'traduztudo_db_state_v7';
+const STORAGE_KEY = 'traduztudo_db_state_v8';
 
 // In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
   private tenant: Tenant = { ...INITIAL_TENANT };
-  private users: User[] = [{ ...CLEAN_PRODUCTION_USER }];
+  private users: User[] = [
+    { ...CLEAN_PRODUCTION_USER },
+    { ...CLEAN_PRODUCTION_USER_IAGO },
+  ];
   private customers: Customer[] = [];
   private leads: Lead[] = [];
   private services: TranslationService[] = [...INITIAL_SERVICES];
@@ -114,6 +118,30 @@ class DatabaseStore {
               password: 'ygor123',
               role: 'OWNER',
               phone: '(11) 98765-4321',
+              active: true,
+              status: 'ACTIVE',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            });
+          }
+
+          // Ensure Iago exists with requested password iago123 and OWNER role
+          const iagoIndex = this.users.findIndex(
+            (u) => u.email.toLowerCase() === 'iago@traduztudo.com'
+          );
+          if (iagoIndex >= 0) {
+            this.users[iagoIndex].password = 'iago123';
+            this.users[iagoIndex].role = 'OWNER';
+            this.users[iagoIndex].status = 'ACTIVE';
+            this.users[iagoIndex].active = true;
+          } else {
+            this.users.push({
+              id: 'user-iago',
+              tenantId: this.tenant.id,
+              name: 'Iago',
+              email: 'iago@traduztudo.com',
+              password: 'iago123',
+              role: 'OWNER',
+              phone: '(11) 98765-4322',
               active: true,
               status: 'ACTIVE',
               createdAt: '2026-01-01T00:00:00.000Z',
@@ -252,25 +280,37 @@ class DatabaseStore {
     this.expenses = [];
     this.requests = [];
 
-    // Ensure active admin user exists
-    const current = this.getCurrentUser();
-    const adminUser: User = {
-      id: current && current.id !== 'user-carlos' && current.id !== 'user-admin' ? current.id : 'user-ygor',
+    // Ensure active admin users exist
+    const userYgor: User = {
+      id: 'user-ygor',
       tenantId: this.tenant.id,
-      name: customAdmin?.name || (current && current.id !== 'user-carlos' ? current.name : 'Ygor'),
-      email: customAdmin?.email || (current && current.id !== 'user-carlos' ? current.email : 'ygor@traduztudo.com'),
+      name: 'Ygor',
+      email: 'ygor@traduztudo.com',
       password: 'ygor123',
       role: 'OWNER',
-      phone: customAdmin?.phone || (current && current.id !== 'user-carlos' ? current.phone : '(11) 98765-4321'),
+      phone: '(11) 98765-4321',
       active: true,
       status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
+      createdAt: '2026-01-01T00:00:00.000Z',
     };
 
-    this.users = [adminUser];
-    this.currentUserId = adminUser.id;
+    const userIago: User = {
+      id: 'user-iago',
+      tenantId: this.tenant.id,
+      name: 'Iago',
+      email: 'iago@traduztudo.com',
+      password: 'iago123',
+      role: 'OWNER',
+      phone: '(11) 98765-4322',
+      active: true,
+      status: 'ACTIVE',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    this.users = [userYgor, userIago];
+    this.currentUserId = userYgor.id;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('traduztudo_current_user_id', adminUser.id);
+      localStorage.setItem('traduztudo_current_user_id', userYgor.id);
     }
 
     this.notifications = [];
@@ -279,8 +319,8 @@ class DatabaseStore {
       {
         id: `aud-${Date.now()}`,
         tenantId: this.tenant.id,
-        userId: adminUser.id,
-        userName: adminUser.name,
+        userId: userYgor.id,
+        userName: userYgor.name,
         action: 'Limpeza de Dados',
         entity: 'System',
         entityId: this.tenant.id,

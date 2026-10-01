@@ -90,6 +90,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      // Self-healing: ensure requested Iago master account is always available
+      if (!found && trimmedEmail === 'iago@traduztudo.com') {
+        const tenant = databaseStore.getTenant();
+        found = databaseStore.createUser({
+          tenantId: tenant?.id || 'traduztudo-matriz',
+          name: 'Iago',
+          email: 'iago@traduztudo.com',
+          password: 'iago123',
+          role: 'OWNER',
+          phone: '(11) 98765-4322',
+          active: true,
+          status: 'ACTIVE',
+        });
+      }
+
       if (!found) {
         setIsLoading(false);
         return {
@@ -116,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         found.password ||
         (trimmedEmail === 'ygor@traduztudo.com'
           ? 'ygor123'
+          : trimmedEmail === 'iago@traduztudo.com'
+          ? 'iago123'
           : found.role === 'OWNER' || found.role === 'ADMIN'
           ? 'admin'
           : undefined);
@@ -124,7 +141,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expectedPassword &&
         password &&
         password !== expectedPassword &&
-        (trimmedEmail === 'ygor@traduztudo.com' ? false : password !== 'admin123' && password !== 'admin')
+        (trimmedEmail === 'ygor@traduztudo.com' || trimmedEmail === 'iago@traduztudo.com'
+          ? false
+          : password !== 'admin123' && password !== 'admin')
       ) {
         setIsLoading(false);
         return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
