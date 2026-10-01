@@ -178,23 +178,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       ],
     },
     {
-      title: 'Configurações SaaS',
+      title: 'Configurações',
       items: [
         {
-          label: 'Painel Admin (Cargos)',
+          label: 'Gestão de Usuários',
           href: '/admin',
           icon: ShieldCheck,
-          badge: pendingCount > 0 ? `${pendingCount} Pendentes` : 'Admin',
         },
         {
           label: 'Empresa & Tenant',
           href: '/configuracoes/empresa',
           icon: Building2,
-        },
-        {
-          label: 'Usuários & Permissões',
-          href: '/configuracoes/usuarios',
-          icon: ShieldCheck,
         },
         {
           label: 'Serviços & Idiomas',

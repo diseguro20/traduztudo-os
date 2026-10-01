@@ -60,27 +60,6 @@ export default function UsuariosPage() {
         </Button>
       </div>
 
-      {/* Admin Panel Quick Access Banner */}
-      <div className="p-4 bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg">
-            👑
-          </div>
-          <div>
-            <div className="font-bold text-sm">Painel Administrativo Master Ativo</div>
-            <div className="text-xs text-blue-200">
-              Acesse o painel dedicado para aprovar novos cadastros, alterar cargos e conferir logs em tempo real.
-            </div>
-          </div>
-        </div>
-        <Link
-          href="/admin"
-          className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs rounded-xl shadow-xs shrink-0 text-center"
-        >
-          Abrir Painel Admin →
-        </Link>
-      </div>
-
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <table className="w-full text-left text-sm text-slate-600">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">

@@ -255,28 +255,21 @@ export default function AdminControlPanelPage() {
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              PAINEL ADMINISTRATIVO MASTER
-            </span>
-            <span className="text-xs text-slate-400 font-mono">Gestão de Cadastros & RBAC</span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
-            Usuários, Cadastros & Níveis de Acesso
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Usuários e Acessos
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Gere novos acessos, defina senhas e controle os cargos corporativos da sua empresa.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Gerencie os membros da equipe e permissões de acesso da empresa.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
             onClick={handleOpenCreateModal}
-            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/25 px-4 py-2.5 rounded-xl cursor-pointer"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm px-4 py-2.5 rounded-xl cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Gerar Novo Cadastro de Usuário</span>
+            <span>Novo Usuário</span>
           </Button>
         </div>
       </div>
