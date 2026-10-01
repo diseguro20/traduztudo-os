@@ -56,7 +56,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-const STORAGE_KEY = 'traduztudo_db_state_v6';
+const STORAGE_KEY = 'traduztudo_db_state_v7';
 
 // In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
@@ -79,7 +79,7 @@ class DatabaseStore {
   private notifications: NotificationItem[] = [{ ...CLEAN_PRODUCTION_NOTIFICATION }];
   private auditLogs: AuditLog[] = [{ ...CLEAN_PRODUCTION_AUDIT }];
   private isDemoMode: boolean = false;
-  private currentUserId: string = 'user-admin';
+  private currentUserId: string = 'user-ygor';
   private listeners: Array<() => void> = [];
 
   constructor() {
@@ -94,7 +94,32 @@ class DatabaseStore {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.tenant) this.tenant = parsed.tenant;
-        if (Array.isArray(parsed.users) && parsed.users.length > 0) this.users = parsed.users;
+        if (Array.isArray(parsed.users) && parsed.users.length > 0) {
+          this.users = parsed.users;
+          // Ensure Ygor exists with requested password ygor123 and OWNER role
+          const ygorIndex = this.users.findIndex(
+            (u) => u.email.toLowerCase() === 'ygor@traduztudo.com'
+          );
+          if (ygorIndex >= 0) {
+            this.users[ygorIndex].password = 'ygor123';
+            this.users[ygorIndex].role = 'OWNER';
+            this.users[ygorIndex].status = 'ACTIVE';
+            this.users[ygorIndex].active = true;
+          } else {
+            this.users.unshift({
+              id: 'user-ygor',
+              tenantId: this.tenant.id,
+              name: 'Ygor',
+              email: 'ygor@traduztudo.com',
+              password: 'ygor123',
+              role: 'OWNER',
+              phone: '(11) 98765-4321',
+              active: true,
+              status: 'ACTIVE',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            });
+          }
+        }
         if (Array.isArray(parsed.customers)) this.customers = parsed.customers;
         if (Array.isArray(parsed.leads)) this.leads = parsed.leads;
         if (Array.isArray(parsed.services) && parsed.services.length > 0) this.services = parsed.services;
@@ -230,10 +255,11 @@ class DatabaseStore {
     // Ensure active admin user exists
     const current = this.getCurrentUser();
     const adminUser: User = {
-      id: current && current.id !== 'user-carlos' ? current.id : 'user-admin',
+      id: current && current.id !== 'user-carlos' && current.id !== 'user-admin' ? current.id : 'user-ygor',
       tenantId: this.tenant.id,
-      name: customAdmin?.name || (current && current.id !== 'user-carlos' ? current.name : 'Administrador Master'),
-      email: customAdmin?.email || (current && current.id !== 'user-carlos' ? current.email : 'admin@traduztudo.com.br'),
+      name: customAdmin?.name || (current && current.id !== 'user-carlos' ? current.name : 'Ygor'),
+      email: customAdmin?.email || (current && current.id !== 'user-carlos' ? current.email : 'ygor@traduztudo.com'),
+      password: 'ygor123',
       role: 'OWNER',
       phone: customAdmin?.phone || (current && current.id !== 'user-carlos' ? current.phone : '(11) 98765-4321'),
       active: true,

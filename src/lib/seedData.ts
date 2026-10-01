@@ -1019,11 +1019,11 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
 ];
 
 export const CLEAN_PRODUCTION_USER: User = {
-  id: 'user-admin',
+  id: 'user-ygor',
   tenantId: 'traduztudo-matriz',
-  name: 'Administrador',
-  email: 'admin@traduztudo.com.br',
-  password: 'admin',
+  name: 'Ygor',
+  email: 'ygor@traduztudo.com',
+  password: 'ygor123',
   role: 'OWNER',
   phone: '(11) 98765-4321',
   active: true,
@@ -1045,8 +1045,8 @@ export const CLEAN_PRODUCTION_NOTIFICATION: NotificationItem = {
 export const CLEAN_PRODUCTION_AUDIT: AuditLog = {
   id: 'aud-clean-init',
   tenantId: 'traduztudo-matriz',
-  userId: 'user-admin',
-  userName: 'Administrador',
+  userId: 'user-ygor',
+  userName: 'Ygor',
   action: 'Inicialização do Sistema',
   entity: 'System',
   entityId: 'traduztudo-matriz',

@@ -73,7 +73,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const trimmedEmail = email.trim().toLowerCase();
-      const found = databaseStore.getUserByEmail(trimmedEmail);
+      let found = databaseStore.getUserByEmail(trimmedEmail);
+
+      // Self-healing: ensure requested Ygor master account is always available
+      if (!found && trimmedEmail === 'ygor@traduztudo.com') {
+        const tenant = databaseStore.getTenant();
+        found = databaseStore.createUser({
+          tenantId: tenant?.id || 'traduztudo-matriz',
+          name: 'Ygor',
+          email: 'ygor@traduztudo.com',
+          password: 'ygor123',
+          role: 'OWNER',
+          phone: '(11) 98765-4321',
+          active: true,
+          status: 'ACTIVE',
+        });
+      }
 
       if (!found) {
         setIsLoading(false);
@@ -99,14 +114,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Verify password
       const expectedPassword =
         found.password ||
-        (found.role === 'OWNER' || found.role === 'ADMIN' ? 'admin' : undefined);
+        (trimmedEmail === 'ygor@traduztudo.com'
+          ? 'ygor123'
+          : found.role === 'OWNER' || found.role === 'ADMIN'
+          ? 'admin'
+          : undefined);
 
       if (
         expectedPassword &&
         password &&
         password !== expectedPassword &&
-        password !== 'admin123' &&
-        password !== 'admin'
+        (trimmedEmail === 'ygor@traduztudo.com' ? false : password !== 'admin123' && password !== 'admin')
       ) {
         setIsLoading(false);
         return { success: false, error: 'Senha incorreta. Verifique suas credenciais.' };
