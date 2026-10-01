@@ -40,6 +40,7 @@ import {
   INITIAL_AUDIT_LOGS,
   CLEAN_PRODUCTION_USER,
   CLEAN_PRODUCTION_USER_IAGO,
+  CLEAN_PRODUCTION_USER_DIEGO,
   CLEAN_PRODUCTION_NOTIFICATION,
   CLEAN_PRODUCTION_AUDIT,
 } from './seedData';
@@ -57,7 +58,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-const STORAGE_KEY = 'traduztudo_db_state_v8';
+const STORAGE_KEY = 'traduztudo_db_state_v9';
 
 // In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
@@ -65,6 +66,7 @@ class DatabaseStore {
   private users: User[] = [
     { ...CLEAN_PRODUCTION_USER },
     { ...CLEAN_PRODUCTION_USER_IAGO },
+    { ...CLEAN_PRODUCTION_USER_DIEGO },
   ];
   private customers: Customer[] = [];
   private leads: Lead[] = [];
@@ -142,6 +144,30 @@ class DatabaseStore {
               password: 'iago123',
               role: 'OWNER',
               phone: '(11) 98765-4322',
+              active: true,
+              status: 'ACTIVE',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            });
+          }
+
+          // Ensure Diego exists with requested password diego2001 and OWNER role
+          const diegoIndex = this.users.findIndex(
+            (u) => u.email.toLowerCase() === 'diego@traduztudo.com'
+          );
+          if (diegoIndex >= 0) {
+            this.users[diegoIndex].password = 'diego2001';
+            this.users[diegoIndex].role = 'OWNER';
+            this.users[diegoIndex].status = 'ACTIVE';
+            this.users[diegoIndex].active = true;
+          } else {
+            this.users.push({
+              id: 'user-diego',
+              tenantId: this.tenant.id,
+              name: 'Diego',
+              email: 'diego@traduztudo.com',
+              password: 'diego2001',
+              role: 'OWNER',
+              phone: '(11) 98765-4323',
               active: true,
               status: 'ACTIVE',
               createdAt: '2026-01-01T00:00:00.000Z',
@@ -307,7 +333,20 @@ class DatabaseStore {
       createdAt: '2026-01-01T00:00:00.000Z',
     };
 
-    this.users = [userYgor, userIago];
+    const userDiego: User = {
+      id: 'user-diego',
+      tenantId: this.tenant.id,
+      name: 'Diego',
+      email: 'diego@traduztudo.com',
+      password: 'diego2001',
+      role: 'OWNER',
+      phone: '(11) 98765-4323',
+      active: true,
+      status: 'ACTIVE',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    this.users = [userYgor, userIago, userDiego];
     this.currentUserId = userYgor.id;
     if (typeof window !== 'undefined') {
       localStorage.setItem('traduztudo_current_user_id', userYgor.id);

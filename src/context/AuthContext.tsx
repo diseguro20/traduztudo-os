@@ -105,6 +105,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      // Self-healing: ensure requested Diego master account is always available
+      if (!found && trimmedEmail === 'diego@traduztudo.com') {
+        const tenant = databaseStore.getTenant();
+        found = databaseStore.createUser({
+          tenantId: tenant?.id || 'traduztudo-matriz',
+          name: 'Diego',
+          email: 'diego@traduztudo.com',
+          password: 'diego2001',
+          role: 'OWNER',
+          phone: '(11) 98765-4323',
+          active: true,
+          status: 'ACTIVE',
+        });
+      }
+
       if (!found) {
         setIsLoading(false);
         return {
@@ -133,6 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? 'ygor123'
           : trimmedEmail === 'iago@traduztudo.com'
           ? 'iago123'
+          : trimmedEmail === 'diego@traduztudo.com'
+          ? 'diego2001'
           : found.role === 'OWNER' || found.role === 'ADMIN'
           ? 'admin'
           : undefined);
@@ -141,7 +158,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expectedPassword &&
         password &&
         password !== expectedPassword &&
-        (trimmedEmail === 'ygor@traduztudo.com' || trimmedEmail === 'iago@traduztudo.com'
+        (trimmedEmail === 'ygor@traduztudo.com' ||
+        trimmedEmail === 'iago@traduztudo.com' ||
+        trimmedEmail === 'diego@traduztudo.com'
           ? false
           : password !== 'admin123' && password !== 'admin')
       ) {

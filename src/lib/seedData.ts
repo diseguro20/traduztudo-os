@@ -1044,6 +1044,19 @@ export const CLEAN_PRODUCTION_USER_IAGO: User = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
+export const CLEAN_PRODUCTION_USER_DIEGO: User = {
+  id: 'user-diego',
+  tenantId: 'traduztudo-matriz',
+  name: 'Diego',
+  email: 'diego@traduztudo.com',
+  password: 'diego2001',
+  role: 'OWNER',
+  phone: '(11) 98765-4323',
+  active: true,
+  status: 'ACTIVE',
+  createdAt: '2026-01-01T00:00:00.000Z',
+};
+
 export const CLEAN_PRODUCTION_NOTIFICATION: NotificationItem = {
   id: 'notif-welcome',
   tenantId: 'traduztudo-matriz',
