@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Lock,
   Mail,
   ArrowRight,
   AlertCircle,
-  Clock,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  KeyRound,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
@@ -16,28 +19,34 @@ import { databaseStore } from '@/lib/db';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, quickLogin, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingNotice, setPendingNotice] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filledSuccess, setFilledSuccess] = useState(false);
+
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push('/');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setPendingNotice(false);
 
-    if (!email) {
-      setError('Por favor, informe seu e-mail.');
+    if (!email.trim()) {
+      setError('Por favor, informe seu e-mail de acesso.');
       return;
     }
 
-    // Check if user is pending in database
-    const userFound = databaseStore.getUserByEmail(email);
-    if (userFound && userFound.status === 'PENDING') {
-      setPendingNotice(true);
+    if (!password) {
+      setError('Por favor, digite sua senha de acesso.');
       return;
     }
 
@@ -46,189 +55,160 @@ export default function LoginPage() {
     setIsSubmitting(false);
 
     if (!res.success) {
-      setError(res.error || 'Credenciais inválidas.');
+      setError(res.error || 'Credenciais inválidas. Verifique os dados digitados.');
       return;
     }
 
     router.push('/');
   };
 
-  const handleQuick = (id: string, isPendingUser: boolean = false) => {
-    quickLogin(id);
-    if (isPendingUser) {
-      setPendingNotice(true);
-    } else {
-      router.push('/');
-    }
+  const fillAdminCredentials = () => {
+    const admin = databaseStore.getUsers().find((u) => u.role === 'OWNER' || u.role === 'ADMIN');
+    const adminEmail = admin?.email || 'admin@traduztudo.com.br';
+    const adminPass = admin?.password || 'admin';
+
+    setEmail(adminEmail);
+    setPassword(adminPass);
+    setError(null);
+    setFilledSuccess(true);
+    setTimeout(() => setFilledSuccess(false), 3000);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 text-slate-100 flex flex-col justify-center items-center p-4 selection:bg-blue-600 selection:text-white">
       {/* Brand Header */}
       <div className="max-w-md w-full text-center mb-6 space-y-2">
-        <div className="inline-flex w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 items-center justify-center text-white font-extrabold text-xl shadow-xl shadow-blue-500/20 mb-2">
+        <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 items-center justify-center text-white font-black text-2xl shadow-xl shadow-blue-500/25 mb-2">
           TT
         </div>
-        <h1 className="text-2xl font-black text-white tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
           TraduzTudo OS
         </h1>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs sm:text-sm text-slate-400">
           Sistema Operacional SaaS para Gestão de Traduções Juramentadas
         </p>
       </div>
 
       {/* Main Login Card */}
-      <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md relative overflow-hidden">
+      <div className="max-w-md w-full bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md relative overflow-hidden">
         {/* Subtle decorative glow */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
 
-        {pendingNotice ? (
-          /* Pending Approval Screen */
-          <div className="space-y-4 text-center py-2 animate-in zoom-in-95">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto text-2xl animate-pulse">
-              ⏳
-            </div>
-
-            <div>
-              <h2 className="text-lg font-bold text-white">
-                Cadastro em Análise pelo Administrador
-              </h2>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                Seu cadastro foi recebido com sucesso no sistema! Por questões de segurança e fé pública, o Administrador precisa aprovar seu perfil e atribuir seu cargo no <b>Painel Admin</b>.
-              </p>
-            </div>
-
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-left text-xs space-y-1.5 text-slate-400">
-              <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Status da Conta: Pendente de Liberação</span>
-              </div>
-              <p className="text-[11px]">
-                Você receberá um e-mail e uma notificação no WhatsApp assim que o cargo for atribuído.
-              </p>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2">
-              <Button
-                onClick={() => {
-                  const admin = databaseStore.getUsers().find((u) => u.role === 'OWNER' || u.role === 'ADMIN') || databaseStore.getCurrentUser();
-                  handleQuick(admin.id);
-                }}
-                className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
-              >
-                <span>Entrar como Administrador para Liberar</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              <button
-                onClick={() => setPendingNotice(false)}
-                className="text-xs text-slate-400 hover:text-white"
-              >
-                Voltar para o Login
-              </button>
-            </div>
+        <div className="space-y-5">
+          <div className="border-b border-slate-800 pb-3">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-blue-500" />
+              Acessar sua Conta
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Informe suas credenciais corporativas autorizadas
+            </p>
           </div>
-        ) : (
-          /* Standard Login Form */
-          <div className="space-y-5">
-            <div className="border-b border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-white">Acessar sua Conta</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Digite suas credenciais corporativas para entrar
-              </p>
+
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-300 block">E-mail Corporativo:</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@traduztudo.com.br"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 transition-colors"
+                  required
+                />
+              </div>
             </div>
 
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{error}</span>
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-300 block">Senha de Acesso:</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-            )}
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-semibold text-slate-300 block">E-mail:</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu.email@empresa.com.br"
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 transition-colors"
-                    required
-                  />
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-0 w-3.5 h-3.5"
+                />
+                <span>Lembrar meu acesso</span>
+              </label>
+
+              <span className="text-slate-500">Acesso seguro SSL</span>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 gap-2 cursor-pointer"
+            >
+              <span>{isSubmitting ? 'Autenticando...' : 'Entrar no Sistema'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </form>
+
+          {/* Master Admin Credentials Card */}
+          <div className="pt-3 border-t border-slate-800 space-y-2">
+            <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-2xl flex items-center justify-between gap-3">
+              <div className="space-y-0.5 overflow-hidden">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Acesso do Administrador Master</span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono truncate">
+                  admin@traduztudo.com.br · senha: admin
                 </div>
               </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="font-semibold text-slate-300 block">Senha:</label>
-                  <button
-                    type="button"
-                    onClick={() => alert('Para redefinir sua senha, solicite ao Administrador no Painel Admin.')}
-                    className="text-[11px] text-blue-400 hover:underline"
-                  >
-                    Esqueceu a senha?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-hidden focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 gap-2"
-              >
-                <span>{isSubmitting ? 'Verificando...' : 'Entrar no Sistema'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </form>
-
-            {/* Quick Login / Direct Master Access */}
-            <div className="pt-3 border-t border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
-                <span>⚡ Acesso Rápido Master:</span>
-                <span className="text-[10px] text-emerald-400 font-bold">1-Clique</span>
-              </span>
 
               <button
                 type="button"
-                onClick={() => {
-                  const admin = databaseStore.getUsers().find((u) => u.role === 'OWNER' || u.role === 'ADMIN') || databaseStore.getCurrentUser();
-                  handleQuick(admin.id);
-                }}
-                className="w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs transition-colors flex items-center justify-between group"
+                onClick={fillAdminCredentials}
+                className="px-2.5 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 font-bold text-[11px] border border-blue-500/30 transition-all shrink-0 flex items-center gap-1"
               >
-                <div>
-                  <div className="font-bold text-white flex items-center gap-1.5">
-                    <span>👑 {databaseStore.getCurrentUser().name}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 font-mono">
-                      {databaseStore.getCurrentUser().email}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-blue-400 mt-0.5">Proprietário / Administrador Geral (Acesso Total)</div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                {filledSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span className="text-emerald-400">Preenchido!</span>
+                  </>
+                ) : (
+                  <span>Preencher Dados</span>
+                )}
               </button>
             </div>
-
-            <div className="pt-2 text-center text-xs text-slate-400">
-              Não tem acesso ainda?{' '}
-              <Link href="/cadastro" className="text-blue-400 hover:text-blue-300 font-bold hover:underline">
-                Solicitar Cadastro na Equipe →
-              </Link>
-            </div>
           </div>
-        )}
+
+          {/* Exclusive Admin Notice */}
+          <div className="pt-2 text-center text-[11px] text-slate-500 leading-relaxed border-t border-slate-800/60">
+            🔒 <b>Acesso Corporativo Restrito.</b> Os cadastros de membros, tradutores e equipe são gerados exclusivamente pelo Administrador no Painel Admin.
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 text-center text-xs text-slate-500">

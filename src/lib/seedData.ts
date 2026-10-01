@@ -1023,6 +1023,7 @@ export const CLEAN_PRODUCTION_USER: User = {
   tenantId: 'traduztudo-matriz',
   name: 'Administrador',
   email: 'admin@traduztudo.com.br',
+  password: 'admin',
   role: 'OWNER',
   phone: '(11) 98765-4321',
   active: true,

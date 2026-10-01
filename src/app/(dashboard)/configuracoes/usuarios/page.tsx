@@ -18,6 +18,7 @@ export default function UsuariosPage() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('ATTENDANT');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('Traduz@2026');
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ export default function UsuariosPage() {
       email,
       role,
       phone,
+      password: password || 'Traduz@2026',
       active: true,
       status: 'ACTIVE',
     });
@@ -37,6 +39,7 @@ export default function UsuariosPage() {
     setIsModalOpen(false);
     setName('');
     setEmail('');
+    setPassword('Traduz@2026');
     setRefresh((r) => r + 1);
   };
 
@@ -165,6 +168,20 @@ export default function UsuariosPage() {
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+              Senha Inicial de Acesso
+            </label>
+            <input
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Traduz@2026"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono"
+              required
+            />
           </div>
 
           <div>

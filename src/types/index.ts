@@ -43,6 +43,7 @@ export interface User {
   tenantId: string;
   name: string;
   email: string;
+  password?: string;
   role: UserRole;
   phone?: string;
   avatarUrl?: string;

@@ -56,7 +56,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 
-const STORAGE_KEY = 'traduztudo_db_state_v5';
+const STORAGE_KEY = 'traduztudo_db_state_v6';
 
 // In-memory persistent reactive store to ensure zero-latency UI, offline resilience and clean production state
 class DatabaseStore {
@@ -374,22 +374,28 @@ class DatabaseStore {
     return this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
   }
 
-  createUser(userData: Omit<User, 'id' | 'createdAt' | 'status'> & { status?: UserStatus }): User {
+  createUser(userData: Omit<User, 'id' | 'createdAt' | 'status'> & { status?: UserStatus; password?: string }): User {
+    const isPending = userData.status === 'PENDING';
     const newUser: User = {
       ...userData,
       id: `usr-${Date.now()}`,
-      status: userData.status || 'PENDING',
+      status: userData.status || 'ACTIVE',
+      active: userData.active !== undefined ? userData.active : true,
       createdAt: new Date().toISOString(),
+      approvedAt: isPending ? undefined : new Date().toISOString(),
+      approvedBy: isPending ? undefined : this.getCurrentUser().name,
     };
     this.users.unshift(newUser);
     this.syncFirestore('users', newUser.id, newUser);
     this.createNotification({
-      title: 'Nova Solicitação de Cadastro',
-      message: `${newUser.name} se cadastrou como ${newUser.requestedRole || newUser.role} e aguarda aprovação no Painel Admin.`,
-      type: 'warning',
+      title: isPending ? 'Nova Solicitação de Cadastro' : 'Novo Usuário Cadastrado',
+      message: isPending
+        ? `${newUser.name} se cadastrou como ${newUser.requestedRole || newUser.role} e aguarda aprovação no Painel Admin.`
+        : `Acesso gerado com sucesso para ${newUser.name} (${newUser.role}).`,
+      type: isPending ? 'warning' : 'success',
       link: '/admin',
     });
-    this.logAudit(newUser.name, 'Solicitação de Cadastro', 'User', newUser.id, `Novo usuário registrado no sistema`);
+    this.logAudit(this.getCurrentUser().name, 'Criação de Usuário', 'User', newUser.id, `Cadastrou o usuário ${newUser.name} com cargo ${newUser.role}`);
     this.persistAndNotify();
     return newUser;
   }
@@ -491,6 +497,27 @@ class DatabaseStore {
         tenantId: this.tenant.id,
       };
     return fallback;
+  }
+
+  getActiveSessionUser(): User | null {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('traduztudo_current_user_id');
+      if (savedId) {
+        const found = this.users.find((u) => u.id === savedId && u.status === 'ACTIVE');
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  resetUserPassword(userId: string, newPassword: string): boolean {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) return false;
+    user.password = newPassword;
+    this.syncFirestore('users', user.id, user);
+    this.logAudit(this.getCurrentUser().name, 'Redefinição de Senha', 'User', user.id, `Redefiniu a senha de acesso do usuário ${user.name}`);
+    this.persistAndNotify();
+    return true;
   }
 
   setCurrentUser(user: User): void {

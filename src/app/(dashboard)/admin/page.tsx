@@ -14,12 +14,18 @@ import {
   Search,
   Filter,
   Eye,
+  EyeOff,
   Sliders,
   Key,
+  KeyRound,
   Lock,
   Mail,
   Phone,
   Trash2,
+  Copy,
+  Check,
+  Share2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -30,7 +36,9 @@ import { formatDate } from '@/lib/utils';
 
 export default function AdminControlPanelPage() {
   const [refresh, setRefresh] = useState(0);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'audit'>('pending');
+  const [activeTab, setActiveTab] = useState<'users' | 'pending' | 'audit'>('users');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
   const users = databaseStore.getUsers();
   const auditLogs = databaseStore.getAuditLogs();
@@ -43,7 +51,7 @@ export default function AdminControlPanelPage() {
     return databaseStore.subscribe(() => setRefresh((r) => r + 1));
   }, []);
 
-  // Modal State for Approving / Assigning Role
+  // Modal State for Approving / Assigning Role (if any pending exists)
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [assignedRole, setAssignedRole] = useState<UserRole>('ATTENDANT');
@@ -52,16 +60,115 @@ export default function AdminControlPanelPage() {
     'orders_read',
   ]);
 
-  // Modal for Inviting new user directly
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteName, setInviteName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [invitePhone, setInvitePhone] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('TRANSLATOR');
+  // Modal for Generating New User Directly
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createRole, setCreateRole] = useState<UserRole>('TRANSLATOR');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createShowPassword, setCreateShowPassword] = useState(false);
+
+  // Success Modal with Generated Credentials
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    phone: string;
+  } | null>(null);
+  const [copiedCredentials, setCopiedCredentials] = useState(false);
+
+  // Modal for Resetting Password
+  const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const generateSecurePassword = () => {
+    const prefixes = ['Traduz', 'Oficial', 'Jucesp', 'Global', 'Juridico', 'Certifica'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const number = Math.floor(100 + Math.random() * 900);
+    const symbols = ['@', '#', '$', '!'];
+    const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+    return `${prefix}${symbol}${number}`;
+  };
+
+  const handleOpenCreateModal = () => {
+    setCreateName('');
+    setCreateEmail('');
+    setCreatePhone('');
+    setCreateRole('TRANSLATOR');
+    setCreatePassword(generateSecurePassword());
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createName.trim() || !createEmail.trim()) return;
+
+    const tenant = databaseStore.getTenant();
+    const finalPassword = createPassword.trim() || generateSecurePassword();
+
+    const newUser = databaseStore.createUser({
+      tenantId: tenant.id,
+      name: createName.trim(),
+      email: createEmail.trim(),
+      phone: createPhone.trim(),
+      role: createRole,
+      password: finalPassword,
+      active: true,
+      status: 'ACTIVE',
+      approvedAt: new Date().toISOString(),
+      approvedBy: `${databaseStore.getCurrentUser().name} (Admin)`,
+    });
+
+    setIsCreateModalOpen(false);
+    setCreatedCredentials({
+      name: newUser.name,
+      email: newUser.email,
+      password: finalPassword,
+      role: roleLabelMap[newUser.role]?.label || newUser.role,
+      phone: newUser.phone || '',
+    });
+    setRefresh((r) => r + 1);
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdCredentials) return;
+    const text = `*TRADUZTUDO OS — SEUS DADOS DE ACESSO*\n\n` +
+      `Olá ${createdCredentials.name}, seu acesso ao sistema operacional foi gerado com sucesso:\n\n` +
+      `🌐 *Link de Acesso:* https://traduztudo-os.vercel.app/login\n` +
+      `👤 *Usuário / E-mail:* ${createdCredentials.email}\n` +
+      `🔑 *Senha Inicial:* ${createdCredentials.password}\n` +
+      `💼 *Perfil:* ${createdCredentials.role}\n\n` +
+      `_Por favor, guarde suas credenciais em local seguro._`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedCredentials(true);
+    setTimeout(() => setCopiedCredentials(false), 3000);
+  };
+
+  const handleOpenResetPassword = (u: User) => {
+    setUserToReset(u);
+    setResetPasswordInput(generateSecurePassword());
+    setResetSuccess(false);
+  };
+
+  const handleConfirmResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToReset || !resetPasswordInput.trim()) return;
+
+    databaseStore.resetUserPassword(userToReset.id, resetPasswordInput.trim());
+    setResetSuccess(true);
+    setTimeout(() => {
+      setUserToReset(null);
+      setResetSuccess(false);
+      setRefresh((r) => r + 1);
+    }, 2000);
+  };
 
   const handleOpenApprove = (u: User) => {
     setSelectedUser(u);
-    // Pre-select role based on requested role
     if (u.requestedRole?.toLowerCase().includes('tradutor')) {
       setAssignedRole('TRANSLATOR');
       setSelectedPermissions(['orders_read', 'orders_edit', 'docs_download']);
@@ -117,30 +224,6 @@ export default function AdminControlPanelPage() {
     }
   };
 
-  const handleInviteSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteName || !inviteEmail) return;
-    const tenant = databaseStore.getTenant();
-
-    databaseStore.createUser({
-      tenantId: tenant.id,
-      name: inviteName,
-      email: inviteEmail,
-      phone: invitePhone,
-      role: inviteRole,
-      active: true,
-      status: 'ACTIVE',
-      approvedAt: new Date().toISOString(),
-      approvedBy: `${databaseStore.getCurrentUser().name} (Admin)`,
-    });
-
-    setIsInviteModalOpen(false);
-    setInviteName('');
-    setInviteEmail('');
-    setInvitePhone('');
-    setRefresh((r) => r + 1);
-  };
-
   const togglePermission = (perm: string) => {
     setSelectedPermissions((prev) =>
       prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
@@ -158,8 +241,17 @@ export default function AdminControlPanelPage() {
     VIEWER: { label: '👁️ Visualizador', color: 'bg-slate-100 text-slate-800 border-slate-300', desc: 'Acesso somente leitura para auditoria externa e conformidade' },
   };
 
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.phone && u.phone.includes(searchTerm));
+    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
@@ -168,23 +260,23 @@ export default function AdminControlPanelPage() {
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               PAINEL ADMINISTRATIVO MASTER
             </span>
-            <span className="text-xs text-slate-400 font-mono">RBAC v2.4</span>
+            <span className="text-xs text-slate-400 font-mono">Gestão de Cadastros & RBAC</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
-            Controle de Acesso, Liberação de Cadastros & Cargos
+            Usuários, Cadastros & Níveis de Acesso
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Aprove novos membros, atribua níveis hierárquicos e configure permissões de fé pública.
+            Gere novos acessos, defina senhas e controle os cargos corporativos da sua empresa.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
+            onClick={handleOpenCreateModal}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/25 px-4 py-2.5 rounded-xl cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Convidar Usuário Direto</span>
+            <span>Gerar Novo Cadastro de Usuário</span>
           </Button>
         </div>
       </div>
@@ -197,23 +289,6 @@ export default function AdminControlPanelPage() {
           <div className="text-[10px] text-slate-500 mt-0.5">{activeUsers.length} ativos na empresa</div>
         </div>
 
-        <div className={`p-4 rounded-2xl border shadow-2xs transition-all ${
-          pendingUsers.length > 0
-            ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/30'
-            : 'bg-white border-slate-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Cadastros Pendentes</div>
-            {pendingUsers.length > 0 && (
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
-            )}
-          </div>
-          <div className="text-2xl font-black text-amber-900 mt-1">{pendingUsers.length}</div>
-          <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
-            {pendingUsers.length > 0 ? 'Aguardando sua aprovação!' : 'Nenhum pendente'}
-          </div>
-        </div>
-
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tradutores & Revisores</div>
           <div className="text-2xl font-black text-indigo-600 mt-1">
@@ -223,31 +298,22 @@ export default function AdminControlPanelPage() {
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Usuários Bloqueados</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gestão & Comercial</div>
+          <div className="text-2xl font-black text-blue-600 mt-1">
+            {users.filter((u) => u.role === 'ADMIN' || u.role === 'MANAGER' || u.role === 'ATTENDANT' || u.role === 'FINANCE').length}
+          </div>
+          <div className="text-[10px] text-slate-500 mt-0.5">Operação interna</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Acessos Bloqueados</div>
           <div className="text-2xl font-black text-rose-600 mt-1">{blockedUsers.length}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Acesso revogado</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">Revogados pela gestão</div>
         </div>
       </div>
 
       {/* Tabs Selector */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-px overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
-            activeTab === 'pending'
-              ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span>Fila de Cadastros Pendentes</span>
-          {pendingUsers.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-mono font-bold">
-              {pendingUsers.length}
-            </span>
-          )}
-        </button>
-
         <button
           onClick={() => setActiveTab('users')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
@@ -257,8 +323,25 @@ export default function AdminControlPanelPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Todos os Usuários & Cargos ({users.length})</span>
+          <span>Todos os Usuários & Equipe ({users.length})</span>
         </button>
+
+        {pendingUsers.length > 0 && (
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
+              activeTab === 'pending'
+                ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Fila de Pendências</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-mono font-bold animate-pulse">
+              {pendingUsers.length}
+            </span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('audit')}
@@ -269,119 +352,50 @@ export default function AdminControlPanelPage() {
           }`}
         >
           <Shield className="w-4 h-4" />
-          <span>Logs de Auditoria & LGPD</span>
+          <span>Trilha de Auditoria & LGPD</span>
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: FILA DE CADASTROS PENDENTES DE LIBERAÇÃO                           */}
-      {/* ========================================================================= */}
-      {activeTab === 'pending' && (
-        <div className="space-y-4">
-          {pendingUsers.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl">
-                ✓
-              </div>
-              <h3 className="font-bold text-slate-800 text-base">Nenhum cadastro pendente de aprovação!</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Todas as solicitações de cadastro foram processadas. Quando novos membros se cadastrarem na página pública (<code className="text-blue-600 font-mono">/cadastro</code>), eles aparecerão aqui instantaneamente.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  <b>Atenção do Administrador:</b> Existem <b>{pendingUsers.length} profissionais</b> aguardando que você atribua o cargo e libere o acesso ao sistema.
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm space-y-4 flex flex-col justify-between"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center text-sm">
-                            {u.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <h4 className="font-extrabold text-slate-900 text-sm">{u.name}</h4>
-                            <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-bold">
-                              ⏳ Aguarda Liberação
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1.5 text-slate-600">
-                        <div>
-                          <span className="text-slate-400 font-semibold block text-[10px] uppercase">
-                            Cargo Pretendido:
-                          </span>
-                          <span className="font-bold text-blue-700 text-xs">
-                            {u.requestedRole || 'Não especificado'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] truncate">
-                          <Mail className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="truncate">{u.email}</span>
-                        </div>
-                        {u.phone && (
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{u.phone}</span>
-                          </div>
-                        )}
-                        <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-200">
-                          Solicitado em: {formatDate(u.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleOpenApprove(u)}
-                        className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Aprovar & Atribuir Cargo</span>
-                      </Button>
-
-                      <button
-                        onClick={() => handleReject(u.id, u.name)}
-                        className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-slate-200 text-xs font-bold"
-                        title="Recusar Cadastro"
-                      >
-                        <UserX className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: TODOS OS USUÁRIOS E GESTÃO DE CARGOS (RBAC)                        */}
+      {/* TAB 1: TODOS OS USUÁRIOS E GERENCIAMENTO DE CARGOS                        */}
       {/* ========================================================================= */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Membros Credenciados da Empresa</h3>
-              <p className="text-xs text-slate-500">Altere cargos, bloqueie acessos ou edite permissões a qualquer momento</p>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden space-y-4">
+          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome, e-mail ou telefone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="text-xs font-semibold px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700"
+              >
+                <option value="ALL">Todos os Cargos</option>
+                <option value="ADMIN">🛡️ Administradores</option>
+                <option value="MANAGER">💼 Gerentes Operacionais</option>
+                <option value="FINANCE">💰 Financeiro</option>
+                <option value="ATTENDANT">🎧 Atendentes Comerciais</option>
+                <option value="TRANSLATOR">👨‍⚖️ Tradutores Juramentados</option>
+                <option value="REVIEWER">🔍 Revisores de Qualidade</option>
+              </select>
             </div>
-            <span className="text-xs text-slate-500">
-              Total de <b>{users.length} usuários</b> registrados
-            </span>
+
+            <Button
+              size="sm"
+              onClick={handleOpenCreateModal}
+              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" /> Gerar Novo Cadastro
+            </Button>
           </div>
 
           <div className="overflow-x-auto">
@@ -393,17 +407,11 @@ export default function AdminControlPanelPage() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Contato</th>
                   <th className="px-4 py-3">Cadastrado em</th>
-                  <th className="px-4 py-3 text-right">Ações do Admin</th>
+                  <th className="px-4 py-3 text-right">Ações do Administrador</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map((u) => {
-                  const roleInfo = roleLabelMap[u.role] || {
-                    label: u.role,
-                    color: 'bg-slate-100 text-slate-700 border-slate-200',
-                    desc: '',
-                  };
-
+                {filteredUsers.map((u) => {
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-4 py-3">
@@ -466,6 +474,15 @@ export default function AdminControlPanelPage() {
 
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Reset Password Button */}
+                          <button
+                            onClick={() => handleOpenResetPassword(u)}
+                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                            title="Redefinir Senha de Acesso"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </button>
+
                           {u.status === 'PENDING' && (
                             <Button
                               size="sm"
@@ -510,7 +527,60 @@ export default function AdminControlPanelPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: LOGS DE AUDITORIA E ACESSOS EM TEMPO REAL                          */}
+      {/* TAB 2: FILA DE PENDÊNCIAS (SE HOUVER)                                     */}
+      {/* ========================================================================= */}
+      {activeTab === 'pending' && (
+        <div className="space-y-4">
+          {pendingUsers.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl">
+                ✓
+              </div>
+              <h3 className="font-bold text-slate-800 text-base">Nenhum cadastro pendente!</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Todos os usuários do sistema foram cadastrados e liberados diretamente pela administração.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingUsers.map((u) => (
+                <div key={u.id} className="p-4 bg-white rounded-2xl border border-amber-300 shadow-sm space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-sm">
+                      {u.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900">{u.name}</h4>
+                      <p className="text-xs text-slate-500 font-mono">{u.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReject(u.id, u.name)}
+                      className="text-xs text-rose-600 hover:bg-rose-50 border-rose-200"
+                    >
+                      Recusar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenApprove(u)}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    >
+                      Aprovar & Atribuir Cargo
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: LOGS DE AUDITORIA E SEGURANÇA LGPD                                 */}
       {/* ========================================================================= */}
       {activeTab === 'audit' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -519,14 +589,14 @@ export default function AdminControlPanelPage() {
               <h3 className="text-sm font-bold text-slate-900">Trilha de Auditoria & Segurança (LGPD)</h3>
               <p className="text-xs text-slate-500">Registro permanente e imutável de todas as ações administrativas</p>
             </div>
-            <span className="text-xs font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 font-bold">
-              ● Logs Sincronizados
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+              {auditLogs.length} Registros
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
             {auditLogs.map((log) => (
-              <div key={log.id} className="p-4 hover:bg-slate-50 flex items-start justify-between gap-4 text-xs">
+              <div key={log.id} className="p-4 hover:bg-slate-50 transition-colors text-xs flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900">{log.userName}</span>
@@ -550,7 +620,276 @@ export default function AdminControlPanelPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: APROVAR CADASTRO E ATRIBUIR CARGO                                   */}
+      {/* MODAL: GERAR NOVO CADASTRO & SENHA (EXCLUSIVO DO ADMIN)                    */}
+      {/* ========================================================================= */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="➕ Gerar Novo Cadastro de Usuário"
+      >
+        <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 leading-relaxed">
+            Como administrador, você gera os cadastros da sua equipe. Defina o perfil e a senha inicial do colaborador.
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 block mb-1">Nome Completo do Colaborador:</label>
+            <input
+              type="text"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder="Ex: Dra. Camila Rocha"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-slate-900"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 block mb-1">E-mail de Acesso:</label>
+            <input
+              type="email"
+              value={createEmail}
+              onChange={(e) => setCreateEmail(e.target.value)}
+              placeholder="camila@traduztudo.com.br"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-slate-900"
+              required
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-semibold text-slate-700">Senha Inicial de Acesso:</label>
+              <button
+                type="button"
+                onClick={() => setCreatePassword(generateSecurePassword())}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" /> Gerar Nova Senha
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={createShowPassword ? 'text' : 'password'}
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+                placeholder="Defina uma senha ou use a gerada"
+                className="w-full p-2.5 pr-10 border border-slate-300 rounded-xl font-mono text-slate-900"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setCreateShowPassword(!createShowPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+              >
+                {createShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 block mb-1">Telefone / WhatsApp Comercial:</label>
+            <input
+              type="tel"
+              value={createPhone}
+              onChange={(e) => setCreatePhone(e.target.value)}
+              placeholder="(11) 98888-7777"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-slate-900"
+            />
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 block mb-1">Cargo e Perfil de Acesso (RBAC):</label>
+            <select
+              value={createRole}
+              onChange={(e) => setCreateRole(e.target.value as UserRole)}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+            >
+              <option value="TRANSLATOR">👨‍⚖️ Tradutor Juramentado (Oficial com Fé Pública)</option>
+              <option value="REVIEWER">🔍 Revisor de Qualidade (Terminologia e Pares)</option>
+              <option value="MANAGER">💼 Gerente Operacional (Supervisão de OS e Equipe)</option>
+              <option value="FINANCE">💰 Analista Financeiro (Contas a Pagar/Receber)</option>
+              <option value="ATTENDANT">🎧 Atendente Comercial (Atendimento e Orçamentos)</option>
+              <option value="ADMIN">🛡️ Administrador Geral (Acesso Total)</option>
+              <option value="VIEWER">👁️ Visualizador (Acesso Leitura)</option>
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {roleLabelMap[createRole]?.desc}
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Criar e Ativar Cadastro
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL: CREDENCIAIS GERADAS COM SUCESSO                                    */}
+      {/* ========================================================================= */}
+      {createdCredentials && (
+        <Modal
+          isOpen={!!createdCredentials}
+          onClose={() => setCreatedCredentials(null)}
+          title="🎉 Cadastro Gerado com Sucesso!"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>O novo usuário já está ativo e pode acessar o TraduzTudo OS imediatamente.</span>
+            </div>
+
+            <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-2.5 font-mono text-xs shadow-inner">
+              <div className="text-[11px] text-slate-400 uppercase font-sans font-bold border-b border-slate-800 pb-1">
+                Credenciais de Acesso do Colaborador:
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Nome:</span>
+                <span className="font-bold text-white">{createdCredentials.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Cargo:</span>
+                <span className="font-bold text-indigo-300">{createdCredentials.role}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">E-mail:</span>
+                <span className="font-bold text-blue-300">{createdCredentials.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Senha Inicial:</span>
+                <span className="font-bold text-emerald-400 bg-slate-800 px-2 py-0.5 rounded">
+                  {createdCredentials.password}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-800">
+                <span className="text-slate-400">Página de Login:</span>
+                <span className="text-slate-300 truncate">https://traduztudo-os.vercel.app/login</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                onClick={handleCopyCredentials}
+                className="flex-1 gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
+              >
+                {copiedCredentials ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Copiado com Sucesso!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copiar Dados de Acesso</span>
+                  </>
+                )}
+              </Button>
+
+              {createdCredentials.phone && (
+                <a
+                  href={`https://wa.me/55${createdCredentials.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `Olá ${createdCredentials.name}, seu acesso ao sistema TraduzTudo OS foi gerado!\n\nLink: https://traduztudo-os.vercel.app/login\nUsuário: ${createdCredentials.email}\nSenha: ${createdCredentials.password}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Enviar via WhatsApp</span>
+                </a>
+              )}
+            </div>
+
+            <div className="text-right pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCreatedCredentials(null)}
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: REDEFINIR SENHA DE QUALQUER USUÁRIO                                */}
+      {/* ========================================================================= */}
+      {userToReset && (
+        <Modal
+          isOpen={!!userToReset}
+          onClose={() => setUserToReset(null)}
+          title={`🔑 Redefinir Senha: ${userToReset.name}`}
+        >
+          <form onSubmit={handleConfirmResetPassword} className="space-y-4 text-xs">
+            <p className="text-slate-600">
+              Defina uma nova senha para <b>{userToReset.name}</b> ({userToReset.email}). A alteração tem efeito imediato.
+            </p>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700">Nova Senha de Acesso:</label>
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordInput(generateSecurePassword())}
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" /> Gerar Senha Segura
+                </button>
+              </div>
+              <input
+                type="text"
+                value={resetPasswordInput}
+                onChange={(e) => setResetPasswordInput(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-slate-900"
+                required
+              />
+            </div>
+
+            {resetSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Senha redefinida com sucesso!</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setUserToReset(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
+              >
+                Confirmar Nova Senha
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: APROVAR CADASTRO E ATRIBUIR CARGO (PENDÊNCIAS)                      */}
       {/* ========================================================================= */}
       <Modal
         isOpen={isApproveModalOpen}
@@ -639,86 +978,6 @@ export default function AdminControlPanelPage() {
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* ========================================================================= */}
-      {/* MODAL: CONVIDAR USUÁRIO DIRETO                                            */}
-      {/* ========================================================================= */}
-      <Modal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        title="Convidar Novo Membro da Equipe"
-      >
-        <form onSubmit={handleInviteSubmit} className="space-y-3 text-xs">
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Nome Completo:</label>
-            <input
-              type="text"
-              value={inviteName}
-              onChange={(e) => setInviteName(e.target.value)}
-              placeholder="Ex: Dra. Camila Rocha"
-              className="w-full p-2.5 border rounded-xl"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">E-mail Profissional:</label>
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="camila@traduztudo.com.br"
-              className="w-full p-2.5 border rounded-xl"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Telefone / WhatsApp:</label>
-            <input
-              type="tel"
-              value={invitePhone}
-              onChange={(e) => setInvitePhone(e.target.value)}
-              placeholder="(11) 98888-7777"
-              className="w-full p-2.5 border rounded-xl"
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Cargo a Atribuir:</label>
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as UserRole)}
-              className="w-full p-2.5 border rounded-xl font-bold"
-            >
-              <option value="TRANSLATOR">👨‍⚖️ Tradutor Juramentado</option>
-              <option value="REVIEWER">🔍 Revisor de Qualidade</option>
-              <option value="ATTENDANT">🎧 Atendente Comercial</option>
-              <option value="FINANCE">💰 Analista Financeiro</option>
-              <option value="MANAGER">💼 Gerente Operacional</option>
-              <option value="ADMIN">🛡️ Administrador Geral</option>
-            </select>
-          </div>
-
-          <div className="pt-3 border-t flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsInviteModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="bg-blue-600 text-white font-bold"
-            >
-              Convidar & Liberar Acesso
-            </Button>
-          </div>
-        </form>
       </Modal>
     </div>
   );
