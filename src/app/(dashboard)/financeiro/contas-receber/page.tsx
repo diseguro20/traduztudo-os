@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -162,20 +163,34 @@ export default function ContasReceberPage() {
                     <StatusBadge status={rec.status} />
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    {rec.status !== 'pago' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkPaid(rec.id, rec.amount)}
-                        className="text-xs text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300"
+                    <div className="flex items-center justify-end gap-2">
+                      {rec.status !== 'pago' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkPaid(rec.id, rec.amount)}
+                          className="text-xs text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Baixar
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Quitado
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Deseja realmente excluir o recebimento de "${rec.customerName}"?`)) {
+                            databaseStore.deleteReceivable(rec.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Excluir recebimento"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Baixar
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Quitado
-                      </span>
-                    )}
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

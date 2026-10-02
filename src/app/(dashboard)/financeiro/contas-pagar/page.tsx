@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -155,20 +156,34 @@ export default function ContasPagarPage() {
                     <StatusBadge status={pay.status} />
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    {pay.status !== 'pago' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkPaid(pay.id)}
-                        className="text-xs text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+                    <div className="flex items-center justify-end gap-2">
+                      {pay.status !== 'pago' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkPaid(pay.id)}
+                          className="text-xs text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Baixar Pagamento
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Liquidado
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Deseja realmente excluir a conta a pagar para "${pay.recipientName}"?`)) {
+                            databaseStore.deletePayable(pay.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Excluir conta a pagar"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Baixar Pagamento
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Liquidado
-                      </span>
-                    )}
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

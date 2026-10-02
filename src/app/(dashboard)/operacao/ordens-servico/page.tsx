@@ -15,6 +15,7 @@ import {
   Languages,
   DollarSign,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -268,12 +269,26 @@ export default function OrdensServicoPage() {
                       <StatusBadge status={order.status} />
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <Link
-                        href={`/operacao/ordens-servico/${order.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-colors"
-                      >
-                        Abrir Dossiê <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link
+                          href={`/operacao/ordens-servico/${order.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          Abrir Dossiê <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Deseja realmente excluir a ordem de serviço "${order.code}" de "${order.customerName}"?`)) {
+                              databaseStore.deleteWorkOrder(order.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Excluir Ordem de Serviço"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -15,6 +15,7 @@ import {
   Share2,
   Clock,
   Send,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -249,6 +250,19 @@ export default function OrcamentosPage() {
                             <FileCheck2 className="w-3.5 h-3.5" /> Ver OS
                           </Link>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Deseja realmente excluir o orçamento "${q.code}" de "${q.customerName}"?`)) {
+                              databaseStore.deleteQuote(q.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Excluir Orçamento"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>

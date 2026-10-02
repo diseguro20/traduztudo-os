@@ -8,6 +8,7 @@ import {
   DollarSign,
   Calendar,
   CreditCard,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -113,6 +114,7 @@ export default function DespesasPage() {
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Forma de Pagamento</th>
                 <th className="px-4 py-3 text-right">Valor</th>
+                <th className="px-4 py-3 text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -130,6 +132,20 @@ export default function DespesasPage() {
                   </td>
                   <td className="px-4 py-3.5 text-right font-bold text-rose-600">
                     -{formatCurrency(exp.amount)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Deseja realmente excluir a despesa "${exp.description}"?`)) {
+                          databaseStore.deleteExpense(exp.id);
+                        }
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Excluir despesa"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}

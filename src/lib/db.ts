@@ -332,9 +332,6 @@ class DatabaseStore {
     if (typeof window === 'undefined' || this.hasStartedRealtime) return;
     this.hasStartedRealtime = true;
 
-    // Track remote IDs seen from Firestore to prevent reviving deleted items
-    const knownRemoteIdsByCollection = new Map<string, Set<string>>();
-
     const syncCollection = <T extends { id: string }>(
       name: string,
       getList: () => T[],
@@ -342,48 +339,23 @@ class DatabaseStore {
       postProcess?: () => void
     ) => {
       try {
-        if (!knownRemoteIdsByCollection.has(name)) {
-          knownRemoteIdsByCollection.set(name, new Set<string>());
-        }
-        const knownRemoteIds = knownRemoteIdsByCollection.get(name)!;
         const colRef = collection(db, 'traduztudo_' + name);
 
         onSnapshot(
           colRef,
           (snapshot) => {
-            const remoteItemsMap = new Map<string, T>();
-            snapshot.docs.forEach((d) => {
-              const data = d.data() as T;
-              if (data && data.id) {
-                remoteItemsMap.set(data.id, data);
-                knownRemoteIds.add(data.id);
-              }
-            });
-
-            const currentLocal = getList();
-            const pendingUpload: T[] = [];
-
-            currentLocal.forEach((item) => {
-              if (item && item.id) {
-                // If this local item was never seen in Firestore, push it to Firestore so all clients get it
-                if (!remoteItemsMap.has(item.id) && !knownRemoteIds.has(item.id)) {
-                  pendingUpload.push(item);
-                  this.syncFirestore(name, item.id, item);
-                }
-              }
-            });
-
-            // Authoritative list is remote items + any pending local uploads
-            const reconciledList: T[] = [...Array.from(remoteItemsMap.values()), ...pendingUpload];
+            const remoteItems: T[] = snapshot.docs
+              .map((d) => d.data() as T)
+              .filter((item) => item && item.id);
 
             // Order by createdAt descending when present
-            reconciledList.sort((a: any, b: any) => {
+            remoteItems.sort((a: any, b: any) => {
               const timeA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
               const timeB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
               return timeB - timeA;
             });
 
-            setList(reconciledList);
+            setList(remoteItems);
             if (postProcess) postProcess();
             this.isSyncingFromRemote = true;
             this.persistAndNotify();
@@ -1075,6 +1047,17 @@ class DatabaseStore {
     return this.quotes[idx];
   }
 
+  deleteQuote(id: string): boolean {
+    const idx = this.quotes.findIndex((q) => q.id === id);
+    if (idx === -1) return false;
+    const code = this.quotes[idx].code;
+    this.quotes.splice(idx, 1);
+    this.deleteFirestore('quotes', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Orçamento', 'Quote', id, `Removeu o orçamento ${code}`);
+    this.persistAndNotify();
+    return true;
+  }
+
   approveQuote(idOrToken: string, ipAddress?: string): { quote: Quote; workOrder: WorkOrder } | undefined {
     const quote = this.quotes.find((q) => (q.id === idOrToken || q.approvalToken === idOrToken) && !q.deletedAt);
     if (!quote) return undefined;
@@ -1234,6 +1217,17 @@ class DatabaseStore {
     return this.workOrders[idx];
   }
 
+  deleteWorkOrder(id: string): boolean {
+    const idx = this.workOrders.findIndex((o) => o.id === id);
+    if (idx === -1) return false;
+    const code = this.workOrders[idx].code;
+    this.workOrders.splice(idx, 1);
+    this.deleteFirestore('workOrders', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Ordem de Serviço', 'WorkOrder', id, `Removeu a OS ${code}`);
+    this.persistAndNotify();
+    return true;
+  }
+
   // --- DOCUMENTS ---
   getDocuments(workOrderId?: string): DocumentItem[] {
     if (workOrderId) {
@@ -1384,6 +1378,17 @@ class DatabaseStore {
     return rec;
   }
 
+  deleteReceivable(id: string): boolean {
+    const idx = this.receivables.findIndex((r) => r.id === id);
+    if (idx === -1) return false;
+    const desc = this.receivables[idx].description;
+    this.receivables.splice(idx, 1);
+    this.deleteFirestore('accountsReceivable', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Conta a Receber', 'AccountReceivable', id, `Removeu recebimento: ${desc}`);
+    this.persistAndNotify();
+    return true;
+  }
+
   getPayables(): AccountPayable[] {
     return this.payables;
   }
@@ -1411,6 +1416,17 @@ class DatabaseStore {
     return pay;
   }
 
+  deletePayable(id: string): boolean {
+    const idx = this.payables.findIndex((p) => p.id === id);
+    if (idx === -1) return false;
+    const desc = this.payables[idx].description;
+    this.payables.splice(idx, 1);
+    this.deleteFirestore('accountsPayable', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Conta a Pagar', 'AccountPayable', id, `Removeu conta a pagar: ${desc}`);
+    this.persistAndNotify();
+    return true;
+  }
+
   getExpenses(): Expense[] {
     return this.expenses;
   }
@@ -1425,6 +1441,17 @@ class DatabaseStore {
     this.syncFirestore('expenses', newExp.id, newExp);
     this.persistAndNotify();
     return newExp;
+  }
+
+  deleteExpense(id: string): boolean {
+    const idx = this.expenses.findIndex((e) => e.id === id);
+    if (idx === -1) return false;
+    const desc = this.expenses[idx].description;
+    this.expenses.splice(idx, 1);
+    this.deleteFirestore('expenses', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Despesa', 'Expense', id, `Removeu despesa: ${desc}`);
+    this.persistAndNotify();
+    return true;
   }
 
   // --- NOTIFICATIONS ---
