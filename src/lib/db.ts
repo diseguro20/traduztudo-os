@@ -255,25 +255,21 @@ class DatabaseStore {
   }
 
   // Helper to sync to Firestore in background without blocking UI
-  private async syncFirestore(collectionName: string, id: string, data: any) {
+  async syncFirestore(collectionName: string, id: string, data: any): Promise<void> {
     if (this.isSyncingFromRemote) return;
     try {
-      if (typeof window !== 'undefined' || process.env.NODE_ENV === 'test') {
-        const docRef = doc(db, 'traduztudo_' + collectionName, id);
-        await setDoc(docRef, JSON.parse(JSON.stringify(data)), { merge: true });
-      }
+      const docRef = doc(db, 'traduztudo_' + collectionName, id);
+      await setDoc(docRef, JSON.parse(JSON.stringify(data)), { merge: true });
     } catch (e) {
       console.warn(`Firestore sync note for ${collectionName}/${id}:`, e);
     }
   }
 
-  private async deleteFirestore(collectionName: string, id: string) {
+  async deleteFirestore(collectionName: string, id: string): Promise<void> {
     if (this.isSyncingFromRemote) return;
     try {
-      if (typeof window !== 'undefined' || process.env.NODE_ENV === 'test') {
-        const docRef = doc(db, 'traduztudo_' + collectionName, id);
-        await deleteDoc(docRef);
-      }
+      const docRef = doc(db, 'traduztudo_' + collectionName, id);
+      await deleteDoc(docRef);
     } catch (e) {
       console.warn(`Firestore delete note for ${collectionName}/${id}:`, e);
     }
@@ -953,6 +949,57 @@ class DatabaseStore {
     return this.requests;
   }
 
+  async createRequestAsync(data: Omit<InboundRequest, 'id' | 'createdAt'>): Promise<InboundRequest> {
+    const newReq: InboundRequest = {
+      ...data,
+      id: `req-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.requests.unshift(newReq);
+
+    // Also register as a lead automatically
+    const newLead: Lead = {
+      tenantId: this.tenant.id,
+      name: newReq.customerName,
+      type: 'PF',
+      email: newReq.email,
+      phone: newReq.phone,
+      whatsapp: newReq.whatsapp,
+      origin: newReq.origin || 'Site TraduzTudo',
+      interestedServiceName: newReq.serviceName,
+      sourceLanguage: newReq.sourceLanguage,
+      targetLanguage: newReq.targetLanguage,
+      notes: newReq.notes,
+      status: 'novo',
+      id: `lead-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.leads.unshift(newLead);
+
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      tenantId: this.tenant.id,
+      read: false,
+      createdAt: new Date().toISOString(),
+      title: 'Nova Solicitação do Site!',
+      message: `${newReq.customerName} enviou solicitação para ${newReq.serviceName}.`,
+      type: 'info',
+      link: '/operacao/solicitacoes',
+    };
+    this.notifications.unshift(notif);
+
+    // Explicitly await all Firestore writes so serverless environments persist data before completion
+    await Promise.allSettled([
+      this.syncFirestore('requests', newReq.id, newReq),
+      this.syncFirestore('leads', newLead.id, newLead),
+      this.syncFirestore('notifications', notif.id, notif),
+    ]);
+
+    this.persistAndNotify();
+    return newReq;
+  }
+
   createRequest(data: Omit<InboundRequest, 'id' | 'createdAt'>): InboundRequest {
     const newReq: InboundRequest = {
       ...data,
@@ -1056,6 +1103,23 @@ class DatabaseStore {
     this.logAudit(this.getCurrentUser().name, 'Exclusão de Orçamento', 'Quote', id, `Removeu o orçamento ${code}`);
     this.persistAndNotify();
     return true;
+  }
+
+  async approveQuoteAsync(idOrToken: string, ipAddress?: string): Promise<{ quote: Quote; workOrder: WorkOrder } | undefined> {
+    const res = this.approveQuote(idOrToken, ipAddress);
+    if (!res) return undefined;
+    await Promise.allSettled([
+      this.syncFirestore('quotes', res.quote.id, res.quote),
+      this.syncFirestore('workOrders', res.workOrder.id, res.workOrder),
+    ]);
+    return res;
+  }
+
+  async rejectQuoteAsync(idOrToken: string, reason?: string): Promise<Quote | undefined> {
+    const quote = this.rejectQuote(idOrToken, reason);
+    if (!quote) return undefined;
+    await this.syncFirestore('quotes', quote.id, quote);
+    return quote;
   }
 
   approveQuote(idOrToken: string, ipAddress?: string): { quote: Quote; workOrder: WorkOrder } | undefined {

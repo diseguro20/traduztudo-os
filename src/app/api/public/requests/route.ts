@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const tenant = databaseStore.getTenant();
 
-    const request = databaseStore.createRequest({
+    const request = await databaseStore.createRequestAsync({
       tenantId: tenant.id,
       customerName: name,
       email,
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       targetLanguage: targetLanguage || 'Inglês',
       estimatedVolume: estimatedVolume || '',
       notes: notes || '',
-      origin: origin || 'Site TraduzTudo (https://traduztudo.vercel.app)',
+      origin: origin || 'Site TraduzTudo (https://traduztudo.com)',
       status: 'nova',
       files: files || [],
     });

@@ -14,14 +14,14 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for') || '189.40.72.115';
 
     if (action === 'reject') {
-      const rejected = databaseStore.rejectQuote(identifier, reason);
+      const rejected = await databaseStore.rejectQuoteAsync(identifier, reason);
       if (!rejected) {
         return NextResponse.json({ error: 'Orçamento não encontrado.' }, { status: 404 });
       }
       return NextResponse.json({ success: true, message: 'Orçamento recusado com sucesso.', quote: rejected });
     }
 
-    const result = databaseStore.approveQuote(identifier, ip);
+    const result = await databaseStore.approveQuoteAsync(identifier, ip);
     if (!result) {
       return NextResponse.json({ error: 'Orçamento não encontrado.' }, { status: 404 });
     }
