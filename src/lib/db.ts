@@ -1318,6 +1318,30 @@ class DatabaseStore {
     return newTranslator;
   }
 
+  updateTranslator(id: string, data: Partial<Translator>): Translator | undefined {
+    const idx = this.translators.findIndex((t) => t.id === id);
+    if (idx === -1) return undefined;
+    this.translators[idx] = {
+      ...this.translators[idx],
+      ...data,
+    };
+    this.syncFirestore('translators', id, this.translators[idx]);
+    this.logAudit(this.getCurrentUser().name, 'Atualização de Tradutor', 'Translator', id, `Atualizou os dados do tradutor: ${this.translators[idx].name}`);
+    this.persistAndNotify();
+    return this.translators[idx];
+  }
+
+  deleteTranslator(id: string): boolean {
+    const idx = this.translators.findIndex((t) => t.id === id);
+    if (idx === -1) return false;
+    const name = this.translators[idx].name;
+    this.translators.splice(idx, 1);
+    this.deleteFirestore('translators', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Tradutor', 'Translator', id, `Removeu o tradutor: ${name}`);
+    this.persistAndNotify();
+    return true;
+  }
+
   getReviewers(): Reviewer[] {
     return this.reviewers;
   }
@@ -1335,6 +1359,30 @@ class DatabaseStore {
     this.syncFirestore('reviewers', newRev.id, newRev);
     this.persistAndNotify();
     return newRev;
+  }
+
+  updateReviewer(id: string, data: Partial<Reviewer>): Reviewer | undefined {
+    const idx = this.reviewers.findIndex((r) => r.id === id);
+    if (idx === -1) return undefined;
+    this.reviewers[idx] = {
+      ...this.reviewers[idx],
+      ...data,
+    };
+    this.syncFirestore('reviewers', id, this.reviewers[idx]);
+    this.logAudit(this.getCurrentUser().name, 'Atualização de Revisor', 'Reviewer', id, `Atualizou os dados do revisor: ${this.reviewers[idx].name}`);
+    this.persistAndNotify();
+    return this.reviewers[idx];
+  }
+
+  deleteReviewer(id: string): boolean {
+    const idx = this.reviewers.findIndex((r) => r.id === id);
+    if (idx === -1) return false;
+    const name = this.reviewers[idx].name;
+    this.reviewers.splice(idx, 1);
+    this.deleteFirestore('reviewers', id);
+    this.logAudit(this.getCurrentUser().name, 'Exclusão de Revisor', 'Reviewer', id, `Removeu o revisor: ${name}`);
+    this.persistAndNotify();
+    return true;
   }
 
   // --- FINANCIAL ---
