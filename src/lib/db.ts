@@ -64,6 +64,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
+import { saveDocumentBlob, deleteDocumentBlob } from '@/lib/storage/documentStorage';
 
 const STORAGE_KEY = 'traduztudo_db_state_v9';
 
@@ -217,16 +218,16 @@ class DatabaseStore {
       const sanitizedDocuments = this.documents.map((d) => {
         const docCopy = { ...d };
         if (docCopy.dataUrl && docCopy.dataUrl.length > 50000) {
-          docCopy.dataUrl = docCopy.dataUrl.substring(0, 100);
+          docCopy.dataUrl = '';
         }
         if (docCopy.fileUrl && docCopy.fileUrl.startsWith('data:') && docCopy.fileUrl.length > 50000) {
-          docCopy.fileUrl = docCopy.fileUrl.substring(0, 100);
+          docCopy.fileUrl = '';
         }
         if (Array.isArray(docCopy.versions)) {
           docCopy.versions = docCopy.versions.map((v) => {
             const verCopy = { ...v };
-            if (verCopy.dataUrl && verCopy.dataUrl.length > 50000) verCopy.dataUrl = verCopy.dataUrl.substring(0, 100);
-            if (verCopy.fileUrl && verCopy.fileUrl.startsWith('data:') && verCopy.fileUrl.length > 50000) verCopy.fileUrl = verCopy.fileUrl.substring(0, 100);
+            if (verCopy.dataUrl && verCopy.dataUrl.length > 50000) verCopy.dataUrl = '';
+            if (verCopy.fileUrl && verCopy.fileUrl.startsWith('data:') && verCopy.fileUrl.length > 50000) verCopy.fileUrl = '';
             return verCopy;
           });
         }
@@ -1629,6 +1630,9 @@ class DatabaseStore {
     };
 
     this.documents.unshift(newDoc);
+    if (data.dataUrl && data.dataUrl.length > 500) {
+      saveDocumentBlob(newDoc.id, data.dataUrl, newDoc.name, newDoc.fileType).catch(() => {});
+    }
     this.syncFirestore('documents', newDoc.id, newDoc);
     this.logAudit(data.uploaderName, 'Upload de Documento', 'Document', newDoc.id, `Arquivo enviado: ${newDoc.name} (${newDoc.category})`);
     this.persistAndNotify();
@@ -1687,6 +1691,10 @@ class DatabaseStore {
       fileUrl: newVersion.fileUrl || doc.fileUrl,
       dataUrl: newVersion.dataUrl || doc.dataUrl,
     });
+
+    if (newVersion.dataUrl && newVersion.dataUrl.length > 500) {
+      saveDocumentBlob(newVersion.id, newVersion.dataUrl, newVersion.fileName, newVersion.fileType).catch(() => {});
+    }
 
     this.logAudit(
       this.getCurrentUser().name,
@@ -1770,6 +1778,7 @@ class DatabaseStore {
     if (idx === -1) return false;
     this.documents.splice(idx, 1);
     this.deleteFirestore('documents', id);
+    deleteDocumentBlob(id).catch(() => {});
     this.persistAndNotify();
     return true;
   }

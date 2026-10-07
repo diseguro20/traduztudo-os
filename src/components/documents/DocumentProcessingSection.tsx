@@ -44,6 +44,8 @@ import {
   generateDocxFromText,
   calculateWordMetrics,
 } from '@/lib/documents/documentProcessor';
+import { UniversalDocumentViewerModal } from './UniversalDocumentViewerModal';
+import { saveDocumentBlob } from '@/lib/storage/documentStorage';
 
 interface DocumentProcessingSectionProps {
   quoteId?: string;
@@ -185,7 +187,7 @@ export function DocumentProcessingSection({
 
         const initialStatus: DocumentProcessingStatus = analysisResult.needsOcr ? 'OCR_COMPLETED' : 'DOCX_READY';
 
-        databaseStore.createDocument({
+        const created = databaseStore.createDocument({
           tenantId: tenant.id,
           quoteId,
           workOrderId,
@@ -251,6 +253,17 @@ export function DocumentProcessingSection({
             },
           ],
         });
+
+        // Store real binary Blob in high-capacity storage for instant preview & zero URL truncation
+        await saveDocumentBlob(created.id, file, file.name, file.type || 'application/pdf');
+        if (docxDataUrl && created.versions?.[1]?.id) {
+          await saveDocumentBlob(
+            created.versions[1].id,
+            docxDataUrl,
+            created.versions[1].fileName,
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          );
+        }
       } catch (err) {
         console.error('Erro ao enviar documento:', err);
         alert(`Não foi possível processar o documento "${file.name}".`);
@@ -1172,35 +1185,12 @@ export function DocumentProcessingSection({
         </Modal>
       )}
 
-      {/* MODAL: Ver Documento Original */}
-      {previewDoc && (
-        <Modal
-          isOpen={true}
-          onClose={() => setPreviewDoc(null)}
-          title={`Visualizador Original - ${previewDoc.name}`}
-        >
-          <div className="space-y-3">
-            {previewDoc.dataUrl?.startsWith('data:image') ? (
-              <img
-                src={previewDoc.dataUrl}
-                alt={previewDoc.name}
-                className="max-h-[500px] w-auto mx-auto rounded-lg border"
-              />
-            ) : (
-              <iframe
-                src={previewDoc.dataUrl || previewDoc.fileUrl}
-                className="w-full h-[500px] rounded-lg border border-slate-200"
-                title={previewDoc.name}
-              />
-            )}
-            <div className="flex justify-end pt-2">
-              <Button size="sm" onClick={() => setPreviewDoc(null)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* MODAL: Visualizador Universal de Documentos, PDF & OCR */}
+      <UniversalDocumentViewerModal
+        isOpen={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        document={previewDoc}
+      />
     </div>
   );
 }
