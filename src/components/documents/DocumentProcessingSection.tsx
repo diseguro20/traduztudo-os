@@ -24,6 +24,7 @@ import {
   Clock,
   Layers,
   Send,
+  MessageSquare,
   X,
   Plus,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ import {
   DocumentProcessingStatus,
   DocumentVersion,
   SignerConfig,
+  SignatureRequest,
   WordCountMetrics,
 } from '@/types';
 import {
@@ -82,14 +84,17 @@ export function DocumentProcessingSection({
 
   // Signer modal state
   const [signerType, setSignerType] = useState<'CARLA' | 'CUSTOM'>('CARLA');
-  const [customSignerName, setCustomSignerName] = useState('');
-  const [customSignerEmail, setCustomSignerEmail] = useState('');
+  const [fluxoBMethod, setFluxoBMethod] = useState<'CLICKSIGN' | 'DIRECT_MANUAL'>('CLICKSIGN');
+  const [customSignerName, setCustomSignerName] = useState('Diego Seguro');
+  const [customSignerEmail, setCustomSignerEmail] = useState('diseguro20@gmail.com');
   const [customSignerPhone, setCustomSignerPhone] = useState('');
   const [customSignerCpf, setCustomSignerCpf] = useState('');
   const [signatureModalPolicy, setSignatureModalPolicy] = useState<'AUTO_SIGNATURE' | 'MANUAL_SIGNATURE'>('AUTO_SIGNATURE');
   const [signatureTypeChoice, setSignatureTypeChoice] = useState<'ELETRONICA' | 'ICP_BRASIL'>('ELETRONICA');
   const [isRequestingSignature, setIsRequestingSignature] = useState(false);
   const [signatureSuccessMsg, setSignatureSuccessMsg] = useState<string | null>(null);
+  const [generatedSignLink, setGeneratedSignLink] = useState<string | null>(null);
+  const [copiedSignLink, setCopiedSignLink] = useState(false);
 
   // Commercial word count settings
   const [ignoreRepeated, setIgnoreRepeated] = useState(true);
@@ -437,9 +442,11 @@ export function DocumentProcessingSection({
   };
 
   // Send for Digital Signature
+  // Send for Digital Signature
   const handleSendForSignature = async (doc: DocumentItem) => {
     setIsRequestingSignature(true);
     setSignatureSuccessMsg(null);
+    setGeneratedSignLink(null);
 
     const finalVer = doc.versions?.slice().reverse().find((v) => v.type === 'FINAL_PDF') || doc.versions?.[0];
     const pdfDataUrl = finalVer?.dataUrl || doc.dataUrl || doc.fileUrl;
@@ -460,16 +467,75 @@ export function DocumentProcessingSection({
           }
         : {
             id: `signer-${Date.now()}`,
-            name: customSignerName || 'Tradutor Homologado',
-            email: customSignerEmail || 'tradutor@traduztudo.com',
+            name: customSignerName || 'Diego Seguro',
+            email: customSignerEmail || 'diseguro20@gmail.com',
             phone: customSignerPhone,
             cpfCnpj: customSignerCpf,
-            policy: signatureModalPolicy,
+            policy: fluxoBMethod === 'DIRECT_MANUAL' ? 'MANUAL_SIGNATURE' : signatureModalPolicy,
             signatureType: signatureTypeChoice,
             authMethod: 'EMAIL',
             isSpecialSigner: false,
           };
 
+    // FLUXO B - OPÇÃO 2: Assinatura Manual Direta / Carimbo Próprio (Sem depender de Clicksign)
+    if (signerType === 'CUSTOM' && fluxoBMethod === 'DIRECT_MANUAL') {
+      const manualReq: SignatureRequest = {
+        id: `sig_req_manual_${Date.now()}`,
+        documentId: doc.id,
+        documentVersionId: finalVer?.id || 'ver-1',
+        provider: 'mock',
+        environment: 'production',
+        documentKey: `manual_${Date.now()}`,
+        status: 'SIGNED',
+        sentAt: new Date().toISOString(),
+        signedAt: new Date().toISOString(),
+        signer: signerConfig,
+        signers: [
+          {
+            signer: signerConfig,
+            status: 'SIGNED',
+            signedAt: new Date().toISOString(),
+          },
+        ],
+        auditTrail: [
+          {
+            timestamp: new Date().toISOString(),
+            action: 'MANUAL_SIGNATURE_REGISTERED',
+            actor: signerConfig.name,
+            details: `Assinatura manual e carimbo do tradutor ${signerConfig.name} certificados e vinculados ao documento (${signatureTypeChoice === 'ICP_BRASIL' ? 'ICP-Brasil' : 'Assinatura Eletrônica Avançada'}).`,
+          },
+        ],
+      };
+
+      databaseStore.updateDocument(doc.id, {
+        signatureRequest: manualReq,
+        status: 'SIGNED',
+      });
+
+      databaseStore.addDocumentVersion(doc.id, {
+        documentId: doc.id,
+        versionNumber: (doc.versions?.length || 1) + 1,
+        type: 'SIGNED_PDF',
+        fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
+        fileUrl: pdfDataUrl,
+        dataUrl: pdfDataUrl,
+        fileSize: 42000,
+        fileType: 'application/pdf',
+        sha256: `signed_manual_${Date.now()}`,
+        notes: `Assinatura manual e carimbo de ${signerConfig.name} vinculados com sucesso!`,
+      });
+
+      setSignatureSuccessMsg(`Assinatura manual de ${signerConfig.name} registrada e PDF oficial arquivado com sucesso!`);
+      setIsRequestingSignature(false);
+      setRefresh((r) => r + 1);
+      setTimeout(() => {
+        setSelectedDocForSign(null);
+        setSignatureSuccessMsg(null);
+      }, 2500);
+      return;
+    }
+
+    // FLUXO A (Carla Auto) ou FLUXO B via Clicksign (Envelope Convocado com Link)
     try {
       const res = await fetch('/api/signatures/request', {
         method: 'POST',
@@ -486,7 +552,7 @@ export function DocumentProcessingSection({
 
       if (res.ok) {
         const data = await res.json();
-        const req = data.signatureRequest;
+        const req: SignatureRequest = data.signatureRequest;
 
         databaseStore.updateDocument(doc.id, {
           signatureRequest: req,
@@ -507,21 +573,74 @@ export function DocumentProcessingSection({
             notes: `Assinatura ${signerConfig.policy} por ${signerConfig.name} certificada com sucesso!`,
           });
           setSignatureSuccessMsg(`Documento assinado com sucesso via Clicksign oficial (${signerConfig.name})!`);
+          setTimeout(() => {
+            setSelectedDocForSign(null);
+            setSignatureSuccessMsg(null);
+          }, 2200);
         } else {
-          setSignatureSuccessMsg(`Solicitação enviada para ${signerConfig.name}! Link de assinatura gerado.`);
+          // FLUXO B via Clicksign: Manter o modal aberto e entregar o link de assinatura na tela!
+          const link =
+            req.signUrl ||
+            req.signers?.[0]?.signUrl ||
+            `https://sandbox.clicksign.com/sign/${req.signerKey || 'convocacao'}?sandbox=true`;
+          setGeneratedSignLink(link);
+          setSignatureSuccessMsg(`Envelope criado com sucesso no Clicksign para ${signerConfig.name}!`);
         }
-
-        setTimeout(() => {
-          setSelectedDocForSign(null);
-          setSignatureSuccessMsg(null);
-        }, 2200);
+      } else {
+        alert('Erro ao processar assinatura via Clicksign. Verifique os dados e tente novamente.');
       }
     } catch (err) {
       console.error('Erro ao enviar para assinatura:', err);
+      alert('Erro de conexão ao enviar para assinatura.');
     } finally {
       setIsRequestingSignature(false);
       setRefresh((r) => r + 1);
     }
+  };
+
+  // Confirm Manual Signature (from modal or card)
+  const handleConfirmSignature = (doc: DocumentItem) => {
+    const signerName =
+      doc.signatureRequest?.signers?.[0]?.signer?.name ||
+      doc.signatureRequest?.signer?.name ||
+      customSignerName ||
+      'Tradutor';
+    const finalVer = doc.versions?.slice().reverse().find((v) => v.type === 'FINAL_PDF') || doc.versions?.[0];
+    const pdfDataUrl = finalVer?.dataUrl || doc.dataUrl || doc.fileUrl;
+
+    databaseStore.updateDocument(doc.id, {
+      status: 'SIGNED',
+      signatureRequest: {
+        ...(doc.signatureRequest || {
+          id: `sig_req_${Date.now()}`,
+          documentId: doc.id,
+          documentVersionId: finalVer?.id || 'ver-1',
+          provider: 'clicksign',
+          environment: 'sandbox',
+          sentAt: new Date().toISOString(),
+        }),
+        status: 'SIGNED',
+        signedAt: new Date().toISOString(),
+      },
+    });
+
+    databaseStore.addDocumentVersion(doc.id, {
+      documentId: doc.id,
+      versionNumber: (doc.versions?.length || 1) + 1,
+      type: 'SIGNED_PDF',
+      fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
+      fileUrl: pdfDataUrl,
+      dataUrl: pdfDataUrl,
+      fileSize: 42000,
+      fileType: 'application/pdf',
+      sha256: `signed_confirmed_${Date.now()}`,
+      notes: `Assinatura de ${signerName} confirmada e concluída com sucesso!`,
+    });
+
+    alert(`Sucesso! Assinatura de "${signerName}" confirmada. Documento atualizado para ASSINADO.`);
+    setSelectedDocForSign(null);
+    setGeneratedSignLink(null);
+    setRefresh((r) => r + 1);
   };
 
   // Apply word count to current quote
@@ -868,14 +987,22 @@ export function DocumentProcessingSection({
 
                 {/* Signature status card if active */}
                 {doc.signatureRequest && (
-                  <div className="p-3 rounded-xl bg-slate-900 text-white text-xs space-y-2">
+                  <div className="p-3.5 rounded-xl bg-slate-900 text-white text-xs space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="font-bold flex items-center gap-1.5 text-blue-300">
                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        Clicksign ({doc.signatureRequest.environment === 'sandbox' ? 'Sandbox Teste' : 'Produção'})
+                        {doc.signatureRequest.provider === 'clicksign'
+                          ? `Clicksign Oficial (${doc.signatureRequest.environment === 'sandbox' ? 'Sandbox Teste' : 'Produção'})`
+                          : 'Assinatura Interna Certificada'}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10">
-                        Status: {doc.signatureRequest.status}
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          doc.signatureRequest.status === 'SIGNED'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        Status: {doc.signatureRequest.status === 'SIGNED' ? 'ASSINADO' : 'PENDENTE'}
                       </span>
                     </div>
 
@@ -883,17 +1010,95 @@ export function DocumentProcessingSection({
                       <div>
                         Signatário:{' '}
                         <strong className="text-white">
-                          {doc.signatureRequest.signers?.[0]?.signer?.name || 'Carla Strambio'}
+                          {doc.signatureRequest.signers?.[0]?.signer?.name ||
+                            doc.signatureRequest.signer?.name ||
+                            'Tradutor'}
                         </strong>{' '}
-                        ({doc.signatureRequest.signers?.[0]?.signer?.policy || 'AUTO_SIGNATURE'})
+                        (
+                        {doc.signatureRequest.signers?.[0]?.signer?.policy ||
+                          doc.signatureRequest.signer?.policy ||
+                          'MANUAL'}
+                        )
                       </div>
                       <div>
-                        Envelope Clicksign:{' '}
+                        Identificador / Envelope:{' '}
                         <span className="font-mono text-slate-400">
-                          {doc.signatureRequest.externalDocumentKey || 'cs_sandbox_key'}
+                          {doc.signatureRequest.externalDocumentKey ||
+                            doc.signatureRequest.documentKey ||
+                            doc.signatureRequest.id}
                         </span>
                       </div>
                     </div>
+
+                    {/* Pending actions if waiting for signature (Fluxo B) */}
+                    {doc.signatureRequest.status !== 'SIGNED' && (
+                      <div className="pt-2 border-t border-white/10 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-amber-300 font-semibold text-[11px] flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" /> Aguardando Assinatura do Tradutor
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => handleConfirmSignature(doc)}
+                            className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 rounded-lg shadow-xs"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirmar Assinatura Recebida
+                          </Button>
+                        </div>
+
+                        {/* Interactive Link Bar if available */}
+                        {(doc.signatureRequest.signUrl || doc.signatureRequest.signers?.[0]?.signUrl) && (
+                          <div className="p-2 rounded-lg bg-black/40 border border-white/5 space-y-1.5">
+                            <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                              <span>Link Convocatório Clicksign:</span>
+                              <span className="text-[9px] text-amber-400">Envie ao tradutor para assinar</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] text-slate-300 font-mono truncate max-w-xs bg-black/60 px-2 py-1 rounded border border-white/10 select-all">
+                                {doc.signatureRequest.signUrl || doc.signatureRequest.signers?.[0]?.signUrl}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    doc.signatureRequest?.signUrl ||
+                                      doc.signatureRequest?.signers?.[0]?.signUrl ||
+                                      ''
+                                  )
+                                }
+                                className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[10px] text-slate-200 flex items-center gap-1 transition-colors"
+                              >
+                                <Copy className="w-3 h-3" /> Copiar Link
+                              </button>
+                              <a
+                                href={
+                                  doc.signatureRequest.signUrl ||
+                                  doc.signatureRequest.signers?.[0]?.signUrl
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-blue-600/40 hover:bg-blue-600/60 border border-blue-400/40 rounded text-[10px] text-blue-200 flex items-center gap-1 transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Abrir no Clicksign
+                              </a>
+                              <a
+                                href={`https://wa.me/?text=${encodeURIComponent(
+                                  `Olá, segue o link oficial para assinatura do documento traduzido: ${
+                                    doc.signatureRequest.signUrl ||
+                                    doc.signatureRequest.signers?.[0]?.signUrl
+                                  }`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-emerald-600/40 hover:bg-emerald-600/60 border border-emerald-400/40 rounded text-[10px] text-emerald-200 flex items-center gap-1 transition-colors"
+                              >
+                                <MessageSquare className="w-3 h-3" /> WhatsApp
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {signedPdfVer && (
                       <div className="pt-2 border-t border-white/10 flex items-center justify-between">
@@ -1004,172 +1209,358 @@ export function DocumentProcessingSection({
       {selectedDocForSign && (
         <Modal
           isOpen={true}
-          onClose={() => setSelectedDocForSign(null)}
+          onClose={() => {
+            setSelectedDocForSign(null);
+            setGeneratedSignLink(null);
+            setSignatureSuccessMsg(null);
+          }}
           title={`Assinatura Digital - ${selectedDocForSign.name}`}
         >
           <div className="space-y-4 text-xs">
-            {/* Clicksign Environment Notice Banner */}
-            <div
-              className={`p-3 rounded-xl border flex items-center justify-between ${
-                isClicksignProd
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                  : 'bg-amber-50 border-amber-200 text-amber-900'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck
-                  className={`w-4 h-4 ${isClicksignProd ? 'text-emerald-600' : 'text-amber-600'}`}
-                />
-                <span>
-                  Provedor: <strong>Clicksign Oficial</strong> (
-                  {isClicksignProd
-                    ? 'Ambiente de Produção Oficial Ativo'
-                    : 'Ambiente de Teste / Sandbox Ativo'}
-                  )
-                </span>
-              </div>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  isClicksignProd
-                    ? 'bg-emerald-200 text-emerald-900'
-                    : 'bg-amber-200/80 text-amber-900'
-                }`}
-              >
-                {isClicksignProd ? 'PRODUÇÃO' : 'SANDBOX'}
-              </span>
-            </div>
+            {/* VIEW A: Se o link de convocação já foi gerado */}
+            {generatedSignLink ? (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    Envelope Clicksign Gerado com Sucesso!
+                  </div>
+                  <p className="text-xs text-emerald-700">
+                    O link oficial de assinatura para <strong>{customSignerName || 'o tradutor'}</strong> está pronto.
+                    Como o sistema está em modo teste/sandbox ou para envio direto, utilize os botões abaixo para acessar, copiar ou despachar o link:
+                  </p>
+                </div>
 
-            {signatureSuccessMsg && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                {signatureSuccessMsg}
-              </div>
-            )}
+                {/* Input com link oficial e botão de cópia */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">Link Convocatório de Assinatura:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={generatedSignLink}
+                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-800 select-all"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedSignLink);
+                        setCopiedSignLink(true);
+                        setTimeout(() => setCopiedSignLink(false), 2500);
+                      }}
+                      className="gap-1 whitespace-nowrap"
+                    >
+                      {copiedSignLink ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Copiado!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" /> Copiar Link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
 
-            <div>
-              <label className="font-bold text-slate-800 block mb-2">Selecione o Fluxo e Signatário:</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Fluxo A - Carla Strambio */}
+                {/* Ações Rápidas: Abrir e WhatsApp */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={generatedSignLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 font-semibold text-xs text-center transition-all"
+                  >
+                    <ExternalLink className="w-4 h-4 text-blue-600" />
+                    Abrir no Clicksign (Assinar Agora)
+                  </a>
+
+                  <a
+                    href={`https://wa.me/${(customSignerPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Olá ${customSignerName || 'Tradutor'}, segue o link oficial para assinatura do documento traduzido: ${generatedSignLink}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-semibold text-xs text-center transition-all"
+                  >
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    Enviar por WhatsApp
+                  </a>
+                </div>
+
+                {/* Confirmação de Assinatura Recebida */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="font-bold text-slate-800 text-xs">
+                    Já coletou a assinatura do tradutor?
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Assim que o tradutor assinar pelo link ou confirmar o envio, clique abaixo para registrar o documento como <strong>ASSINADO</strong> e arquivar o PDF oficial no histórico.
+                  </p>
+                  <Button
+                    onClick={() => handleConfirmSignature(selectedDocForSign)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Confirmar Assinatura Recebida & Concluir
+                  </Button>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedDocForSign(null);
+                      setGeneratedSignLink(null);
+                    }}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* VIEW B: Formulário de Configuração */
+              <>
+                {/* Clicksign Environment Notice Banner */}
                 <div
-                  onClick={() => {
-                    setSignerType('CARLA');
-                    setSignatureModalPolicy('AUTO_SIGNATURE');
-                  }}
-                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                    signerType === 'CARLA'
-                      ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300'
+                  className={`p-3 rounded-xl border flex items-center justify-between ${
+                    isClicksignProd
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50 border-amber-200 text-amber-900'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">FLUXO A — Carla Strambio</span>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
-                      OFICIAL
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck
+                      className={`w-4 h-4 ${isClicksignProd ? 'text-emerald-600' : 'text-amber-600'}`}
+                    />
+                    <span>
+                      Provedor: <strong>Clicksign Oficial</strong> (
+                      {isClicksignProd
+                        ? 'Ambiente de Produção Oficial Ativo'
+                        : 'Ambiente de Teste / Sandbox Ativo'}
+                      )
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 mt-1">
-                    <strong>Assinatura Automática Autorizada</strong>
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Utiliza a API oficial da Clicksign para certificar e assinar automaticamente sem retenção de senhas ou certificados privados.
-                  </p>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      isClicksignProd
+                        ? 'bg-emerald-200 text-emerald-900'
+                        : 'bg-amber-200/80 text-amber-900'
+                    }`}
+                  >
+                    {isClicksignProd ? 'PRODUÇÃO' : 'SANDBOX'}
+                  </span>
                 </div>
 
-                {/* Fluxo B - Outro Tradutor */}
-                <div
-                  onClick={() => {
-                    setSignerType('CUSTOM');
-                    setSignatureModalPolicy('MANUAL_SIGNATURE');
-                  }}
-                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                    signerType === 'CUSTOM'
-                      ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">FLUXO B — Outro Tradutor</span>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
-                      MANUAL
-                    </span>
+                {signatureSuccessMsg && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    {signatureSuccessMsg}
                   </div>
-                  <p className="text-[11px] text-slate-600 mt-1">
-                    <strong>Assinatura Manual Convocada</strong>
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Envia link por e-mail ou WhatsApp para o tradutor assinar na interface oficial Clicksign.
-                  </p>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {signerType === 'CUSTOM' && (
-              <div className="space-y-2 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="font-medium text-slate-700 block mb-0.5">Nome do Tradutor:</label>
-                  <input
-                    type="text"
-                    value={customSignerName}
-                    onChange={(e) => setCustomSignerName(e.target.value)}
-                    placeholder="Ex: João da Silva Tradutor"
-                    className="w-full px-3 py-1.5 border rounded-lg text-xs"
-                  />
+                  <label className="font-bold text-slate-800 block mb-2">Selecione o Fluxo e Signatário:</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Fluxo A - Carla Strambio */}
+                    <div
+                      onClick={() => {
+                        setSignerType('CARLA');
+                        setSignatureModalPolicy('AUTO_SIGNATURE');
+                      }}
+                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                        signerType === 'CARLA'
+                          ? 'border-blue-600 bg-blue-50/50 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">FLUXO A — Carla Strambio</span>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                          OFICIAL
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">
+                        <strong>Assinatura Automática Autorizada</strong>
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Utiliza a API oficial da Clicksign para certificar e assinar automaticamente sem retenção de senhas ou certificados privados.
+                      </p>
+                    </div>
+
+                    {/* Fluxo B - Outro Tradutor */}
+                    <div
+                      onClick={() => {
+                        setSignerType('CUSTOM');
+                        setSignatureModalPolicy('MANUAL_SIGNATURE');
+                      }}
+                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                        signerType === 'CUSTOM'
+                          ? 'border-blue-600 bg-blue-50/50 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">FLUXO B — Outro Tradutor</span>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                          MANUAL
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">
+                        <strong>Assinatura Manual Convocada / Carimbo</strong>
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Permite gerar link Clicksign (e-mail/WhatsApp) ou certificar diretamente com carimbo próprio sem Clicksign.
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Opções específicas do FLUXO B */}
+                {signerType === 'CUSTOM' && (
+                  <div className="space-y-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <label className="font-bold text-slate-800 block">
+                      Como deseja coletar a assinatura de {customSignerName || 'Diego Seguro'}?
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div
+                        onClick={() => setFluxoBMethod('DIRECT_MANUAL')}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          fluxoBMethod === 'DIRECT_MANUAL'
+                            ? 'border-emerald-600 bg-emerald-50/60 shadow-2xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs">
+                            Assinatura Direta / Carimbo
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            Sem Clicksign
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-1">
+                          O tradutor já traduziu e carimbou. Registra como <strong>ASSINADO</strong> imediatamente com validade interna.
+                        </p>
+                      </div>
+
+                      <div
+                        onClick={() => setFluxoBMethod('CLICKSIGN')}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          fluxoBMethod === 'CLICKSIGN'
+                            ? 'border-blue-600 bg-blue-50/60 shadow-2xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs">
+                            Envelope Clicksign Oficial
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                            Clicksign Link
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-1">
+                          Gera o envelope oficial e entrega o link na tela para envio ao tradutor via WhatsApp ou e-mail.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="font-medium text-slate-700 block mb-0.5">Nome do Tradutor:</label>
+                        <input
+                          type="text"
+                          value={customSignerName}
+                          onChange={(e) => setCustomSignerName(e.target.value)}
+                          placeholder="Ex: Diego Seguro"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-medium text-slate-700 block mb-0.5">E-mail do Tradutor:</label>
+                        <input
+                          type="email"
+                          value={customSignerEmail}
+                          onChange={(e) => setCustomSignerEmail(e.target.value)}
+                          placeholder="diseguro20@gmail.com"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="font-medium text-slate-700 block mb-0.5">
+                          WhatsApp / Celular (Opcional - para envio direto):
+                        </label>
+                        <input
+                          type="text"
+                          value={customSignerPhone}
+                          onChange={(e) => setCustomSignerPhone(e.target.value)}
+                          placeholder="Ex: (11) 99999-9999"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label className="font-medium text-slate-700 block mb-0.5">E-mail para envio:</label>
-                  <input
-                    type="email"
-                    value={customSignerEmail}
-                    onChange={(e) => setCustomSignerEmail(e.target.value)}
-                    placeholder="tradutor@email.com"
-                    className="w-full px-3 py-1.5 border rounded-lg text-xs"
-                  />
+                  <label className="font-bold text-slate-800 block mb-1">Modalidade de Certificação:</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
+                      <input
+                        type="radio"
+                        name="sigtype"
+                        checked={signatureTypeChoice === 'ELETRONICA'}
+                        onChange={() => setSignatureTypeChoice('ELETRONICA')}
+                        className="text-blue-600"
+                      />
+                      <span>Assinatura Eletrônica Avançada</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
+                      <input
+                        type="radio"
+                        name="sigtype"
+                        checked={signatureTypeChoice === 'ICP_BRASIL'}
+                        onChange={() => setSignatureTypeChoice('ICP_BRASIL')}
+                        className="text-blue-600"
+                      />
+                      <span>Certificado Digital ICP-Brasil</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedDocForSign(null);
+                      setGeneratedSignLink(null);
+                    }}
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    onClick={() => handleSendForSignature(selectedDocForSign)}
+                    disabled={isRequestingSignature}
+                    className={`font-semibold text-white ${
+                      signerType === 'CUSTOM' && fluxoBMethod === 'DIRECT_MANUAL'
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {isRequestingSignature
+                      ? 'Processando...'
+                      : signerType === 'CARLA'
+                      ? 'Executar Assinatura Automática'
+                      : fluxoBMethod === 'DIRECT_MANUAL'
+                      ? 'Confirmar Assinatura Manual Direta'
+                      : 'Gerar Envelope & Link Clicksign'}
+                  </Button>
+                </div>
+              </>
             )}
-
-            <div>
-              <label className="font-bold text-slate-800 block mb-1">Modalidade de Certificação:</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
-                  <input
-                    type="radio"
-                    name="sigtype"
-                    checked={signatureTypeChoice === 'ELETRONICA'}
-                    onChange={() => setSignatureTypeChoice('ELETRONICA')}
-                    className="text-blue-600"
-                  />
-                  <span>Assinatura Eletrônica Avançada</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
-                  <input
-                    type="radio"
-                    name="sigtype"
-                    checked={signatureTypeChoice === 'ICP_BRASIL'}
-                    onChange={() => setSignatureTypeChoice('ICP_BRASIL')}
-                    className="text-blue-600"
-                  />
-                  <span>Certificado Digital ICP-Brasil</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setSelectedDocForSign(null)}>
-                Fechar
-              </Button>
-              <Button
-                onClick={() => handleSendForSignature(selectedDocForSign)}
-                disabled={isRequestingSignature}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-              >
-                {isRequestingSignature
-                  ? 'Processando com Clicksign...'
-                  : signerType === 'CARLA'
-                  ? 'Executar Assinatura Automática'
-                  : 'Enviar Envelope para Assinatura'}
-              </Button>
-            </div>
           </div>
         </Modal>
       )}

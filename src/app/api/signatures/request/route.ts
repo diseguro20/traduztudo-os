@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       externalDocumentKey: docResult.documentKey,
       status: overallStatus,
       environment: clicksignProvider.isSandbox ? 'sandbox' : 'production',
+      signUrl: listResult.signUrl || signerResult.signUrl,
       sentAt: new Date().toISOString(),
       completedAt: signedAt,
       signers: [
