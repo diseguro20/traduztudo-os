@@ -214,6 +214,25 @@ class DatabaseStore {
   private saveToLocalStorage() {
     if (typeof window === 'undefined') return;
     try {
+      const sanitizedDocuments = this.documents.map((d) => {
+        const docCopy = { ...d };
+        if (docCopy.dataUrl && docCopy.dataUrl.length > 50000) {
+          docCopy.dataUrl = docCopy.dataUrl.substring(0, 100);
+        }
+        if (docCopy.fileUrl && docCopy.fileUrl.startsWith('data:') && docCopy.fileUrl.length > 50000) {
+          docCopy.fileUrl = docCopy.fileUrl.substring(0, 100);
+        }
+        if (Array.isArray(docCopy.versions)) {
+          docCopy.versions = docCopy.versions.map((v) => {
+            const verCopy = { ...v };
+            if (verCopy.dataUrl && verCopy.dataUrl.length > 50000) verCopy.dataUrl = verCopy.dataUrl.substring(0, 100);
+            if (verCopy.fileUrl && verCopy.fileUrl.startsWith('data:') && verCopy.fileUrl.length > 50000) verCopy.fileUrl = verCopy.fileUrl.substring(0, 100);
+            return verCopy;
+          });
+        }
+        return docCopy;
+      });
+
       const payload = {
         tenant: this.tenant,
         users: this.users,
@@ -224,7 +243,7 @@ class DatabaseStore {
         requests: this.requests,
         quotes: this.quotes,
         workOrders: this.workOrders,
-        documents: this.documents,
+        documents: sanitizedDocuments,
         tasks: this.tasks,
         translators: this.translators,
         reviewers: this.reviewers,
@@ -1567,6 +1586,9 @@ class DatabaseStore {
       return this.documents.filter((d) => d.workOrderId === filter);
     }
     if (filter) {
+      if (!filter.workOrderId && !filter.quoteId) {
+        return this.documents;
+      }
       return this.documents.filter((d) => {
         if (filter.workOrderId && d.workOrderId !== filter.workOrderId) return false;
         if (filter.quoteId && d.quoteId !== filter.quoteId) return false;

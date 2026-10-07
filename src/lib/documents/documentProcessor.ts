@@ -367,8 +367,8 @@ export async function generateDocxFromText(
     ],
   });
 
-  const buffer = await Packer.toBuffer(doc);
-  return `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${Buffer.from(buffer).toString('base64')}`;
+  const base64Docx = await Packer.toBase64String(doc);
+  return `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64Docx}`;
 }
 
 // Generate Official Final PDF from DOCX or translated text
@@ -471,8 +471,7 @@ export async function generateFinalPdf(
   }
 
   const pdfBytes = await pdfDoc.save();
-  const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
-  const pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`;
+  const pdfDataUrl = await pdfDoc.saveAsBase64({ dataUri: true });
   const sha256 = await calculateSha256(pdfBytes);
 
   return { pdfDataUrl, sha256 };
