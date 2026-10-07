@@ -226,6 +226,8 @@ export interface Quote {
   requestId?: string;
   assignedUserId: string;
   assignedUserName: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
   issueDate: string;
   expirationDate: string;
   estimatedDeliveryDays: number;

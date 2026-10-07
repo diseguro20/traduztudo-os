@@ -269,11 +269,18 @@ export default function OrcamentosPage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-slate-700">
-                        <p className="font-medium">
+                        <p className="font-semibold text-slate-900">
                           {q.items[0]?.serviceName || 'Serviço'}
                         </p>
+                        {(q.sourceLanguage || q.items[0]?.sourceLanguage || q.targetLanguage || q.items[0]?.targetLanguage) && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                              🌐 {q.sourceLanguage || q.items[0]?.sourceLanguage || 'Português'} → {q.targetLanguage || q.items[0]?.targetLanguage || 'Inglês'}
+                            </span>
+                          </div>
+                        )}
                         {q.items.length > 1 && (
-                          <p className="text-slate-400">+{q.items.length - 1} outro(s) item(ns)</p>
+                          <p className="text-slate-400 mt-0.5">+{q.items.length - 1} outro(s) item(ns)</p>
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-slate-500 space-y-0.5">
@@ -411,6 +418,11 @@ export default function OrcamentosPage() {
                 <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
                   {selectedQuoteForDocs.items[0]?.serviceName || 'Tradução'}
                 </span>
+                {(selectedQuoteForDocs.sourceLanguage || selectedQuoteForDocs.items[0]?.sourceLanguage || selectedQuoteForDocs.targetLanguage || selectedQuoteForDocs.items[0]?.targetLanguage) && (
+                  <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                    🌐 {selectedQuoteForDocs.sourceLanguage || selectedQuoteForDocs.items[0]?.sourceLanguage || 'Português'} → {selectedQuoteForDocs.targetLanguage || selectedQuoteForDocs.items[0]?.targetLanguage || 'Inglês'}
+                  </span>
+                )}
                 {selectedQuoteForDocs.customerPhone && (
                   <a
                     href={`https://wa.me/55${selectedQuoteForDocs.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(

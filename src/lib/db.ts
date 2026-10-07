@@ -1033,6 +1033,8 @@ class DatabaseStore {
       requestId: newReq.id,
       assignedUserId: this.users[0]?.id || 'user-diego',
       assignedUserName: this.users[0]?.name || 'Diego',
+      sourceLanguage: newReq.sourceLanguage,
+      targetLanguage: newReq.targetLanguage,
       issueDate: new Date().toISOString(),
       expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       estimatedDeliveryDays: 2,
@@ -1057,6 +1059,7 @@ class DatabaseStore {
       total: 0,
       conditions: 'Validade de 7 dias úteis. Pagamento via Pix ou Cartão em até 12x.',
       notes: [
+        `Idiomas: ${newReq.sourceLanguage} → ${newReq.targetLanguage}`,
         newReq.notes || '',
         newReq.files && newReq.files.length > 0
           ? `Documentos anexados (${newReq.files.length}): ${newReq.files.map((f: any) => typeof f === 'string' ? f : f.name).join(', ')}`
@@ -1197,6 +1200,8 @@ class DatabaseStore {
       requestId: newReq.id,
       assignedUserId: this.users[0]?.id || 'user-diego',
       assignedUserName: this.users[0]?.name || 'Diego',
+      sourceLanguage: newReq.sourceLanguage,
+      targetLanguage: newReq.targetLanguage,
       issueDate: new Date().toISOString(),
       expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       estimatedDeliveryDays: 2,
@@ -1221,6 +1226,7 @@ class DatabaseStore {
       total: 0,
       conditions: 'Validade de 7 dias úteis. Pagamento via Pix ou Cartão em até 12x.',
       notes: [
+        `Idiomas: ${newReq.sourceLanguage} → ${newReq.targetLanguage}`,
         newReq.notes || '',
         newReq.files && newReq.files.length > 0
           ? `Documentos anexados (${newReq.files.length}): ${newReq.files.map((f: any) => typeof f === 'string' ? f : f.name).join(', ')}`
