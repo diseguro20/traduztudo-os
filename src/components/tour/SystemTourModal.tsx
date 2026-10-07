@@ -98,7 +98,14 @@ export function SystemTourModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isDismissed, setIsDismissed] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('traduztudo_tour_pill_dismissed') === 'true') {
+      setIsDismissed(true);
+    }
+  }, []);
 
   const playSfx = () => {
     if (!soundEnabled || typeof window === 'undefined') return;
@@ -206,21 +213,34 @@ export function SystemTourModal() {
   return (
     <>
       {/* Small Floating Reopen Button (if closed) */}
-      {!isOpen && (
-        <div className="fixed bottom-5 right-5 z-50">
+      {!isOpen && !isDismissed && (
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 right-4 lg:right-6 z-50 flex items-center">
           <button
             onClick={() => startTour(0)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xl transition-all hover:scale-105 active:scale-95 border border-blue-400/40"
+            className="flex items-center gap-2 pl-3.5 pr-2 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xl transition-all hover:scale-105 active:scale-95 border border-blue-400/40 group"
           >
-            <Sparkles className="w-4 h-4 text-cyan-200" />
+            <Sparkles className="w-4 h-4 text-cyan-200 shrink-0" />
             <span>Ver Passo a Passo</span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsDismissed(true);
+                sessionStorage.setItem('traduztudo_tour_pill_dismissed', 'true');
+              }}
+              className="ml-1 p-0.5 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+              title="Ocultar botão"
+            >
+              <X className="w-3.5 h-3.5" />
+            </span>
           </button>
         </div>
       )}
 
       {/* COMPACT & FOCUSED POP-UP CARD (ANCHORED AT BOTTOM-RIGHT, NOT BLOCKING SCREEN) */}
       {isOpen && currentStep && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm sm:max-w-md w-full animate-in slide-in-from-bottom-4 duration-200 px-3 sm:px-0">
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-full animate-in slide-in-from-bottom-4 duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-500 overflow-hidden flex flex-col">
             
             {/* Top Minimal Progress Bar */}

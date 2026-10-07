@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   Trash2,
+  Edit3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -32,6 +33,16 @@ export default function ContasPagarPage() {
   const [category, setCategory] = useState('tradutores');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Edit Form state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPayId, setEditPayId] = useState<string | null>(null);
+  const [editRecipientName, setEditRecipientName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editAmount, setEditAmount] = useState('0');
+  const [editCategory, setEditCategory] = useState('tradutores');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editStatus, setEditStatus] = useState<'pendente' | 'pago' | 'vencido'>('pendente');
+
   const payables = databaseStore.getPayables().filter((p) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -52,6 +63,34 @@ export default function ContasPagarPage() {
 
   const handleMarkPaid = (id: string) => {
     databaseStore.markPayablePaid(id);
+    setRefresh((r) => r + 1);
+  };
+
+  const openEditModal = (pay: any) => {
+    setEditPayId(pay.id);
+    setEditRecipientName(pay.recipientName);
+    setEditDesc(pay.description);
+    setEditAmount(String(pay.amount));
+    setEditCategory(pay.category);
+    setEditDueDate(pay.dueDate ? pay.dueDate.split('T')[0] : '');
+    setEditStatus(pay.status);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPayId) return;
+    databaseStore.updatePayable(editPayId, {
+      recipientName: editRecipientName,
+      description: editDesc,
+      amount: parseFloat(editAmount) || 0,
+      category: editCategory,
+      dueDate: editDueDate ? new Date(editDueDate).toISOString() : undefined,
+      status: editStatus,
+      paidAt: editStatus === 'pago' ? new Date().toISOString() : undefined,
+    });
+    setIsEditModalOpen(false);
+    setEditPayId(null);
     setRefresh((r) => r + 1);
   };
 
@@ -79,38 +118,38 @@ export default function ContasPagarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ArrowUpCircle className="w-6 h-6 text-rose-600" /> Contas a Pagar
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <ArrowUpCircle className="w-5 h-5 sm:w-6 h-6 text-rose-600" /> Contas a Pagar
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Controle de honorários de tradutores, taxas cartorárias, infraestrutura e custos operacionais.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs bg-rose-600 hover:bg-rose-700">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto bg-rose-600 hover:bg-rose-700">
           <Plus className="w-4 h-4" /> Nova Conta a Pagar
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">Total Quitado</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalPaid)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalPaid)}</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">A Liquidar</span>
-          <p className="text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalPending)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalPending)}</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">Títulos Cadastrados</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{payables.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{payables.length}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -123,8 +162,8 @@ export default function ContasPagarPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Favorecido / Beneficiário</th>
@@ -171,6 +210,14 @@ export default function ContasPagarPage() {
                           <CheckCircle2 className="w-3.5 h-3.5" /> Liquidado
                         </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(pay)}
+                        className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Editar conta a pagar"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -271,12 +318,115 @@ export default function ContasPagarPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" variant="primary" className="bg-rose-600 hover:bg-rose-700">
               Registrar Conta a Pagar
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Editar Conta a Pagar"
+        description="Atualize o favorecido, valor, categoria, vencimento ou status deste pagamento."
+      >
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+              Favorecido / Fornecedor *
+            </label>
+            <input
+              type="text"
+              required
+              value={editRecipientName}
+              onChange={(e) => setEditRecipientName(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+              Descrição do Custo *
+            </label>
+            <input
+              type="text"
+              required
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Categoria
+              </label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+              >
+                <option value="tradutores">Tradutores</option>
+                <option value="revisores">Revisores</option>
+                <option value="software">Software / Infra</option>
+                <option value="marketing">Marketing</option>
+                <option value="impostos">Impostos</option>
+                <option value="outros">Outros / Cartório</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Valor (R$) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Data Vencimento
+              </label>
+              <input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Status
+              </label>
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as any)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-bold"
+              >
+                <option value="pendente">Pendente</option>
+                <option value="pago">Liquidado / Pago</option>
+                <option value="vencido">Vencido</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary">
+              Salvar Alterações
             </Button>
           </div>
         </form>

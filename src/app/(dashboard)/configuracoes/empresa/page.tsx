@@ -30,10 +30,10 @@ export default function EmpresaConfigPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Building2 className="w-6 h-6 text-blue-600" /> Configurações da Empresa
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <Building2 className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Configurações da Empresa
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
           Dados cadastrais da empresa tradutora, identificação no portal e plano de assinatura SaaS.
         </p>
       </div>

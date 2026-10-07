@@ -95,25 +95,25 @@ export default function SolicitacoesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <Inbox className="w-6 h-6 text-blue-600" /> Solicitações de Orçamento
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Solicitações inbound recebidas pelo site TraduzTudo (https://traduztudo.vercel.app/) ou canais digitais.
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Solicitações inbound recebidas pelo site TraduzTudo (https://traduztudo.com) ou canais digitais.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs">
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs w-full sm:w-auto justify-center">
             <Plus className="w-4 h-4" /> Simular Nova Solicitação
           </Button>
         </div>
       </div>
 
       {/* Integration Info Banner */}
-      <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-blue-900">
+      <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-blue-900">
         <div className="flex items-center gap-2.5">
           <Globe className="w-5 h-5 text-blue-600 shrink-0" />
           <div>
@@ -133,8 +133,8 @@ export default function SolicitacoesPage() {
 
       {/* Requests Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-3.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="relative flex-1 max-w-md w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -149,8 +149,8 @@ export default function SolicitacoesPage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full text-left text-sm text-slate-600 min-w-[850px]">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Cliente</th>

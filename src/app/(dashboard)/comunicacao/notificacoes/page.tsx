@@ -30,17 +30,17 @@ export default function NotificacoesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Bell className="w-6 h-6 text-blue-600" /> Central de Notificações
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Bell className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Central de Notificações
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Alertas de novos leads, prazos vencendo, aprovações de orçamentos e pagamentos.
           </p>
         </div>
 
-        <Button variant="outline" onClick={handleMarkAllRead} className="text-xs">
+        <Button variant="outline" onClick={handleMarkAllRead} className="text-xs self-start sm:self-auto">
           Marcar todas como lidas
         </Button>
       </div>

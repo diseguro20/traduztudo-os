@@ -98,7 +98,7 @@ export default function PublicQuoteApprovalPage() {
     <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Brand Bar */}
-        <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
               TT
@@ -108,8 +108,8 @@ export default function PublicQuoteApprovalPage() {
               <p className="text-xs text-slate-500">Traduções Juramentadas e Certificadas</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-auto">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-medium">Ambiente Seguro de Aprovação Digital</span>
           </div>
         </div>
@@ -141,14 +141,14 @@ export default function PublicQuoteApprovalPage() {
         ) : null}
 
         {/* Main Quote Sheet Document */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 sm:p-10 space-y-8">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 sm:p-10 space-y-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b border-slate-200">
             <div>
               <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
                 PROPOSTA COMERCIAL {quote.code}
               </span>
-              <h1 className="text-2xl font-bold text-slate-900 mt-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2">
                 Orçamento de Serviços de Tradução
               </h1>
               <p className="text-xs text-slate-500 mt-1">
@@ -165,7 +165,7 @@ export default function PublicQuoteApprovalPage() {
           </div>
 
           {/* Client Details Box */}
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
               <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                 Dados do Contratante
@@ -179,7 +179,7 @@ export default function PublicQuoteApprovalPage() {
               <p className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                 Contato Registrado
               </p>
-              <p className="text-slate-700 mt-1">{quote.customerEmail}</p>
+              <p className="text-slate-700 mt-1 break-all">{quote.customerEmail}</p>
               <p className="text-slate-700">{quote.customerPhone}</p>
             </div>
           </div>
@@ -190,8 +190,8 @@ export default function PublicQuoteApprovalPage() {
               Detalhamento dos Serviços
             </h3>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto touch-scroll">
+              <table className="w-full text-left text-xs min-w-[550px]">
                 <thead className="bg-slate-50 text-slate-500 font-semibold uppercase border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Serviço / Descrição</th>
@@ -323,11 +323,11 @@ export default function PublicQuoteApprovalPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsRejectModalOpen(false)}>
               Voltar
             </Button>
-            <Button type="submit" variant="danger">
+            <Button type="submit" variant="danger" className="w-full sm:w-auto">
               Confirmar Recusa
             </Button>
           </div>

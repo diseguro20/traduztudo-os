@@ -66,17 +66,17 @@ export default function ServicosIdiomasPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Sliders className="w-6 h-6 text-blue-600" /> Serviços & Idiomas
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Sliders className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Serviços & Idiomas
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Tabela de preços base, prazos médios de entrega e pares de idiomas atendidos pela TraduzTudo.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button onClick={() => setIsLangModalOpen(true)} variant="outline" className="gap-1.5 text-xs">
             <Languages className="w-3.5 h-3.5" /> + Idioma
           </Button>
@@ -94,8 +94,9 @@ export default function ServicosIdiomasPage() {
           </h3>
         </div>
 
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-50/50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[700px] text-left text-sm text-slate-600">
+            <thead className="bg-slate-50/50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">Serviço</th>
               <th className="px-4 py-3">Unidade de Cobrança</th>
@@ -131,6 +132,7 @@ export default function ServicosIdiomasPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Languages Grid */}
@@ -233,7 +235,7 @@ export default function ServicosIdiomasPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsServiceModalOpen(false)}>
               Cancelar
             </Button>
@@ -282,7 +284,7 @@ export default function ServicosIdiomasPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsLangModalOpen(false)}>
               Cancelar
             </Button>

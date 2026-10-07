@@ -26,25 +26,25 @@ export default function AuditoriaPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <History className="w-6 h-6 text-blue-600" /> Trilha de Auditoria & Compliance (LGPD)
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <History className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Trilha de Auditoria & Compliance (LGPD)
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Registro imutável de todas as ações sensíveis realizadas no sistema (criação, edição, faturamento e downloads).
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+        <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-auto">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span className="font-semibold">Log Criptografado & Protegido</span>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div className="relative flex-1 max-w-md">
+        <div className="p-3 sm:p-3.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -54,13 +54,13 @@ export default function AuditoriaPage() {
               className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-500 self-end sm:self-auto">
             Total: <strong>{logs.length}</strong> eventos registrados
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[750px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Data / Hora</th>

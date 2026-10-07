@@ -92,28 +92,35 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
     results.leads.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-3 sm:pt-16 p-3 sm:p-4">
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" onClick={onClose} />
 
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 animate-in zoom-in-95 duration-150">
-        <div className="flex items-center px-4 py-3.5 border-b border-slate-100">
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col">
+        <div className="flex items-center px-3.5 sm:px-4 py-3 sm:py-3.5 border-b border-slate-100 shrink-0">
           <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
             type="text"
-            placeholder="Pesquisar por cliente, CPF/CNPJ, e-mail, telefone, orçamento ou OS..."
+            placeholder="Buscar por cliente, CPF/CNPJ, e-mail, OS..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             autoFocus
-            className="w-full bg-transparent px-3 py-1 text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+            className="w-full bg-transparent px-3 py-1 text-base sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 mr-1"
             >
               <X className="w-4 h-4" />
             </button>
           )}
+          <button
+            onClick={onClose}
+            className="sm:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 ml-1"
+            aria-label="Fechar busca"
+          >
+            <X className="w-5 h-5" />
+          </button>
           <span className="hidden sm:inline-block text-[11px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded ml-2">
             ESC
           </span>

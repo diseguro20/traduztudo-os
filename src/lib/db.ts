@@ -19,6 +19,7 @@ import {
   User,
   UserRole,
   UserStatus,
+  PaymentMethod,
 } from '@/types';
 import {
   INITIAL_TENANT,
@@ -957,6 +958,30 @@ class DatabaseStore {
     };
     this.requests.unshift(newReq);
 
+    // Also register customer if not exists
+    let existingCust = this.customers.find(
+      (c) => c.email.toLowerCase() === (newReq.email || '').toLowerCase()
+    );
+    if (!existingCust) {
+      existingCust = {
+        id: `cust-${Date.now()}`,
+        tenantId: this.tenant.id,
+        name: newReq.customerName,
+        type: 'PF',
+        email: newReq.email,
+        phone: newReq.phone,
+        whatsapp: newReq.whatsapp || newReq.phone,
+        notes: `Criado a partir de solicitação no site (${newReq.serviceName})`,
+        ordersCount: 0,
+        activeOrdersCount: 0,
+        pendingBalance: 0,
+        totalSpent: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.customers.unshift(existingCust);
+    }
+
     // Also register as a lead automatically
     const newLead: Lead = {
       tenantId: this.tenant.id,
@@ -964,35 +989,93 @@ class DatabaseStore {
       type: 'PF',
       email: newReq.email,
       phone: newReq.phone,
-      whatsapp: newReq.whatsapp,
-      origin: newReq.origin || 'Site TraduzTudo',
+      whatsapp: newReq.whatsapp || newReq.phone,
+      origin: newReq.origin || 'Site TraduzTudo (traduztudo.com)',
       interestedServiceName: newReq.serviceName,
       sourceLanguage: newReq.sourceLanguage,
       targetLanguage: newReq.targetLanguage,
       notes: newReq.notes,
       status: 'novo',
+      customerId: existingCust.id,
       id: `lead-${Date.now()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     this.leads.unshift(newLead);
 
+    // Also create official Quote so it displays under /operacao/orcamentos in real-time
+    const quoteCode = this.getNextQuoteCode();
+    const quoteToken = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const newQuote: Quote = {
+      id: `quote-${Date.now()}`,
+      tenantId: this.tenant.id,
+      code: quoteCode,
+      customerId: existingCust.id,
+      customerName: newReq.customerName,
+      customerEmail: newReq.email,
+      customerPhone: newReq.phone || newReq.whatsapp || '',
+      requestId: newReq.id,
+      assignedUserId: this.users[0]?.id || 'user-diego',
+      assignedUserName: this.users[0]?.name || 'Diego',
+      issueDate: new Date().toISOString(),
+      expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      estimatedDeliveryDays: 2,
+      items: [
+        {
+          id: `item-${Date.now()}`,
+          serviceId: 'serv-juramentada',
+          serviceName: newReq.serviceName,
+          description: `${newReq.serviceName} (${newReq.sourceLanguage} para ${newReq.targetLanguage})`,
+          sourceLanguage: newReq.sourceLanguage,
+          targetLanguage: newReq.targetLanguage,
+          quantity: newReq.files && newReq.files.length > 0 ? newReq.files.length : 1,
+          unit: 'documento',
+          unitPrice: 0,
+          discount: 0,
+          total: 0,
+        },
+      ],
+      subtotal: 0,
+      discount: 0,
+      additionalCost: 0,
+      total: 0,
+      conditions: 'Validade de 7 dias úteis. Pagamento via Pix ou Cartão em até 12x.',
+      notes: [
+        newReq.notes || '',
+        newReq.files && newReq.files.length > 0
+          ? `Documentos anexados (${newReq.files.length}): ${newReq.files.map((f: any) => typeof f === 'string' ? f : f.name).join(', ')}`
+          : '',
+        `Origem: ${newReq.origin || 'Site Oficial TraduzTudo (traduztudo.com)'}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      status: 'rascunho',
+      approvalToken: quoteToken,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.quotes.unshift(newQuote);
+    newReq.convertedQuoteId = newQuote.id;
+    newLead.quoteId = newQuote.id;
+
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
       tenantId: this.tenant.id,
       read: false,
       createdAt: new Date().toISOString(),
-      title: 'Nova Solicitação do Site!',
-      message: `${newReq.customerName} enviou solicitação para ${newReq.serviceName}.`,
+      title: 'Novo Orçamento Recebido do Site!',
+      message: `${newReq.customerName} solicitou orçamento para ${newReq.serviceName} (${quoteCode}).`,
       type: 'info',
-      link: '/operacao/solicitacoes',
+      link: '/operacao/orcamentos',
     };
     this.notifications.unshift(notif);
 
     // Explicitly await all Firestore writes so serverless environments persist data before completion
     await Promise.allSettled([
       this.syncFirestore('requests', newReq.id, newReq),
+      this.syncFirestore('quotes', newQuote.id, newQuote),
       this.syncFirestore('leads', newLead.id, newLead),
+      this.syncFirestore('customers', existingCust.id, existingCust),
       this.syncFirestore('notifications', notif.id, notif),
     ]);
 
@@ -1009,28 +1092,113 @@ class DatabaseStore {
     this.requests.unshift(newReq);
     this.syncFirestore('requests', newReq.id, newReq);
 
-    // Also register as a lead automatically
-    this.createLead({
+    let existingCust = this.customers.find(
+      (c) => c.email.toLowerCase() === (newReq.email || '').toLowerCase()
+    );
+    if (!existingCust) {
+      existingCust = {
+        id: `cust-${Date.now()}`,
+        tenantId: this.tenant.id,
+        name: newReq.customerName,
+        type: 'PF',
+        email: newReq.email,
+        phone: newReq.phone,
+        whatsapp: newReq.whatsapp || newReq.phone,
+        notes: `Criado a partir de solicitação no site (${newReq.serviceName})`,
+        ordersCount: 0,
+        activeOrdersCount: 0,
+        pendingBalance: 0,
+        totalSpent: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.customers.unshift(existingCust);
+      this.syncFirestore('customers', existingCust.id, existingCust);
+    }
+
+    const newLead: Lead = {
       tenantId: this.tenant.id,
       name: newReq.customerName,
       type: 'PF',
       email: newReq.email,
       phone: newReq.phone,
-      whatsapp: newReq.whatsapp,
+      whatsapp: newReq.whatsapp || newReq.phone,
       origin: newReq.origin || 'Site TraduzTudo',
       interestedServiceName: newReq.serviceName,
       sourceLanguage: newReq.sourceLanguage,
       targetLanguage: newReq.targetLanguage,
       notes: newReq.notes,
       status: 'novo',
-    });
+      customerId: existingCust.id,
+      id: `lead-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.leads.unshift(newLead);
+    this.syncFirestore('leads', newLead.id, newLead);
 
-    this.createNotification({
-      title: 'Nova Solicitação do Site',
-      message: `${newReq.customerName} enviou solicitação para ${newReq.serviceName}.`,
-      type: 'info',
-      link: '/operacao/solicitacoes',
-    });
+    const quoteCode = this.getNextQuoteCode();
+    const quoteToken = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const newQuote: Quote = {
+      id: `quote-${Date.now()}`,
+      tenantId: this.tenant.id,
+      code: quoteCode,
+      customerId: existingCust.id,
+      customerName: newReq.customerName,
+      customerEmail: newReq.email,
+      customerPhone: newReq.phone || newReq.whatsapp || '',
+      requestId: newReq.id,
+      assignedUserId: this.users[0]?.id || 'user-diego',
+      assignedUserName: this.users[0]?.name || 'Diego',
+      issueDate: new Date().toISOString(),
+      expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      estimatedDeliveryDays: 2,
+      items: [
+        {
+          id: `item-${Date.now()}`,
+          serviceId: 'serv-juramentada',
+          serviceName: newReq.serviceName,
+          description: `${newReq.serviceName} (${newReq.sourceLanguage} para ${newReq.targetLanguage})`,
+          sourceLanguage: newReq.sourceLanguage,
+          targetLanguage: newReq.targetLanguage,
+          quantity: newReq.files && newReq.files.length > 0 ? newReq.files.length : 1,
+          unit: 'documento',
+          unitPrice: 0,
+          discount: 0,
+          total: 0,
+        },
+      ],
+      subtotal: 0,
+      discount: 0,
+      additionalCost: 0,
+      total: 0,
+      conditions: 'Validade de 7 dias úteis. Pagamento via Pix ou Cartão em até 12x.',
+      notes: [
+        newReq.notes || '',
+        newReq.files && newReq.files.length > 0
+          ? `Documentos anexados (${newReq.files.length}): ${newReq.files.map((f: any) => typeof f === 'string' ? f : f.name).join(', ')}`
+          : '',
+        `Origem: ${newReq.origin || 'Site Oficial TraduzTudo (traduztudo.com)'}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      status: 'rascunho',
+      approvalToken: quoteToken,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.quotes.unshift(newQuote);
+    this.syncFirestore('quotes', newQuote.id, newQuote);
+    newReq.convertedQuoteId = newQuote.id;
+    newLead.quoteId = newQuote.id;
+
+    const notif = {
+      title: 'Novo Orçamento Recebido do Site',
+      message: `${newReq.customerName} solicitou orçamento para ${newReq.serviceName} (${quoteCode}).`,
+      type: 'info' as const,
+      link: '/operacao/orcamentos',
+    };
+    this.createNotification(notif);
 
     this.persistAndNotify();
     return newReq;
@@ -1479,8 +1647,13 @@ class DatabaseStore {
     if (rec.workOrderId) {
       const order = this.workOrders.find((o) => o.id === rec.workOrderId);
       if (order) {
-        order.paidAmount = (order.paidAmount || 0) + paidVal;
-        order.paymentStatus = order.paidAmount >= order.amount ? 'pago' : 'parcial';
+        const orderRecs = this.receivables.filter((r) => r.workOrderId === rec.workOrderId);
+        const totalPaid = orderRecs.reduce(
+          (sum, r) => sum + (r.status === 'pago' ? r.amount : (r.paidAmount || 0)),
+          0
+        );
+        order.paidAmount = totalPaid;
+        order.paymentStatus = totalPaid >= order.amount ? 'pago' : totalPaid > 0 ? 'parcial' : 'pendente';
         this.syncFirestore('workOrders', order.id, order);
       }
     }
@@ -1490,12 +1663,164 @@ class DatabaseStore {
     return rec;
   }
 
+  updateReceivable(id: string, data: Partial<AccountReceivable>): AccountReceivable | undefined {
+    const idx = this.receivables.findIndex((r) => r.id === id);
+    if (idx === -1) return undefined;
+    this.receivables[idx] = {
+      ...this.receivables[idx],
+      ...data,
+    };
+    const rec = this.receivables[idx];
+    this.syncFirestore('accountsReceivable', id, rec);
+
+    if (rec.workOrderId) {
+      const order = this.workOrders.find((o) => o.id === rec.workOrderId);
+      if (order) {
+        const orderRecs = this.receivables.filter((r) => r.workOrderId === rec.workOrderId);
+        const totalPaid = orderRecs.reduce(
+          (sum, r) => sum + (r.status === 'pago' ? r.amount : (r.paidAmount || 0)),
+          0
+        );
+        order.paidAmount = totalPaid;
+        order.paymentStatus = totalPaid >= order.amount ? 'pago' : totalPaid > 0 ? 'parcial' : 'pendente';
+        this.syncFirestore('workOrders', order.id, order);
+      }
+    }
+
+    this.logAudit(
+      this.getCurrentUser().name,
+      'Atualização de Conta a Receber',
+      'AccountReceivable',
+      id,
+      `Atualizou dados do recebimento: ${rec.description}`
+    );
+    this.persistAndNotify();
+    return rec;
+  }
+
+  configureWorkOrderPayment(
+    workOrderId: string,
+    config: {
+      entryAmount: number;
+      entryDueDate?: string;
+      entryPaymentMethod?: PaymentMethod;
+      isEntryPaid?: boolean;
+      entryPaidAt?: string;
+      splitRemaining?: boolean;
+      remainingDueDate?: string;
+      remainingPaymentMethod?: PaymentMethod;
+      notes?: string;
+    }
+  ): { order: WorkOrder; receivables: AccountReceivable[] } | undefined {
+    const order = this.workOrders.find((o) => o.id === workOrderId);
+    if (!order) return undefined;
+
+    const totalAmount = order.amount;
+    const entryVal = Math.min(totalAmount, Math.max(0, config.entryAmount));
+    const remainingVal = Math.max(0, totalAmount - entryVal);
+
+    // Remove old receivables linked to this OS so we replace them cleanly
+    const oldRecs = this.receivables.filter((r) => r.workOrderId === workOrderId);
+    oldRecs.forEach((r) => this.deleteFirestore('accountsReceivable', r.id));
+    this.receivables = this.receivables.filter((r) => r.workOrderId !== workOrderId);
+
+    const newReceivables: AccountReceivable[] = [];
+    const nowIso = new Date().toISOString();
+
+    // 1. Parcela de Entrada
+    if (entryVal > 0 || remainingVal > 0) {
+      const isEntryFull = entryVal >= totalAmount;
+      const entryDesc = isEntryFull
+        ? `Pagamento Integral (100%) - ${order.code} - ${order.serviceName}`
+        : `Pagamento de Entrada (${Math.round((entryVal / totalAmount) * 100)}%) - ${order.code} - ${order.serviceName}`;
+
+      const entryRec: AccountReceivable = {
+        id: `rec-${Date.now()}-entry`,
+        tenantId: order.tenantId,
+        workOrderId: order.id,
+        workOrderCode: order.code,
+        customerId: order.customerId,
+        customerName: order.customerName,
+        description: entryDesc,
+        amount: entryVal,
+        paidAmount: config.isEntryPaid ? entryVal : 0,
+        dueDate: config.entryDueDate || order.deadline,
+        paymentMethod: config.entryPaymentMethod || 'pix',
+        status: config.isEntryPaid ? 'pago' : 'pendente',
+        paidAt: config.isEntryPaid ? (config.entryPaidAt || nowIso) : undefined,
+        notes: config.notes,
+        createdAt: nowIso,
+      };
+      this.receivables.unshift(entryRec);
+      this.syncFirestore('accountsReceivable', entryRec.id, entryRec);
+      newReceivables.push(entryRec);
+
+      // 2. Parcela de Saldo Restante
+      if (remainingVal > 0) {
+        const remainingDesc = `Saldo Restante (${Math.round((remainingVal / totalAmount) * 100)}%) - ${order.code} (Entrega)`;
+        const remainingRec: AccountReceivable = {
+          id: `rec-${Date.now() + 1}-saldo`,
+          tenantId: order.tenantId,
+          workOrderId: order.id,
+          workOrderCode: order.code,
+          customerId: order.customerId,
+          customerName: order.customerName,
+          description: remainingDesc,
+          amount: remainingVal,
+          paidAmount: 0,
+          dueDate: config.remainingDueDate || order.deadline,
+          paymentMethod: config.remainingPaymentMethod || config.entryPaymentMethod || 'pix',
+          status: 'pendente',
+          notes: config.notes,
+          createdAt: nowIso,
+        };
+        this.receivables.unshift(remainingRec);
+        this.syncFirestore('accountsReceivable', remainingRec.id, remainingRec);
+        newReceivables.push(remainingRec);
+      }
+    }
+
+    // Update order paidAmount & paymentStatus
+    const paidSum = config.isEntryPaid ? entryVal : 0;
+    order.paidAmount = paidSum;
+    order.paymentStatus = paidSum >= totalAmount ? 'pago' : paidSum > 0 ? 'parcial' : 'pendente';
+    order.updatedAt = nowIso;
+    this.syncFirestore('workOrders', order.id, order);
+
+    this.logAudit(
+      this.getCurrentUser().name,
+      'Configuração de Pagamento de Entrada',
+      'WorkOrder',
+      order.id,
+      `Configurou entrada de R$ ${entryVal.toFixed(2)} (${config.isEntryPaid ? 'PAGA' : 'PENDENTE'}) e saldo de R$ ${remainingVal.toFixed(2)} para a ${order.code}`
+    );
+
+    this.persistAndNotify();
+    return { order, receivables: newReceivables };
+  }
+
   deleteReceivable(id: string): boolean {
     const idx = this.receivables.findIndex((r) => r.id === id);
     if (idx === -1) return false;
     const desc = this.receivables[idx].description;
+    const workOrderId = this.receivables[idx].workOrderId;
     this.receivables.splice(idx, 1);
     this.deleteFirestore('accountsReceivable', id);
+
+    if (workOrderId) {
+      const order = this.workOrders.find((o) => o.id === workOrderId);
+      if (order) {
+        const orderRecs = this.receivables.filter((r) => r.workOrderId === workOrderId);
+        const totalPaid = orderRecs.reduce(
+          (sum, r) => sum + (r.status === 'pago' ? r.amount : (r.paidAmount || 0)),
+          0
+        );
+        order.paidAmount = totalPaid;
+        order.paymentStatus = totalPaid >= order.amount ? 'pago' : totalPaid > 0 ? 'parcial' : 'pendente';
+        this.syncFirestore('workOrders', order.id, order);
+      }
+    }
+
     this.logAudit(this.getCurrentUser().name, 'Exclusão de Conta a Receber', 'AccountReceivable', id, `Removeu recebimento: ${desc}`);
     this.persistAndNotify();
     return true;
@@ -1515,6 +1840,25 @@ class DatabaseStore {
     this.syncFirestore('accountsPayable', newPay.id, newPay);
     this.persistAndNotify();
     return newPay;
+  }
+
+  updatePayable(id: string, data: Partial<AccountPayable>): AccountPayable | undefined {
+    const idx = this.payables.findIndex((p) => p.id === id);
+    if (idx === -1) return undefined;
+    this.payables[idx] = {
+      ...this.payables[idx],
+      ...data,
+    };
+    this.syncFirestore('accountsPayable', id, this.payables[idx]);
+    this.logAudit(
+      this.getCurrentUser().name,
+      'Atualização de Conta a Pagar',
+      'AccountPayable',
+      id,
+      `Atualizou dados da conta a pagar: ${this.payables[idx].description}`
+    );
+    this.persistAndNotify();
+    return this.payables[idx];
   }
 
   markPayablePaid(id: string): AccountPayable | undefined {

@@ -202,21 +202,21 @@ function NovoOrcamentoContent() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Top back */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
         <Link
           href="/operacao/orcamentos"
           className="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Voltar para Orçamentos
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
             Próximo Código: {nextCode}
           </span>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">
             Elaborar Novo Orçamento Comercial

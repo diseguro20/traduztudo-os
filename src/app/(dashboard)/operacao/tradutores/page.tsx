@@ -153,36 +153,36 @@ export default function TradutoresPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Languages className="w-6 h-6 text-blue-600" /> Cadastro de Tradutores
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Languages className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Cadastro de Tradutores
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Gestão de tradutores públicos juramentados, técnicos e freelancers credenciados.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs">
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
             <Plus className="w-4 h-4" /> Novo Tradutor
           </Button>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Pesquisar tradutores por nome, e-mail, idioma ou especialidade..."
+            placeholder="Pesquisar por nome, e-mail, idioma..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <span className="text-xs text-slate-500 whitespace-nowrap">
+        <span className="text-xs text-slate-500 whitespace-nowrap self-end sm:self-auto">
           Total: <strong className="text-slate-900">{translators.length}</strong> cadastrados
         </span>
       </div>
@@ -504,7 +504,7 @@ export default function TradutoresPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
@@ -687,7 +687,7 @@ export default function TradutoresPage() {
             />
           </div>
 
-          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={() => {
@@ -696,12 +696,12 @@ export default function TradutoresPage() {
                   setEditingTranslator(null);
                 }
               }}
-              className="text-xs text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 font-semibold"
+              className="text-xs text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 font-semibold self-start sm:self-auto"
             >
               <Trash2 className="w-3.5 h-3.5" /> Excluir Cadastro
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <Button type="button" variant="outline" onClick={() => setEditingTranslator(null)}>
                 Cancelar
               </Button>

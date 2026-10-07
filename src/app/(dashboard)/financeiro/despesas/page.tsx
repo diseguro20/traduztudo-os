@@ -63,36 +63,36 @@ export default function DespesasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-blue-600" /> Despesas Operacionais
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Receipt className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Despesas Operacionais
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Classificação de despesas fixas, variáveis, ferramentas de tradução e marketing.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
           <Plus className="w-4 h-4" /> Nova Despesa
         </Button>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <span className="text-xs font-semibold text-slate-400 uppercase">
             Total de Despesas Lançadas
           </span>
-          <p className="text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalExpenses)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalExpenses)}</p>
         </div>
-        <span className="text-xs text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg">
+        <span className="text-xs text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg self-start sm:self-auto">
           {expenses.length} lançamentos registrados
         </span>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -105,8 +105,8 @@ export default function DespesasPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[750px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Descrição</th>
@@ -237,7 +237,7 @@ export default function DespesasPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>

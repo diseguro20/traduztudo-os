@@ -176,10 +176,10 @@ export default function ClienteDossiePage() {
       </div>
 
       {/* Dossier Navigation Tabs */}
-      <div className="border-b border-slate-200 flex gap-6 text-sm font-medium">
+      <div className="border-b border-slate-200 flex gap-4 sm:gap-6 text-sm font-medium overflow-x-auto touch-scroll pb-px">
         <button
           onClick={() => setActiveTab('resumo')}
-          className={`pb-3 px-1 border-b-2 transition-colors ${
+          className={`pb-3 px-1 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'resumo'
               ? 'border-blue-600 text-blue-600 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -189,7 +189,7 @@ export default function ClienteDossiePage() {
         </button>
         <button
           onClick={() => setActiveTab('historico')}
-          className={`pb-3 px-1 border-b-2 transition-colors flex items-center gap-2 ${
+          className={`pb-3 px-1 border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'historico'
               ? 'border-blue-600 text-blue-600 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -202,7 +202,7 @@ export default function ClienteDossiePage() {
         </button>
         <button
           onClick={() => setActiveTab('timeline')}
-          className={`pb-3 px-1 border-b-2 transition-colors ${
+          className={`pb-3 px-1 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'timeline'
               ? 'border-blue-600 text-blue-600 font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-800'

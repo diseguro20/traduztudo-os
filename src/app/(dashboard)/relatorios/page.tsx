@@ -71,42 +71,42 @@ export default function RelatoriosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-blue-600" /> Relatórios & Inteligência Operacional
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Relatórios & Inteligência Operacional
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Métricas de faturamento, rentabilidade estimada, produtividade e volumes por idioma.
           </p>
         </div>
 
-        <Button onClick={handleExportCSV} variant="outline" className="gap-2 shadow-xs">
+        <Button onClick={handleExportCSV} variant="outline" className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
           <Download className="w-4 h-4" /> Exportar Relatório (CSV)
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
           <span className="text-xs font-semibold text-slate-400 uppercase">Receita Bruta Liquidada</span>
-          <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</p>
           <p className="text-xs text-emerald-600 font-medium">+14.2% comparado ao trimestre anterior</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
           <span className="text-xs font-semibold text-slate-400 uppercase">Custos & Honorários</span>
-          <p className="text-2xl font-bold text-rose-600">{formatCurrency(totalCosts)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-rose-600">{formatCurrency(totalCosts)}</p>
           <p className="text-xs text-slate-500">Linguistas, ferramentas e fornecedores</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
           <span className="text-xs font-semibold text-slate-400 uppercase">Lucro Operacional Estimado</span>
-          <p className="text-2xl font-bold text-emerald-600">{formatCurrency(estimatedProfit)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-emerald-600">{formatCurrency(estimatedProfit)}</p>
           <p className="text-xs text-emerald-600 font-medium">Margem líquida de ~65%</p>
         </div>
       </div>
 
       {/* Report Switcher & Visuals */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="flex gap-2">
             <button
@@ -160,8 +160,8 @@ export default function RelatoriosPage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-sm text-slate-600">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto touch-scroll">
+              <table className="w-full min-w-[650px] text-left text-sm text-slate-600">
                 <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Linha de Serviço</th>
@@ -184,8 +184,8 @@ export default function RelatoriosPage() {
             </div>
           </div>
         ) : (
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-left text-sm text-slate-600">
+          <div className="border border-slate-200 rounded-xl overflow-x-auto touch-scroll">
+            <table className="w-full min-w-[700px] text-left text-sm text-slate-600">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Linguista</th>

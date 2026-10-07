@@ -71,18 +71,18 @@ export default function OrcamentosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-amber-600" /> Orçamentos Comerciais
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Elabore propostas, envie links digitais de aprovação e converta em ordens de serviço.
           </p>
         </div>
 
-        <Link href="/operacao/orcamentos/novo">
-          <Button className="gap-2 shadow-xs bg-amber-600 hover:bg-amber-700">
+        <Link href="/operacao/orcamentos/novo" className="w-full sm:w-auto">
+          <Button className="gap-2 shadow-xs bg-amber-600 hover:bg-amber-700 w-full sm:w-auto justify-center">
             <Plus className="w-4 h-4" /> Novo Orçamento
           </Button>
         </Link>
@@ -102,10 +102,10 @@ export default function OrcamentosPage() {
         </div>
 
         {/* Filter buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto touch-scroll text-xs pb-1 sm:pb-0">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap ${
               statusFilter === 'ALL' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -113,7 +113,7 @@ export default function OrcamentosPage() {
           </button>
           <button
             onClick={() => setStatusFilter('rascunho')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap ${
               statusFilter === 'rascunho' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -121,7 +121,7 @@ export default function OrcamentosPage() {
           </button>
           <button
             onClick={() => setStatusFilter('enviado')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap ${
               statusFilter === 'enviado' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -129,7 +129,7 @@ export default function OrcamentosPage() {
           </button>
           <button
             onClick={() => setStatusFilter('aprovado')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap ${
               statusFilter === 'aprovado' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -140,8 +140,8 @@ export default function OrcamentosPage() {
 
       {/* Table of Quotes */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full text-left text-sm text-slate-600 min-w-[850px]">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Código</th>

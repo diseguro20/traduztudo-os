@@ -253,9 +253,9 @@ export default function AdminControlPanelPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             Usuários e Acessos
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -263,7 +263,7 @@ export default function AdminControlPanelPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button
             onClick={handleOpenCreateModal}
             className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm px-4 py-2.5 rounded-xl cursor-pointer"
@@ -275,14 +275,14 @@ export default function AdminControlPanelPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total de Usuários</div>
           <div className="text-2xl font-black text-slate-900 mt-1">{users.length}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">{activeUsers.length} ativos na empresa</div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tradutores & Revisores</div>
           <div className="text-2xl font-black text-indigo-600 mt-1">
             {users.filter((u) => u.role === 'TRANSLATOR' || u.role === 'REVIEWER').length}
@@ -290,7 +290,7 @@ export default function AdminControlPanelPage() {
           <div className="text-[10px] text-indigo-700 mt-0.5">Habilitados para OS</div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gestão & Comercial</div>
           <div className="text-2xl font-black text-blue-600 mt-1">
             {users.filter((u) => u.role === 'ADMIN' || u.role === 'MANAGER' || u.role === 'ATTENDANT' || u.role === 'FINANCE').length}
@@ -298,7 +298,7 @@ export default function AdminControlPanelPage() {
           <div className="text-[10px] text-slate-500 mt-0.5">Operação interna</div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Acessos Bloqueados</div>
           <div className="text-2xl font-black text-rose-600 mt-1">{blockedUsers.length}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">Revogados pela gestão</div>
@@ -306,10 +306,10 @@ export default function AdminControlPanelPage() {
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-px overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-px overflow-x-auto touch-scroll">
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 whitespace-nowrap ${
             activeTab === 'users'
               ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -322,7 +322,7 @@ export default function AdminControlPanelPage() {
         {pendingUsers.length > 0 && (
           <button
             onClick={() => setActiveTab('pending')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 whitespace-nowrap ${
               activeTab === 'pending'
                 ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -338,7 +338,7 @@ export default function AdminControlPanelPage() {
 
         <button
           onClick={() => setActiveTab('audit')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 shrink-0 whitespace-nowrap ${
             activeTab === 'audit'
               ? 'border-blue-600 text-blue-700 bg-white shadow-2xs'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -354,7 +354,7 @@ export default function AdminControlPanelPage() {
       {/* ========================================================================= */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden space-y-4">
-          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-3 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
               <div className="relative flex-1 max-w-sm">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -385,14 +385,14 @@ export default function AdminControlPanelPage() {
             <Button
               size="sm"
               onClick={handleOpenCreateModal}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0"
+              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 self-start sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" /> Gerar Novo Cadastro
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto touch-scroll">
+            <table className="w-full min-w-[850px] text-left text-xs">
               <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Profissional</th>
@@ -710,7 +710,7 @@ export default function AdminControlPanelPage() {
             </p>
           </div>
 
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+          <div className="pt-3 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -860,7 +860,7 @@ export default function AdminControlPanelPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-200">
               <Button
                 type="button"
                 variant="outline"
@@ -952,7 +952,7 @@ export default function AdminControlPanelPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
               <Button
                 variant="outline"
                 size="sm"

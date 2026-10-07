@@ -112,17 +112,17 @@ export default function OrdensServicoPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <FileCheck2 className="w-6 h-6 text-purple-600" /> Ordens de Serviço (OS)
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Acompanhe o workflow de tradução, atribuição de linguistas e prazos de entrega.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center shadow-2xs">
             <button
               onClick={() => setViewMode('table')}
@@ -150,9 +150,9 @@ export default function OrdensServicoPage() {
 
           <Button
             onClick={() => setIsModalOpen(true)}
-            className="gap-2 shadow-xs bg-purple-600 hover:bg-purple-700"
+            className="gap-2 shadow-xs bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-none justify-center"
           >
-            <Plus className="w-4 h-4" /> Nova Ordem de Serviço
+            <Plus className="w-4 h-4" /> Nova OS
           </Button>
         </div>
       </div>
@@ -217,8 +217,8 @@ export default function OrdensServicoPage() {
       {/* Table View */}
       {viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
+          <div className="overflow-x-auto touch-scroll">
+            <table className="w-full text-left text-sm text-slate-600 min-w-[900px]">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Código</th>
@@ -298,7 +298,7 @@ export default function OrdensServicoPage() {
         </div>
       ) : (
         /* Kanban View */
-        <div className="flex gap-4 overflow-x-auto pb-4 items-start min-h-[550px]">
+        <div className="flex gap-4 overflow-x-auto touch-scroll pb-4 items-start min-h-[550px]">
           {OS_COLUMNS.map((col) => {
             const colOrders = workOrders.filter((o) => o.status === col.status);
 

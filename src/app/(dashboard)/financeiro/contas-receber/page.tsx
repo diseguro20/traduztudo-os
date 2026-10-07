@@ -11,6 +11,7 @@ import {
   Clock,
   AlertCircle,
   Trash2,
+  Edit3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -36,6 +37,15 @@ export default function ContasReceberPage() {
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [method, setMethod] = useState<PaymentMethod>('pix');
 
+  // Edit Form state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editRecId, setEditRecId] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editAmount, setEditAmount] = useState('0');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editMethod, setEditMethod] = useState<PaymentMethod>('pix');
+  const [editStatus, setEditStatus] = useState<'pendente' | 'pago' | 'parcial'>('pendente');
+
   const receivables = databaseStore.getReceivables().filter((r) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -56,6 +66,34 @@ export default function ContasReceberPage() {
 
   const handleMarkPaid = (id: string, fullAmount: number) => {
     databaseStore.markReceivablePaid(id, fullAmount);
+    setRefresh((r) => r + 1);
+  };
+
+  const openEditModal = (rec: any) => {
+    setEditRecId(rec.id);
+    setEditDesc(rec.description);
+    setEditAmount(String(rec.amount));
+    setEditDueDate(rec.dueDate ? rec.dueDate.split('T')[0] : '');
+    setEditMethod(rec.paymentMethod);
+    setEditStatus(rec.status);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editRecId) return;
+    const val = parseFloat(editAmount) || 0;
+    databaseStore.updateReceivable(editRecId, {
+      description: editDesc,
+      amount: val,
+      dueDate: editDueDate ? new Date(editDueDate).toISOString() : undefined,
+      paymentMethod: editMethod,
+      status: editStatus,
+      paidAmount: editStatus === 'pago' ? val : editStatus === 'parcial' ? val * 0.5 : 0,
+      paidAt: editStatus === 'pago' ? new Date().toISOString() : undefined,
+    });
+    setIsEditModalOpen(false);
+    setEditRecId(null);
     setRefresh((r) => r + 1);
   };
 
@@ -83,40 +121,40 @@ export default function ContasReceberPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ArrowDownCircle className="w-6 h-6 text-emerald-600" /> Contas a Receber
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <ArrowDownCircle className="w-5 h-5 sm:w-6 h-6 text-emerald-600" /> Contas a Receber
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Controle de cobranças de clientes, entradas via PIX, boletos e conciliação bancária.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto bg-emerald-600 hover:bg-emerald-700">
           <Plus className="w-4 h-4" /> Nova Conta a Receber
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">Total Recebido</span>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(totalReceived)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(totalReceived)}</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">Saldo a Receber</span>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{formatCurrency(totalPending)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-amber-600 mt-1">{formatCurrency(totalPending)}</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-400 uppercase">Cobranças Ativas</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{receivables.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{receivables.length}</p>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -129,8 +167,8 @@ export default function ContasReceberPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Cliente / Descrição</th>
@@ -178,6 +216,14 @@ export default function ContasReceberPage() {
                           <CheckCircle2 className="w-3.5 h-3.5" /> Quitado
                         </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(rec)}
+                        className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Editar lançamento"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -280,12 +326,101 @@ export default function ContasReceberPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" variant="primary" className="bg-emerald-600 hover:bg-emerald-700">
               Salvar Cobrança
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Editar Conta a Receber"
+        description="Atualize o valor, vencimento, método de pagamento ou status deste recebimento."
+      >
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+              Descrição da Cobrança *
+            </label>
+            <input
+              type="text"
+              required
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Valor (R$) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Data Vencimento
+              </label>
+              <input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Forma de Pagamento
+              </label>
+              <select
+                value={editMethod}
+                onChange={(e) => setEditMethod(e.target.value as PaymentMethod)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+              >
+                <option value="pix">PIX</option>
+                <option value="boleto">Boleto Bancário</option>
+                <option value="cartao_credito">Cartão de Crédito</option>
+                <option value="transferencia">Transferência</option>
+                <option value="dinheiro">Dinheiro</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                Status
+              </label>
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as any)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-bold"
+              >
+                <option value="pendente">Pendente</option>
+                <option value="parcial">Parcial</option>
+                <option value="pago">Quitado / Pago</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary">
+              Salvar Alterações
             </Button>
           </div>
         </form>

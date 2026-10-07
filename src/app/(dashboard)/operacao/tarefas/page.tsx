@@ -67,23 +67,23 @@ export default function TarefasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <CheckSquare className="w-6 h-6 text-blue-600" /> Tarefas da Equipe
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Tarefas da Equipe
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Checklist de atividades operacionais, confecção de minutas, revisões e entregas.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
           <Plus className="w-4 h-4" /> Nova Tarefa
         </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -95,10 +95,10 @@ export default function TarefasPage() {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-xs overflow-x-auto touch-scroll pb-1 sm:pb-0">
           <button
             onClick={() => setFilterStatus('ALL')}
-            className={`px-2.5 py-1 rounded-md font-medium ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap ${
               filterStatus === 'ALL' ? 'bg-blue-100 text-blue-900 font-bold' : 'text-slate-600'
             }`}
           >
@@ -106,7 +106,7 @@ export default function TarefasPage() {
           </button>
           <button
             onClick={() => setFilterStatus('a_fazer')}
-            className={`px-2.5 py-1 rounded-md font-medium ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap ${
               filterStatus === 'a_fazer' ? 'bg-blue-100 text-blue-900 font-bold' : 'text-slate-600'
             }`}
           >
@@ -114,7 +114,7 @@ export default function TarefasPage() {
           </button>
           <button
             onClick={() => setFilterStatus('concluida')}
-            className={`px-2.5 py-1 rounded-md font-medium ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap ${
               filterStatus === 'concluida' ? 'bg-blue-100 text-blue-900 font-bold' : 'text-slate-600'
             }`}
           >
@@ -129,16 +129,16 @@ export default function TarefasPage() {
           <div
             key={task.id}
             onClick={() => handleToggleStatus(task)}
-            className={`p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors ${
+            className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-slate-50 transition-colors ${
               task.status === 'concluida' ? 'bg-slate-50/60 text-slate-400 line-through' : ''
             }`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-start sm:items-center gap-3">
               <input
                 type="checkbox"
                 checked={task.status === 'concluida'}
                 onChange={() => {}}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer mt-0.5 sm:mt-0"
               />
               <div>
                 <p className="text-sm font-semibold text-slate-900">{task.title}</p>
@@ -148,7 +148,7 @@ export default function TarefasPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-xs shrink-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs shrink-0 pl-7 sm:pl-0">
               <span className="text-slate-600">
                 Resp: <strong>{task.assignedToName}</strong>
               </span>
@@ -206,7 +206,7 @@ export default function TarefasPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>

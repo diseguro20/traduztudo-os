@@ -115,19 +115,19 @@ export default function DashboardPage() {
       {/* Top Banner: Greeting, Period Filter, Quick Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Olá, {user?.name || 'Administrador'} 👋
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Acompanhe o desempenho operacional e financeiro da {tenant.name} em tempo real.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center text-xs shadow-2xs">
             <button
               onClick={() => setPeriod('semana')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
                 period === 'semana' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -135,7 +135,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setPeriod('mes')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
                 period === 'mes' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -143,7 +143,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setPeriod('ano')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
                 period === 'ano' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -151,15 +151,15 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <Button onClick={() => setIsQuickActionOpen(true)} className="gap-2 shadow-xs">
+          <Button onClick={() => setIsQuickActionOpen(true)} className="gap-2 shadow-xs shrink-0">
             <Plus className="w-4 h-4" />
-            Nova Ação
+            <span>Nova Ação</span>
           </Button>
         </div>
       </div>
 
       {/* KPI Cards (6 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {/* Faturamento */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between text-slate-500 mb-2">

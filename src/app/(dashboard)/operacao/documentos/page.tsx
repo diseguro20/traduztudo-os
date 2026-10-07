@@ -66,23 +66,23 @@ export default function DocumentosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <FolderOpen className="w-6 h-6 text-blue-600" /> Repositório de Documentos
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Repositório de Documentos
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Gerenciamento centralizado de documentos originais, minutas, revisões e certidões finais.
           </p>
         </div>
 
-        <Button onClick={() => setIsUploadModalOpen(true)} className="gap-2 shadow-xs">
+        <Button onClick={() => setIsUploadModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
           <Upload className="w-4 h-4" /> Novo Arquivo
         </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -94,10 +94,10 @@ export default function DocumentosPage() {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto touch-scroll text-xs pb-1 sm:pb-0">
           <button
             onClick={() => setCategoryFilter('ALL')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
               categoryFilter === 'ALL'
                 ? 'bg-blue-100 text-blue-900 font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -107,7 +107,7 @@ export default function DocumentosPage() {
           </button>
           <button
             onClick={() => setCategoryFilter('original')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
               categoryFilter === 'original'
                 ? 'bg-blue-100 text-blue-900 font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -117,7 +117,7 @@ export default function DocumentosPage() {
           </button>
           <button
             onClick={() => setCategoryFilter('traducao')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
               categoryFilter === 'traducao'
                 ? 'bg-blue-100 text-blue-900 font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -127,7 +127,7 @@ export default function DocumentosPage() {
           </button>
           <button
             onClick={() => setCategoryFilter('comprovante')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
               categoryFilter === 'comprovante'
                 ? 'bg-blue-100 text-blue-900 font-bold'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -140,8 +140,9 @@ export default function DocumentosPage() {
 
       {/* Documents Grid / Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[800px] text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">Nome do Arquivo</th>
               <th className="px-4 py-3">Categoria</th>
@@ -191,6 +192,7 @@ export default function DocumentosPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal Upload */}
@@ -234,7 +236,7 @@ export default function DocumentosPage() {
             </select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsUploadModalOpen(false)}>
               Cancelar
             </Button>

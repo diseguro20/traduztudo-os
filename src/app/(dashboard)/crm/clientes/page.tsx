@@ -103,36 +103,36 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Users className="w-6 h-6 text-blue-600" /> Cadastro de Clientes
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Cadastro de Clientes
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Gerencie clientes PF e PJ, histórico de pedidos, faturamento e pendências.
           </p>
         </div>
 
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto">
           <Plus className="w-4 h-4" /> Novo Cliente
         </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Pesquisar por nome, CPF/CNPJ, e-mail, telefone..."
+            placeholder="Pesquisar por nome, CPF/CNPJ, e-mail..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-100 p-1 rounded-lg flex items-center text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto touch-scroll pb-1 sm:pb-0">
+          <div className="bg-slate-100 p-1 rounded-lg flex items-center text-xs shrink-0">
             <button
               onClick={() => setFilterType('ALL')}
               className={`px-3 py-1 rounded-md font-medium transition-colors ${
@@ -163,8 +163,8 @@ export default function ClientesPage() {
 
       {/* Table of Customers */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3">Cliente</th>
@@ -435,7 +435,7 @@ export default function ClientesPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>

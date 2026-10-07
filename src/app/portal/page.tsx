@@ -48,8 +48,8 @@ export default function PortalDoClientePage() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
       {/* Client Portal Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
               TT
@@ -60,14 +60,14 @@ export default function PortalDoClientePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex flex-wrap items-center justify-between w-full sm:w-auto gap-3 text-xs">
             {/* Demo client switcher for testability */}
             <div className="flex items-center gap-2">
               <span className="text-slate-400 hidden sm:inline">Visualizando como:</span>
               <select
                 value={activeCustomerId}
                 onChange={(e) => setActiveCustomerId(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 text-xs"
               >
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -208,7 +208,7 @@ export default function PortalDoClientePage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                   <span className="text-sm font-bold text-slate-900">
                     {formatCurrency(q.total)}
                   </span>
@@ -241,7 +241,7 @@ export default function PortalDoClientePage() {
             {clientDocuments.map((doc) => (
               <div
                 key={doc.id}
-                className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
               >
                 <div>
                   <p className="text-xs font-bold text-slate-900">{doc.name}</p>
@@ -252,7 +252,7 @@ export default function PortalDoClientePage() {
                 <a
                   href={doc.fileUrl}
                   download
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors self-start sm:self-auto"
                 >
                   <Download className="w-3.5 h-3.5" /> Baixar Arquivo
                 </a>

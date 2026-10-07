@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardLayout({
@@ -51,9 +52,12 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
         <Header onToggleMobileMenu={() => setMobileMenuOpen(true)} />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
           {children}
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <MobileBottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
       </div>
     </div>
   );

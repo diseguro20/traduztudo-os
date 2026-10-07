@@ -31,6 +31,7 @@ import {
   ChevronRight,
   Sparkles,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -232,8 +233,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
       >
         {/* Brand header */}
-        <div className="h-18 flex items-center justify-between px-6 border-b border-slate-800/80 bg-slate-950/40">
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="h-18 flex items-center justify-between px-5 sm:px-6 border-b border-slate-800/80 bg-slate-950/40">
+          <Link
+            href="/"
+            onClick={() => onClose?.()}
+            className="flex items-center gap-3 group"
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
               TT
             </div>
@@ -251,6 +256,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </p>
             </div>
           </Link>
+
+          {/* Close button for mobile */}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden transition-colors"
+            aria-label="Fechar Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation list */}
