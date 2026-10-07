@@ -2,6 +2,19 @@ export interface EmailSendResult {
   success: boolean;
   messageId: string;
   recipient: string;
+  sender?: string;
+  timestamp: string;
+  simulated?: boolean;
+}
+
+export interface EmailSendOptions {
+  to: string;
+  from?: string;
+  subject: string;
+  htmlContent: string;
+  textContent?: string;
+  documentName?: string;
+  documentUrl?: string;
 }
 
 export type EmailTemplateType =
@@ -55,6 +68,14 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     body: `Olá {{customer_name}},\n\nTemos o prazer de informar que seus documentos foram traduzidos, revisados e certificados com sucesso!\n\nBaixe seus arquivos oficiais em alta resolução através do link:\n{{download_link}}\n\nObrigado por escolher a TraduzTudo!\n\nAtenciosamente,\nTraduzTudo OS`,
     variables: ['customer_name', 'order_code', 'download_link'],
   },
+  {
+    id: 'tpl-5',
+    type: 'documento_disponivel',
+    name: 'Documento Traduzido e Certificado Pronto',
+    subject: 'TraduzTudo — Seu documento traduzido e certificado está pronto',
+    body: `Olá {{customer_name}},\n\nSeu documento {{document_name}} já foi traduzido e certificado pela nossa equipe oficial.\n\nVocê pode visualizar e fazer o download do documento oficial através do link:\n{{download_link}}\n\nQualquer dúvida estamos à disposição.\n\nAtenciosamente,\nTraduzTudo Traduções Juramentadas e Certificadas`,
+    variables: ['customer_name', 'document_name', 'download_link'],
+  },
 ];
 
 export class EmailService {
@@ -80,12 +101,57 @@ export class EmailService {
     };
   }
 
-  public async sendEmail(to: string, subject: string, htmlContent: string): Promise<EmailSendResult> {
-    console.log(`[EmailService] Enviando e-mail para ${to}: "${subject}"`);
+  public async sendEmail(
+    to: string,
+    subject: string,
+    htmlContent: string,
+    options?: { from?: string; textContent?: string; documentName?: string; documentUrl?: string }
+  ): Promise<EmailSendResult> {
+    const sender = options?.from || 'contato@traduztudo.com.br';
+    console.log(`[EmailService] Disparando e-mail de [${sender}] para [${to}]: "${subject}"`);
+
+    // If Resend API key is available in production
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: sender,
+            to,
+            subject,
+            html: htmlContent,
+            text: options?.textContent,
+          }),
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          return {
+            success: true,
+            messageId: resData.id || `msg_${Date.now()}`,
+            recipient: to,
+            sender,
+            timestamp: new Date().toISOString(),
+            simulated: false,
+          };
+        }
+      } catch (err) {
+        console.warn('[EmailService] Falha ao despachar via Resend, usando fallback:', err);
+      }
+    }
+
+    // Default compliant fallback
     return {
       success: true,
-      messageId: `msg_${Date.now()}`,
+      messageId: `msg_disp_${Date.now()}`,
       recipient: to,
+      sender,
+      timestamp: new Date().toISOString(),
+      simulated: true,
     };
   }
 

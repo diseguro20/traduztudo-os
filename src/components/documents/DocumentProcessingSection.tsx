@@ -25,6 +25,8 @@ import {
   Layers,
   Send,
   MessageSquare,
+  Mail,
+  Share2,
   X,
   Plus,
 } from 'lucide-react';
@@ -95,6 +97,20 @@ export function DocumentProcessingSection({
   const [signatureSuccessMsg, setSignatureSuccessMsg] = useState<string | null>(null);
   const [generatedSignLink, setGeneratedSignLink] = useState<string | null>(null);
   const [copiedSignLink, setCopiedSignLink] = useState(false);
+  // Client Send Modal state (WhatsApp & Email)
+  const [selectedDocForClientSend, setSelectedDocForClientSend] = useState<DocumentItem | null>(null);
+  const [clientSendChannel, setClientSendChannel] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [senderEmail, setSenderEmail] = useState('contato.traduztudo@gmail.com');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [selectedFileForSend, setSelectedFileForSend] = useState<string>('best');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [sendEmailSuccess, setSendEmailSuccess] = useState<string | null>(null);
+  const [copiedClientMsg, setCopiedClientMsg] = useState(false);
 
   // Commercial word count settings
   const [ignoreRepeated, setIgnoreRepeated] = useState(true);
@@ -660,6 +676,140 @@ export function DocumentProcessingSection({
     }
   };
 
+  // Open Client Send Modal with contextual prefilling
+  const openClientSendModal = (doc: DocumentItem) => {
+    const docQuote = doc.quoteId
+      ? databaseStore.getQuote(doc.quoteId)
+      : quoteId
+      ? databaseStore.getQuote(quoteId)
+      : undefined;
+    const docWo = doc.workOrderId
+      ? databaseStore.getWorkOrderById(doc.workOrderId)
+      : workOrderId
+      ? databaseStore.getWorkOrderById(workOrderId)
+      : undefined;
+    const docCust =
+      (doc.customerId ? databaseStore.getCustomer(doc.customerId) : undefined) ||
+      (customerId ? databaseStore.getCustomer(customerId) : undefined) ||
+      (docQuote?.customerId ? databaseStore.getCustomer(docQuote.customerId) : undefined) ||
+      (docWo?.customerId ? databaseStore.getCustomer(docWo.customerId) : undefined);
+
+    const foundName = docCust?.name || docQuote?.customerName || docWo?.customerName || 'Cliente';
+    const foundEmail = docCust?.email || docQuote?.customerEmail || docWo?.customerEmail || '';
+    const foundPhone = docCust?.whatsapp || docCust?.phone || docQuote?.customerPhone || docWo?.customerPhone || '';
+
+    // Prioritize best available file version
+    const signedVer = doc.versions?.slice().reverse().find((v) => v.type === 'SIGNED_PDF');
+    const finalVer = doc.versions?.slice().reverse().find((v) => v.type === 'FINAL_PDF');
+    const translatedVer = doc.versions?.slice().reverse().find((v) => v.type === 'TRANSLATED_DOCX');
+    const bestVer = signedVer || finalVer || translatedVer || doc.versions?.[0];
+    const bestUrl = bestVer?.dataUrl || bestVer?.fileUrl || doc.dataUrl || doc.fileUrl;
+
+    const savedSender = typeof window !== 'undefined' ? localStorage.getItem('traduztudo_sender_email') : null;
+    const activeSender = savedSender || 'contato.traduztudo@gmail.com';
+
+    setClientName(foundName);
+    setClientEmail(foundEmail);
+    setClientPhone(foundPhone);
+    setSenderEmail(activeSender);
+    setSelectedFileForSend(signedVer ? 'SIGNED_PDF' : finalVer ? 'FINAL_PDF' : translatedVer ? 'TRANSLATED_DOCX' : 'ORIGINAL');
+
+    const subject = `TraduzTudo — Tradução e Documento Oficial Pronto: ${doc.name}`;
+    setEmailSubject(subject);
+
+    const waMsg = `Olá ${foundName}! Informamos que a tradução oficial do seu documento (${doc.name}) já foi concluída e certificada pela TraduzTudo.\n\n📄 Documento: ${doc.name}\n🔗 Acesse e baixe seu documento oficial com segurança:\n${bestUrl}\n\nQualquer dúvida, nossa equipe está à disposição!\nAtenciosamente,\nTraduzTudo Traduções Juramentadas e Certificadas`;
+    setWhatsappMessage(waMsg);
+
+    const emMsg = `Olá ${foundName},\n\nTemos o prazer de informar que seu documento (${doc.name}) foi traduzido, revisado e certificado com sucesso pela equipe da TraduzTudo.\n\nVocê pode acessar e baixar sua versão oficial diretamente pelo link seguro abaixo:\n${bestUrl}\n\nQualquer dúvida ou caso necessite de vias impressas adicionais ou apostilamento, estamos à sua inteira disposição.\n\nAgradecemos a confiança em nossos serviços!\n\nAtenciosamente,\nEquipe TraduzTudo\nTraduções Juramentadas e Certificadas`;
+    setEmailMessage(emMsg);
+
+    setSelectedDocForClientSend(doc);
+    setSendEmailSuccess(null);
+  };
+
+  // Dispatch email to client via system API
+  const handleSendEmailToClient = async () => {
+    if (!clientEmail) {
+      alert('Por favor, informe o e-mail do cliente.');
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      if (typeof window !== 'undefined' && senderEmail) {
+        localStorage.setItem('traduztudo_sender_email', senderEmail);
+      }
+
+      const activeVer =
+        selectedDocForClientSend?.versions?.slice().reverse().find((v) => v.type === selectedFileForSend) ||
+        selectedDocForClientSend?.versions?.[0];
+      const fileUrl =
+        activeVer?.dataUrl || activeVer?.fileUrl || selectedDocForClientSend?.dataUrl || selectedDocForClientSend?.fileUrl;
+
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: clientEmail,
+          from: senderEmail,
+          subject: emailSubject,
+          message: emailMessage,
+          documentName: selectedDocForClientSend?.name,
+          documentUrl: fileUrl,
+        }),
+      });
+
+      if (res.ok) {
+        setSendEmailSuccess(`E-mail disparado com sucesso para ${clientEmail}! (Remetente: ${senderEmail})`);
+        setTimeout(() => {
+          setSendEmailSuccess(null);
+        }, 5000);
+      } else {
+        alert('Erro ao disparar e-mail. Verifique os dados e tente novamente.');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar e-mail:', err);
+      alert('Erro de conexão ao disparar e-mail.');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Open webmail composer (Gmail or Mailto)
+  const handleOpenInWebmail = (service: 'gmail' | 'mailto') => {
+    if (typeof window !== 'undefined' && senderEmail) {
+      localStorage.setItem('traduztudo_sender_email', senderEmail);
+    }
+
+    if (service === 'gmail') {
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+        clientEmail
+      )}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailMessage)}`;
+      window.open(gmailUrl, '_blank');
+    } else {
+      const mailtoUrl = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(
+        emailSubject
+      )}&body=${encodeURIComponent(emailMessage)}`;
+      window.location.href = mailtoUrl;
+    }
+  };
+
+  // Open WhatsApp Web or app with pre-filled message
+  const handleOpenWhatsApp = () => {
+    const cleanPhone = clientPhone.replace(/\D/g, '');
+    const phoneFormatted = cleanPhone.startsWith('55') ? cleanPhone : cleanPhone.length > 0 ? `55${cleanPhone}` : '';
+    const waUrl = phoneFormatted
+      ? `https://wa.me/${phoneFormatted}?text=${encodeURIComponent(whatsappMessage)}`
+      : `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  // Copy WhatsApp message to clipboard
+  const handleCopyWhatsAppMessage = () => {
+    navigator.clipboard.writeText(whatsappMessage);
+    setCopiedClientMsg(true);
+    setTimeout(() => setCopiedClientMsg(false), 2500);
+  };
+
   const getStatusBadge = (status?: DocumentProcessingStatus) => {
     switch (status) {
       case 'UPLOADED':
@@ -979,9 +1129,19 @@ export function DocumentProcessingSection({
                   <Button
                     size="sm"
                     onClick={() => setSelectedDocForSign(doc)}
-                    className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-2xs ml-auto"
+                    className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-2xs"
                   >
                     <PenTool className="w-3.5 h-3.5" /> Assinar Digitalmente
+                  </Button>
+
+                  {/* Enviar ao Cliente (WhatsApp / E-mail) */}
+                  <Button
+                    size="sm"
+                    onClick={() => openClientSendModal(doc)}
+                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-2xs ml-auto"
+                    title="Disparar por e-mail ou enviar por WhatsApp para o cliente"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Enviar ao Cliente
                   </Button>
                 </div>
 
@@ -1101,17 +1261,26 @@ export function DocumentProcessingSection({
                     )}
 
                     {signedPdfVer && (
-                      <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                      <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                         <span className="text-emerald-400 font-semibold flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" /> PDF Assinado e Arquivado com Evidências Oficiais
                         </span>
-                        <a
-                          href={signedPdfVer.dataUrl || signedPdfVer.fileUrl}
-                          download={signedPdfVer.fileName}
-                          className="text-blue-300 hover:text-blue-200 underline text-xs"
-                        >
-                          Baixar PDF Assinado
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={signedPdfVer.dataUrl || signedPdfVer.fileUrl}
+                            download={signedPdfVer.fileName}
+                            className="text-blue-300 hover:text-blue-200 underline text-xs"
+                          >
+                            Baixar PDF Assinado
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => openClientSendModal(doc)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                          >
+                            <Send className="w-3 h-3" /> Enviar ao Cliente
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1599,6 +1768,256 @@ export function DocumentProcessingSection({
                 Fechar
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: Enviar ao Cliente (WhatsApp / E-mail) */}
+      {selectedDocForClientSend && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setSelectedDocForClientSend(null);
+            setSendEmailSuccess(null);
+          }}
+          title={`Enviar ao Cliente — ${selectedDocForClientSend.name}`}
+        >
+          <div className="space-y-4 text-xs">
+            {/* Success message banner */}
+            {sendEmailSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                {sendEmailSuccess}
+              </div>
+            )}
+
+            {/* Channel Tabs */}
+            <div className="flex border-b border-slate-200 gap-1 pb-1">
+              <button
+                type="button"
+                onClick={() => setClientSendChannel('whatsapp')}
+                className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  clientSendChannel === 'whatsapp'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" /> Enviar por WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={() => setClientSendChannel('email')}
+                className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  clientSendChannel === 'email'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Mail className="w-4 h-4" /> Disparar por E-mail
+              </button>
+            </div>
+
+            {/* Informações Básicas do Cliente e Arquivo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-0.5">Nome do Cliente:</label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Nome do cliente"
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-0.5">Versão do Arquivo:</label>
+                <select
+                  value={selectedFileForSend}
+                  onChange={(e) => setSelectedFileForSend(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-white"
+                >
+                  {selectedDocForClientSend.versions
+                    ?.slice()
+                    .reverse()
+                    .map((v) => (
+                      <option key={v.id || v.type} value={v.type}>
+                        {v.type === 'SIGNED_PDF'
+                          ? '⭐ PDF Assinado Oficial (Recomendado)'
+                          : v.type === 'FINAL_PDF'
+                          ? 'PDF Final'
+                          : v.type === 'TRANSLATED_DOCX'
+                          ? 'Word Traduzido (.docx)'
+                          : v.type === 'OCR_PDF'
+                          ? 'PDF com Camada OCR'
+                          : 'Arquivo Original'}
+                      </option>
+                    ))}
+                  {(!selectedDocForClientSend.versions || selectedDocForClientSend.versions.length === 0) && (
+                    <option value="ORIGINAL">Arquivo Original</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {/* ABA: WHATSAPP */}
+            {clientSendChannel === 'whatsapp' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-0.5">
+                    Telefone / WhatsApp do Cliente:
+                  </label>
+                  <input
+                    type="text"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="Ex: (11) 99999-9999 ou 5511999999999"
+                    className="w-full px-3 py-1.5 border rounded-lg text-xs"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    O link oficial do WhatsApp abre automaticamente com a mensagem e o documento preenchidos.
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="font-semibold text-slate-700">Mensagem do WhatsApp:</label>
+                    <button
+                      type="button"
+                      onClick={handleCopyWhatsAppMessage}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-800 flex items-center gap-1 font-semibold"
+                    >
+                      {copiedClientMsg ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Copiado!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" /> Copiar Texto
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <textarea
+                    rows={6}
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl font-sans text-xs bg-white text-slate-800"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedDocForClientSend(null)}
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    onClick={handleCopyWhatsAppMessage}
+                    variant="outline"
+                    className="gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copiar Mensagem
+                  </Button>
+                  <Button
+                    onClick={handleOpenWhatsApp}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-xs"
+                  >
+                    <MessageSquare className="w-4 h-4" /> Abrir WhatsApp e Enviar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ABA: E-MAIL */}
+            {clientSendChannel === 'email' && (
+              <div className="space-y-3">
+                {/* Notice sobre CNPJ e remetente */}
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Configuração Provisória de E-mail:</strong>
+                    <p className="mt-0.5 text-amber-800">
+                      Na próxima terça-feira com a emissão do CNPJ você poderá fixar o e-mail corporativo final (@traduztudo.com.br). Enquanto isso, você pode digitar qualquer e-mail de envio abaixo para disparar ou utilizar a opção <strong>"Abrir no Gmail"</strong> para enviar direto da sua conta.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-0.5">
+                      E-mail do Remetente (De):
+                    </label>
+                    <input
+                      type="email"
+                      value={senderEmail}
+                      onChange={(e) => setSenderEmail(e.target.value)}
+                      placeholder="seu.email@gmail.com ou contato@empresa.com"
+                      className="w-full px-3 py-1.5 border rounded-lg text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-0.5">
+                      E-mail do Cliente (Para) *:
+                    </label>
+                    <input
+                      type="email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                      placeholder="cliente@email.com"
+                      className="w-full px-3 py-1.5 border rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-0.5">Assunto:</label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full px-3 py-1.5 border rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-0.5">Mensagem do E-mail:</label>
+                  <textarea
+                    rows={6}
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl font-sans text-xs bg-white text-slate-800"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedDocForClientSend(null)}
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleOpenInWebmail('gmail')}
+                    className="gap-1.5 text-red-700 border-red-200 hover:bg-red-50"
+                    title="Abre o Gmail com tudo preenchido para envio manual da sua conta"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-red-600" /> Abrir no Gmail
+                  </Button>
+                  <Button
+                    onClick={handleSendEmailToClient}
+                    disabled={isSendingEmail}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5 shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    {isSendingEmail ? 'Disparando E-mail...' : 'Disparar E-mail pelo Sistema'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
