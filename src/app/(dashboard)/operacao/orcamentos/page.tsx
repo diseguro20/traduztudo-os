@@ -30,6 +30,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { databaseStore } from '@/lib/db';
 import { Quote, QuoteStatus } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { DocumentProcessingSection } from '@/components/documents/DocumentProcessingSection';
 
 export default function OrcamentosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -400,7 +401,7 @@ export default function OrcamentosPage() {
           }}
           title={`Documentos do Orçamento ${selectedQuoteForDocs.code}`}
           description="Revise os arquivos enviados pelo cliente antes de aprovar e gerar a Ordem de Serviço."
-          maxWidth="2xl"
+          maxWidth="5xl"
         >
           <div className="space-y-5">
             {/* Customer Details Strip */}
@@ -446,127 +447,17 @@ export default function OrcamentosPage() {
               </div>
             )}
 
-            {/* Documents List */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-                  Arquivos Anexados ({getQuoteDocuments(selectedQuoteForDocs).length})
-                </h4>
-                <span className="text-[11px] text-slate-400">Visualização e download</span>
-              </div>
-
-              {getQuoteDocuments(selectedQuoteForDocs).length === 0 ? (
-                <div className="text-center py-8 px-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
-                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-slate-600">Nenhum documento anexado digitalmente nesta solicitação.</p>
-                  <p className="text-[11px] text-slate-400 mt-1">O cliente pode enviar os arquivos diretamente pelo WhatsApp.</p>
-                  {selectedQuoteForDocs.customerPhone && (
-                    <a
-                      href={`https://wa.me/55${selectedQuoteForDocs.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Olá ${selectedQuoteForDocs.customerName}! Recebemos seu pedido de orçamento ${selectedQuoteForDocs.code}. Poderia nos enviar as fotos ou PDFs dos documentos por aqui?`
-                      )}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> Solicitar Documentos no WhatsApp
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {getQuoteDocuments(selectedQuoteForDocs).map((doc, idx) => {
-                    const ext = doc.name.split('.').pop()?.toLowerCase() || '';
-                    const isPdf = ext === 'pdf';
-                    const isImg = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-                    const isWord = ['doc', 'docx'].includes(ext);
-                    const hasViewer = !!(doc.dataUrl || doc.url);
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                          previewDoc?.name === doc.name
-                            ? 'border-blue-400 bg-blue-50/40 shadow-xs'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                              isPdf
-                                ? 'bg-red-50 text-red-600'
-                                : isImg
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : isWord
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {isPdf && <FileText className="w-5 h-5" />}
-                            {isImg && <Image className="w-5 h-5" />}
-                            {isWord && <FileText className="w-5 h-5" />}
-                            {!isPdf && !isImg && !isWord && <File className="w-5 h-5" />}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-900 truncate" title={doc.name}>
-                              {doc.name}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                              {doc.size ? <span>{(doc.size / 1024).toFixed(1)} KB</span> : <span>Documento do cliente</span>}
-                              <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium">
-                                <CheckCircle2 className="w-3 h-3" /> Anexado
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Document Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {hasViewer && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setPreviewDoc(previewDoc?.name === doc.name ? null : doc)}
-                              className="text-xs gap-1 text-blue-700 hover:bg-blue-50"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              {previewDoc?.name === doc.name ? 'Ocultar' : 'Visualizar'}
-                            </Button>
-                          )}
-
-                          {hasViewer ? (
-                            <a
-                              href={doc.dataUrl || doc.url}
-                              download={doc.name}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors inline-flex items-center"
-                              title="Baixar arquivo"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
-                          ) : (
-                            <a
-                              href={`https://wa.me/55${(selectedQuoteForDocs.customerPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                                `Olá ${selectedQuoteForDocs.customerName}! Referente ao documento "${doc.name}" do orçamento ${selectedQuoteForDocs.code}, você poderia nos enviar o arquivo original aqui pelo WhatsApp?`
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors inline-flex items-center gap-1"
-                              title="Pedir arquivo original no WhatsApp"
-                            >
-                              <MessageSquare className="w-3 h-3" /> Pedir no WhatsApp
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            {/* Módulo Integrado de Documentos + OCR + Word + Contagem + Assinaturas */}
+            <div className="pt-1">
+              <DocumentProcessingSection
+                quoteId={selectedQuoteForDocs.id}
+                customerId={selectedQuoteForDocs.customerId}
+                sourceLang={selectedQuoteForDocs.sourceLanguage || selectedQuoteForDocs.items[0]?.sourceLanguage || 'pt'}
+                targetLang={selectedQuoteForDocs.targetLanguage || selectedQuoteForDocs.items[0]?.targetLanguage || 'it'}
+                onApplyWordCountToQuote={() => {
+                  setRefresh((r) => r + 1);
+                }}
+              />
             </div>
 
             {/* Embedded Live Preview */}

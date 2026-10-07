@@ -305,6 +305,147 @@ export type DocumentCategory =
   | 'comprovante'
   | 'outro';
 
+export type DocumentProcessingStatus =
+  | 'UPLOADED'
+  | 'ANALYZING'
+  | 'OCR_PROCESSING'
+  | 'OCR_COMPLETED'
+  | 'DOCX_READY'
+  | 'TRANSLATION_PENDING'
+  | 'TRANSLATED_DOCX_UPLOADED'
+  | 'FINAL_PDF_READY'
+  | 'SIGNATURE_PENDING'
+  | 'SIGNED'
+  | 'ERROR';
+
+export type DocumentVersionType =
+  | 'ORIGINAL'
+  | 'OCR_PDF'
+  | 'GENERATED_DOCX'
+  | 'TRANSLATED_DOCX'
+  | 'FINAL_PDF'
+  | 'SIGNED_PDF'
+  | 'SIGNATURE_EVIDENCE';
+
+export interface DocumentVersion {
+  id: string;
+  documentId: string;
+  versionNumber: number;
+  type: DocumentVersionType;
+  fileName: string;
+  fileUrl: string;
+  dataUrl?: string;
+  fileSize: number;
+  fileType: string;
+  sha256: string;
+  createdAt: string;
+  createdBy?: string;
+  notes?: string;
+}
+
+export interface PageWordCount {
+  page: number;
+  words: number;
+  charactersWithSpaces?: number;
+  charactersWithoutSpaces?: number;
+  lines?: number;
+}
+
+export interface WordCountMetrics {
+  words: number;
+  charactersWithSpaces: number;
+  charactersWithoutSpaces: number;
+  pages: number;
+  lines: number;
+  billableWords: number;
+  ignoredWords: number;
+  detectedLanguage?: string;
+  pagesBreakdown?: PageWordCount[];
+  ignoreRepeatedHeaders?: boolean;
+}
+
+export type OcrState =
+  | 'PENDING'
+  | 'ANALYZING'
+  | 'OCR_NECESSARIO'
+  | 'OCR_NAO_NECESSARIO'
+  | 'PROCESSANDO'
+  | 'CONCLUIDO'
+  | 'ERRO';
+
+export interface DocumentOcrConfig {
+  isScanned: boolean;
+  needsOcr: boolean;
+  ocrStatus: OcrState;
+  languages: string[]; // e.g. ['por'], ['eng'], ['por', 'ita']
+  autoDetectLanguage: boolean;
+  formatRevisionRecommended?: boolean;
+  deskewApplied?: boolean;
+  cleanNoiseApplied?: boolean;
+  rotationApplied?: boolean;
+  contrastEnhanced?: boolean;
+  errorDetails?: string;
+}
+
+export type SignerPolicy = 'AUTO_SIGNATURE' | 'MANUAL_SIGNATURE';
+export type SignerSignatureType = 'ELETRONICA' | 'ICP_BRASIL';
+export type SignerAuthMethod = 'EMAIL' | 'SMS' | 'WHATSAPP' | 'API_AUTO';
+
+export interface SignerConfig {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  cpfCnpj?: string;
+  policy: SignerPolicy;
+  signatureType: SignerSignatureType;
+  authMethod: SignerAuthMethod;
+  isSpecialSigner?: boolean; // Carla Strambio
+}
+
+export type SignatureOverallStatus =
+  | 'PENDING'
+  | 'SENT'
+  | 'SIGNED'
+  | 'CANCELED'
+  | 'REJECTED'
+  | 'ERROR';
+
+export interface SignatureSignerStatus {
+  signer: SignerConfig;
+  status: 'PENDING' | 'SENT' | 'SIGNED' | 'REJECTED';
+  externalSignerKey?: string;
+  signUrl?: string;
+  signedAt?: string;
+  rejectedAt?: string;
+}
+
+export interface SignatureWebhookEvent {
+  event: string;
+  timestamp: string;
+  payloadSummary: string;
+}
+
+export interface SignatureRequest {
+  id: string;
+  documentId: string;
+  documentVersionId: string;
+  provider: 'clicksign' | 'docusign' | 'mock';
+  envelopeId?: string;
+  externalDocumentKey?: string;
+  signers: SignatureSignerStatus[];
+  status: SignatureOverallStatus;
+  environment: 'sandbox' | 'production';
+  sentAt: string;
+  completedAt?: string;
+  signedFileUrl?: string;
+  signedDataUrl?: string;
+  evidenceUrl?: string;
+  evidenceDataUrl?: string;
+  webhookEvents?: SignatureWebhookEvent[];
+  rawAuditLog?: string;
+}
+
 export interface DocumentItem {
   id: string;
   tenantId: string;
@@ -326,6 +467,21 @@ export interface DocumentItem {
   downloadCount: number;
   createdAt: string;
   updatedAt?: string;
+
+  // Document Pipeline & Processing Extensions
+  status?: DocumentProcessingStatus;
+  sha256Original?: string;
+  currentSha256?: string;
+  originalWordCount?: WordCountMetrics;
+  translatedWordCount?: WordCountMetrics;
+  ocrConfig?: DocumentOcrConfig;
+  versions?: DocumentVersion[];
+  extractedText?: string;
+  cleanExtractedText?: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
+  signatureRequest?: SignatureRequest;
+  formatWarning?: string;
 }
 
 export type TaskStatus = 'a_fazer' | 'em_andamento' | 'concluida' | 'cancelada';

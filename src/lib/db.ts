@@ -7,6 +7,11 @@ import {
   Quote,
   WorkOrder,
   DocumentItem,
+  DocumentVersion,
+  DocumentProcessingStatus,
+  WordCountMetrics,
+  DocumentOcrConfig,
+  SignatureRequest,
   OrderTask,
   Translator,
   Reviewer,
@@ -805,6 +810,10 @@ class DatabaseStore {
     return this.customers.find((c) => c.id === id && !c.deletedAt);
   }
 
+  getCustomer(id: string): Customer | undefined {
+    return this.getCustomerById(id);
+  }
+
   createCustomer(data: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalSpent' | 'ordersCount' | 'activeOrdersCount' | 'pendingBalance'>): Customer {
     const newCustomer: Customer = {
       ...data,
@@ -1306,6 +1315,10 @@ class DatabaseStore {
     return this.quotes.find((q) => q.id === id && !q.deletedAt);
   }
 
+  getQuote(id: string): Quote | undefined {
+    return this.getQuoteById(id);
+  }
+
   getQuoteByToken(token: string): Quote | undefined {
     return this.quotes.find((q) => q.approvalToken === token && !q.deletedAt);
   }
@@ -1545,26 +1558,189 @@ class DatabaseStore {
   }
 
   // --- DOCUMENTS ---
-  getDocuments(workOrderId?: string): DocumentItem[] {
-    if (workOrderId) {
-      return this.documents.filter((d) => d.workOrderId === workOrderId);
+  getDocument(id: string): DocumentItem | undefined {
+    return this.documents.find((d) => d.id === id);
+  }
+
+  getDocuments(filter?: { workOrderId?: string; quoteId?: string } | string): DocumentItem[] {
+    if (typeof filter === 'string') {
+      return this.documents.filter((d) => d.workOrderId === filter);
+    }
+    if (filter) {
+      return this.documents.filter((d) => {
+        if (filter.workOrderId && d.workOrderId !== filter.workOrderId) return false;
+        if (filter.quoteId && d.quoteId !== filter.quoteId) return false;
+        return true;
+      });
     }
     return this.documents;
   }
 
   createDocument(data: Omit<DocumentItem, 'id' | 'createdAt' | 'downloadCount' | 'version'>): DocumentItem {
+    const id = `doc-${Date.now()}`;
+    const initialVersion: DocumentVersion = {
+      id: `ver-${Date.now()}-1`,
+      documentId: id,
+      versionNumber: 1,
+      type: 'ORIGINAL',
+      fileName: data.name,
+      fileUrl: data.fileUrl,
+      dataUrl: data.dataUrl,
+      fileSize: data.fileSize,
+      fileType: data.fileType,
+      sha256: data.sha256Original || `sha_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      createdBy: data.uploaderName,
+    };
+
     const newDoc: DocumentItem = {
       ...data,
-      id: `doc-${Date.now()}`,
+      id,
       version: 1,
       downloadCount: 0,
+      status: data.status || 'UPLOADED',
+      sha256Original: initialVersion.sha256,
+      currentSha256: initialVersion.sha256,
+      versions: data.versions || [initialVersion],
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
+
     this.documents.unshift(newDoc);
     this.syncFirestore('documents', newDoc.id, newDoc);
     this.logAudit(data.uploaderName, 'Upload de Documento', 'Document', newDoc.id, `Arquivo enviado: ${newDoc.name} (${newDoc.category})`);
     this.persistAndNotify();
     return newDoc;
+  }
+
+  updateDocument(id: string, updates: Partial<DocumentItem>): DocumentItem | null {
+    const idx = this.documents.findIndex((d) => d.id === id);
+    if (idx === -1) return null;
+
+    const updated: DocumentItem = {
+      ...this.documents[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.documents[idx] = updated;
+    this.syncFirestore('documents', id, updated);
+    this.persistAndNotify();
+    return updated;
+  }
+
+  addDocumentVersion(
+    documentId: string,
+    versionData: Omit<DocumentVersion, 'id' | 'createdAt'>
+  ): DocumentVersion | null {
+    const doc = this.getDocument(documentId);
+    if (!doc) return null;
+
+    const nextVerNumber = (doc.versions?.length || 0) + 1;
+    const newVersion: DocumentVersion = {
+      ...versionData,
+      id: `ver-${Date.now()}-${nextVerNumber}`,
+      documentId,
+      versionNumber: nextVerNumber,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedVersions = [...(doc.versions || []), newVersion];
+    const statusMap: Record<string, DocumentProcessingStatus> = {
+      ORIGINAL: 'UPLOADED',
+      OCR_PDF: 'OCR_COMPLETED',
+      GENERATED_DOCX: 'DOCX_READY',
+      TRANSLATED_DOCX: 'TRANSLATED_DOCX_UPLOADED',
+      FINAL_PDF: 'FINAL_PDF_READY',
+      SIGNED_PDF: 'SIGNED',
+    };
+
+    const nextStatus = statusMap[newVersion.type] || doc.status;
+
+    this.updateDocument(documentId, {
+      version: nextVerNumber,
+      currentSha256: newVersion.sha256,
+      versions: updatedVersions,
+      status: nextStatus,
+      fileUrl: newVersion.fileUrl || doc.fileUrl,
+      dataUrl: newVersion.dataUrl || doc.dataUrl,
+    });
+
+    this.logAudit(
+      this.getCurrentUser().name,
+      'Nova Versão de Documento',
+      'Document',
+      documentId,
+      `Adicionada versão #${nextVerNumber} (${newVersion.type}) - Hash: ${newVersion.sha256.substring(0, 10)}...`
+    );
+
+    return newVersion;
+  }
+
+  applyWordCountToQuote(quoteId: string, documentId: string): boolean {
+    const quote = this.getQuote(quoteId);
+    const doc = this.getDocument(documentId);
+    if (!quote || !doc || !doc.originalWordCount) return false;
+
+    const billableWords = doc.originalWordCount.billableWords || doc.originalWordCount.words;
+    if (billableWords <= 0) return false;
+
+    // Update quote items quantity with billable word count
+    const updatedItems = quote.items.map((item, idx) => {
+      if (idx === 0) {
+        const total = billableWords * item.unitPrice * (1 - (item.discount || 0) / 100);
+        return {
+          ...item,
+          quantity: billableWords,
+          unit: 'palavra' as const,
+          total,
+        };
+      }
+      return item;
+    });
+
+    const subtotal = updatedItems.reduce((acc, it) => acc + it.total, 0);
+    const total = subtotal - quote.discount + quote.additionalCost;
+
+    this.updateQuote(quoteId, {
+      items: updatedItems,
+      subtotal,
+      total,
+      notes: `${quote.notes || ''}\n[Contagem de Palavras Integrada]: ${billableWords} palavras faturáveis extraídas do documento ${doc.name}.`.trim(),
+    });
+
+    this.logAudit(
+      this.getCurrentUser().name,
+      'Contagem de Palavras Aplicada ao Orçamento',
+      'Quote',
+      quoteId,
+      `Orçamento ${quote.code} atualizado para ${billableWords} palavras a partir de ${doc.name}.`
+    );
+
+    return true;
+  }
+
+  updateSignatureRequest(documentId: string, updates: Partial<SignatureRequest>): boolean {
+    const doc = this.getDocument(documentId);
+    if (!doc) return false;
+
+    const currentReq = doc.signatureRequest;
+    if (!currentReq) return false;
+
+    const updatedReq: SignatureRequest = {
+      ...currentReq,
+      ...updates,
+    };
+
+    const newDocStatus: DocumentProcessingStatus =
+      updatedReq.status === 'SIGNED' ? 'SIGNED' : 'SIGNATURE_PENDING';
+
+    this.updateDocument(documentId, {
+      signatureRequest: updatedReq,
+      status: newDocStatus,
+    });
+
+    return true;
   }
 
   deleteDocument(id: string): boolean {
