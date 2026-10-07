@@ -94,6 +94,20 @@ class DatabaseStore {
   private auditLogs: AuditLog[] = [{ ...CLEAN_PRODUCTION_AUDIT }];
   private isDemoMode: boolean = false;
   private currentUserId: string = 'user-ygor';
+  private clicksignConfig: {
+    environment: 'sandbox' | 'production';
+    accessToken?: string;
+    webhookSecret?: string;
+  } = {
+    environment:
+      typeof process !== 'undefined' &&
+      (process.env.CLICKSIGN_ENVIRONMENT === 'production' ||
+        process.env.NEXT_PUBLIC_SIGNATURE_ENVIRONMENT === 'production')
+        ? 'production'
+        : 'sandbox',
+    accessToken: '',
+    webhookSecret: '',
+  };
   private listeners: Array<() => void> = [];
   private isSyncingFromRemote: boolean = false;
   private hasStartedRealtime: boolean = false;
@@ -203,6 +217,7 @@ class DatabaseStore {
         if (Array.isArray(parsed.auditLogs)) this.auditLogs = parsed.auditLogs;
         if (typeof parsed.isDemoMode === 'boolean') this.isDemoMode = parsed.isDemoMode;
         if (parsed.currentUserId) this.currentUserId = parsed.currentUserId;
+        if (parsed.clicksignConfig) this.clicksignConfig = parsed.clicksignConfig;
       } else {
         // First run: save clean production state
         this.saveToLocalStorage();
@@ -255,6 +270,7 @@ class DatabaseStore {
         auditLogs: this.auditLogs,
         isDemoMode: this.isDemoMode,
         currentUserId: this.currentUserId,
+        clicksignConfig: this.clicksignConfig,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
@@ -452,6 +468,22 @@ class DatabaseStore {
   // --- PRODUCTION & DEMO DATA MANAGEMENT ---
   isCleanProductionMode(): boolean {
     return !this.isDemoMode;
+  }
+
+  getClicksignConfig(): {
+    environment: 'sandbox' | 'production';
+    accessToken?: string;
+    webhookSecret?: string;
+  } {
+    return { ...this.clicksignConfig };
+  }
+
+  updateClicksignConfig(updates: Partial<{ environment: 'sandbox' | 'production'; accessToken: string; webhookSecret: string }>) {
+    this.clicksignConfig = {
+      ...this.clicksignConfig,
+      ...updates,
+    };
+    this.persistAndNotify();
   }
 
   hasMockData(): boolean {

@@ -114,9 +114,15 @@ export default function DocumentosPage() {
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <FolderOpen className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Repositório de Documentos & OCR
             </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-              Clicksign Sandbox
-            </span>
+            {databaseStore.getClicksignConfig().environment === 'production' ? (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+                Clicksign Produção
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                Clicksign Sandbox
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Módulo centralizado de OCR, extração de texto, geração de Word editável, contagem comercial e assinaturas digitais autorizadas.

@@ -25,6 +25,21 @@ export class ClicksignSignatureProvider implements ISignatureProvider {
     this.webhookSecret = process.env.CLICKSIGN_WEBHOOK_SECRET || '';
   }
 
+  configure(config: { environment?: 'sandbox' | 'production'; accessToken?: string; webhookSecret?: string }) {
+    if (config.environment) {
+      this.isSandbox = config.environment !== 'production';
+      this.apiBaseUrl = this.isSandbox
+        ? process.env.CLICKSIGN_SANDBOX_URL || 'https://sandbox.clicksign.com/api/v1'
+        : process.env.CLICKSIGN_PROD_URL || 'https://app.clicksign.com/api/v1';
+    }
+    if (config.accessToken) {
+      this.accessToken = config.accessToken;
+    }
+    if (config.webhookSecret) {
+      this.webhookSecret = config.webhookSecret;
+    }
+  }
+
   getEnvironmentLabel(): string {
     return this.isSandbox ? 'AMBIENTE DE TESTE (SANDBOX)' : 'PRODUÇÃO';
   }

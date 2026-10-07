@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clicksignProvider } from '@/lib/signatures/ClicksignSignatureProvider';
 import { SignerConfig, SignatureRequest, SignatureOverallStatus } from '@/types';
+import { databaseStore } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
+    const config = databaseStore.getClicksignConfig();
+    clicksignProvider.configure(config);
+
     const body = await req.json();
     const {
       documentId,

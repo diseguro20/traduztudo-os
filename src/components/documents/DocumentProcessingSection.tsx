@@ -570,6 +570,9 @@ export function DocumentProcessingSection({
     }
   };
 
+  const clicksignConfig = databaseStore.getClicksignConfig();
+  const isClicksignProd = clicksignConfig.environment === 'production';
+
   return (
     <div className="space-y-4">
       {/* Top Header Card */}
@@ -580,8 +583,14 @@ export function DocumentProcessingSection({
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/30 text-blue-200 border border-blue-400/30">
                 Módulo Oficial
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                Clicksign Sandbox Ativo
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                  isClicksignProd
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                }`}
+              >
+                {isClicksignProd ? 'Clicksign Produção Ativa' : 'Clicksign Sandbox Ativo'}
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-bold tracking-tight mt-1 flex items-center gap-2">
@@ -999,16 +1008,34 @@ export function DocumentProcessingSection({
           title={`Assinatura Digital - ${selectedDocForSign.name}`}
         >
           <div className="space-y-4 text-xs">
-            {/* Sandbox Notice Banner */}
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between">
+            {/* Clicksign Environment Notice Banner */}
+            <div
+              className={`p-3 rounded-xl border flex items-center justify-between ${
+                isClicksignProd
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                <ShieldCheck
+                  className={`w-4 h-4 ${isClicksignProd ? 'text-emerald-600' : 'text-amber-600'}`}
+                />
                 <span>
-                  Provedor: <strong>Clicksign Oficial</strong> (Ambiente de Teste / Sandbox Ativo)
+                  Provedor: <strong>Clicksign Oficial</strong> (
+                  {isClicksignProd
+                    ? 'Ambiente de Produção Oficial Ativo'
+                    : 'Ambiente de Teste / Sandbox Ativo'}
+                  )
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200/80 text-amber-900">
-                SANDBOX
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  isClicksignProd
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : 'bg-amber-200/80 text-amber-900'
+                }`}
+              >
+                {isClicksignProd ? 'PRODUÇÃO' : 'SANDBOX'}
               </span>
             </div>
 
