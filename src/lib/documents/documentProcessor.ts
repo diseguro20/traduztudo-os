@@ -89,27 +89,39 @@ export function identifyRepeatedPatterns(pagesText: string[]): Set<string> {
   const repeated = new Set<string>();
   if (pagesText.length <= 1) return repeated;
 
-  const lineOccurrences: Record<string, number> = {};
+  const headerFooterOccurrences: Record<string, number> = {};
 
   pagesText.forEach((pText) => {
-    const lines = pText
+    const rawLines = pText
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 2 && l.length < 90);
+      .filter((l) => l.length > 0);
 
-    const uniqueInPage = new Set(lines);
-    uniqueInPage.forEach((line) => {
-      // Common page numbers like "Página 1", "Página 2 de 5", "- 1 -"
-      if (/^(p[aá]gina|\d+\s*\/\s*\d+|-\s*\d+\s*-|\d+)$/i.test(line)) {
+    if (rawLines.length === 0) return;
+
+    // Check page numbers anywhere
+    rawLines.forEach((line) => {
+      if (/^(p[aá]gina\s*\d+(\s*(de|\/)\s*\d+)?|fls?\.\s*\d+|-\s*\d+\s*-|\d+\s*\/\s*\d+|\d+)$/i.test(line)) {
         repeated.add(line);
       }
-      lineOccurrences[line] = (lineOccurrences[line] || 0) + 1;
+    });
+
+    // Candidates for header (first 2 non-empty lines) and footer (last 2 non-empty lines)
+    const candidates = [
+      ...rawLines.slice(0, 2),
+      ...rawLines.slice(-2),
+    ].filter((l) => l.length > 2 && l.length < 80);
+
+    const uniqueCandidates = new Set(candidates);
+    uniqueCandidates.forEach((cand) => {
+      headerFooterOccurrences[cand] = (headerFooterOccurrences[cand] || 0) + 1;
     });
   });
 
-  // If a line appears in more than 60% of pages, it's considered repeated header/footer
-  const threshold = Math.max(2, Math.floor(pagesText.length * 0.6));
-  for (const [line, count] of Object.entries(lineOccurrences)) {
+  // A line is considered a repeated header/footer only if it appears in at least 70% of pages
+  // strictly in the header or footer zones
+  const threshold = Math.max(2, Math.floor(pagesText.length * 0.7));
+  for (const [line, count] of Object.entries(headerFooterOccurrences)) {
     if (count >= threshold) {
       repeated.add(line);
     }

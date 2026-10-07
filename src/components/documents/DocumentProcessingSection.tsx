@@ -42,6 +42,7 @@ import {
   calculateSha256,
   analyzeDocumentFile,
   generateDocxFromText,
+  calculateWordMetrics,
 } from '@/lib/documents/documentProcessor';
 
 interface DocumentProcessingSectionProps {
@@ -323,21 +324,10 @@ export function DocumentProcessingSection({
   const handleRecountWords = (doc: DocumentItem) => {
     if (!doc.extractedText) return;
     const pages = doc.extractedText.split('--- QUEBRA DE PÁGINA ---');
-    const wordsArr = doc.extractedText.match(/[\p{L}\p{N}'’\-_]+/gu) || [];
-    const ignored = ignoreRepeated ? Math.floor(wordsArr.length * 0.08) : 0;
-    const billable = Math.max(0, wordsArr.length - ignored);
-
-    const updatedMetrics: WordCountMetrics = {
-      words: wordsArr.length,
-      charactersWithSpaces: doc.extractedText.length,
-      charactersWithoutSpaces: doc.extractedText.replace(/\s+/g, '').length,
-      pages: Math.max(1, pages.length),
-      lines: doc.extractedText.split('\n').filter(Boolean).length,
-      billableWords: billable,
-      ignoredWords: ignored,
-      detectedLanguage: doc.sourceLanguage || 'por',
+    const updatedMetrics = calculateWordMetrics(pages, {
       ignoreRepeatedHeaders: ignoreRepeated,
-    };
+      detectedLanguage: doc.sourceLanguage,
+    });
 
     databaseStore.updateDocument(doc.id, {
       originalWordCount: updatedMetrics,
