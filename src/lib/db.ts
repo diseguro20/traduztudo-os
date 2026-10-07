@@ -1051,12 +1051,43 @@ class DatabaseStore {
         .join('\n'),
       status: 'rascunho',
       approvalToken: quoteToken,
+      files: newReq.files || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     this.quotes.unshift(newQuote);
     newReq.convertedQuoteId = newQuote.id;
     newLead.quoteId = newQuote.id;
+
+    if (Array.isArray(newReq.files) && newReq.files.length > 0) {
+      newReq.files.forEach((file: any, fIdx: number) => {
+        const fileName = typeof file === 'string' ? file : file.name;
+        const fileUrl = typeof file === 'string' ? '' : file.url || file.dataUrl || '';
+        const docItem: DocumentItem = {
+          id: `doc-${Date.now()}-${fIdx}`,
+          tenantId: this.tenant.id,
+          quoteId: newQuote.id,
+          customerId: existingCust.id,
+          name: fileName,
+          category: 'original',
+          fileUrl: fileUrl,
+          url: fileUrl,
+          dataUrl: typeof file === 'object' ? file.dataUrl : undefined,
+          fileSize: (typeof file === 'object' && typeof file.size === 'number') ? file.size : 0,
+          fileType: (typeof file === 'object' && typeof file.type === 'string') ? file.type : 'application/pdf',
+          version: 1,
+          downloadCount: 0,
+          uploaderUserId: 'user-diego',
+          uploaderName: 'Diego',
+          uploadedByUserId: 'user-diego',
+          uploadedByUserName: 'Diego',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        this.documents.unshift(docItem);
+        this.syncFirestore('documents', docItem.id, docItem);
+      });
+    }
 
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
@@ -1184,6 +1215,7 @@ class DatabaseStore {
         .join('\n'),
       status: 'rascunho',
       approvalToken: quoteToken,
+      files: newReq.files || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1191,6 +1223,36 @@ class DatabaseStore {
     this.syncFirestore('quotes', newQuote.id, newQuote);
     newReq.convertedQuoteId = newQuote.id;
     newLead.quoteId = newQuote.id;
+
+    if (Array.isArray(newReq.files) && newReq.files.length > 0) {
+      newReq.files.forEach((file: any, fIdx: number) => {
+        const fileName = typeof file === 'string' ? file : file.name;
+        const fileUrl = typeof file === 'string' ? '' : file.url || file.dataUrl || '';
+        const docItem: DocumentItem = {
+          id: `doc-${Date.now()}-${fIdx}`,
+          tenantId: this.tenant.id,
+          quoteId: newQuote.id,
+          customerId: existingCust.id,
+          name: fileName,
+          category: 'original',
+          fileUrl: fileUrl,
+          url: fileUrl,
+          dataUrl: typeof file === 'object' ? file.dataUrl : undefined,
+          fileSize: (typeof file === 'object' && typeof file.size === 'number') ? file.size : 0,
+          fileType: (typeof file === 'object' && typeof file.type === 'string') ? file.type : 'application/pdf',
+          version: 1,
+          downloadCount: 0,
+          uploaderUserId: 'user-diego',
+          uploaderName: 'Diego',
+          uploadedByUserId: 'user-diego',
+          uploadedByUserName: 'Diego',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        this.documents.unshift(docItem);
+        this.syncFirestore('documents', docItem.id, docItem);
+      });
+    }
 
     const notif = {
       title: 'Novo Orçamento Recebido do Site',

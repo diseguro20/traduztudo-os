@@ -243,6 +243,7 @@ export interface Quote {
   rejectedAt?: string;
   rejectedReason?: string;
   workOrderId?: string;
+  files?: Array<{ name: string; url?: string; dataUrl?: string; size?: number; type?: string } | string>;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -311,13 +312,18 @@ export interface DocumentItem {
   name: string;
   category: DocumentCategory;
   fileUrl: string;
+  url?: string;
+  dataUrl?: string;
   fileSize: number;
   fileType: string;
   version: number;
   uploaderUserId: string;
   uploaderName: string;
+  uploadedByUserId?: string;
+  uploadedByUserName?: string;
   downloadCount: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type TaskStatus = 'a_fazer' | 'em_andamento' | 'concluida' | 'cancelada';
