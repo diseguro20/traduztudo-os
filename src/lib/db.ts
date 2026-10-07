@@ -260,7 +260,23 @@ class DatabaseStore {
     if (this.isSyncingFromRemote) return;
     try {
       const docRef = doc(db, 'traduztudo_' + collectionName, id);
-      await setDoc(docRef, JSON.parse(JSON.stringify(data)), { merge: true });
+      const payload = JSON.parse(JSON.stringify(data));
+      // Guard against Firestore 1MB document limit
+      if (JSON.stringify(payload).length > 750000) {
+        if (payload.files && Array.isArray(payload.files)) {
+          payload.files = payload.files.map((f: any) => {
+            if (typeof f === 'object' && f.dataUrl) {
+              const { dataUrl, ...rest } = f;
+              return rest;
+            }
+            return f;
+          });
+        }
+        if (payload.dataUrl) {
+          delete payload.dataUrl;
+        }
+      }
+      await setDoc(docRef, payload, { merge: true });
     } catch (e) {
       console.warn(`Firestore sync note for ${collectionName}/${id}:`, e);
     }
