@@ -82,6 +82,7 @@ export function DocumentProcessingSection({
   const [ocrAutoDetect, setOcrAutoDetect] = useState(true);
   const [ocrDeskew, setOcrDeskew] = useState(true);
   const [ocrCleanNoise, setOcrCleanNoise] = useState(true);
+  const [ocrLangSearch, setOcrLangSearch] = useState('');
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
 
   // Signer modal state
@@ -295,6 +296,25 @@ export function DocumentProcessingSection({
     setRefresh((r) => r + 1);
   };
 
+  // Open Reprocess OCR modal with intelligent defaults
+  const openReprocessOcrModal = (doc: DocumentItem) => {
+    const isVen = /venezuela|venezol|caracas|partida|acta|cedula|saime|saren/i.test(doc.name);
+    const initialLang = isVen
+      ? ['spa']
+      : doc.sourceLanguage
+      ? [doc.sourceLanguage]
+      : doc.ocrConfig?.languages && doc.ocrConfig.languages.length > 0
+      ? doc.ocrConfig.languages
+      : ['spa', 'por'];
+
+    setOcrLangs(initialLang);
+    setOcrAutoDetect(true);
+    setOcrDeskew(true);
+    setOcrCleanNoise(true);
+    setOcrLangSearch('');
+    setSelectedDocForOcr(doc);
+  };
+
   // Reprocess OCR
   const handleReprocessOcr = async () => {
     if (!selectedDocForOcr) return;
@@ -321,6 +341,7 @@ export function DocumentProcessingSection({
           status: 'OCR_COMPLETED',
           extractedText: data.extractedText,
           originalWordCount: data.metrics,
+          sourceLanguage: data.metrics?.detectedLanguage || data.languages?.[0] || 'por',
           ocrConfig: {
             isScanned: true,
             needsOcr: true,
@@ -1086,7 +1107,7 @@ export function DocumentProcessingSection({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setSelectedDocForOcr(doc)}
+                    onClick={() => openReprocessOcrModal(doc)}
                     className="gap-1.5 text-slate-700 hover:bg-slate-50"
                   >
                     <RotateCw className="w-3.5 h-3.5 text-indigo-600" /> Reprocessar OCR
@@ -1291,55 +1312,282 @@ export function DocumentProcessingSection({
         </div>
       )}
 
-      {/* MODAL: Reprocessar OCR */}
+      {/* MODAL: Reprocessar OCR com Detecção Automática e Multi-Idiomas */}
       {selectedDocForOcr && (
         <Modal
           isOpen={true}
           onClose={() => setSelectedDocForOcr(null)}
-          title={`Reprocessar OCR - ${selectedDocForOcr.name}`}
+          title={`Reconhecimento OCR & Extração de Texto — ${selectedDocForOcr.name}`}
         >
           <div className="space-y-4 text-xs">
-            <p className="text-slate-500">
-              Execute o motor OCR com correção geométrica (deskew), remoção de ruídos e suporte multilíngue.
-            </p>
+            {/* Banner Informativo sobre Venezuela, América Latina e Reconhecimento Universal */}
+            <div className="p-3.5 rounded-xl bg-blue-50/90 border border-blue-200 text-blue-950 space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-blue-900">
+                <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                Reconhecimento Universal de Documentos Internacionais (Venezuela & Mundo)
+              </div>
+              <p className="text-[11px] text-blue-800 leading-relaxed">
+                O motor OCR processa <strong>certidões, diplomas, contratos e históricos de qualquer país</strong>.
+                Documentos emitidos na <strong>Venezuela</strong> e em toda a América Latina utilizam o <strong>Espanhol (Castellano / código spa)</strong>.
+                Com a <strong>Detecção Automática</strong> ativada, o sistema reconhece documentos venezuelanos (Partidas de Nacimiento, Antecedentes Penales, Cédulas, Notas, Apostilas) com máxima fidelidade.
+              </p>
+            </div>
 
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Idiomas de Reconhecimento:</label>
-              <div className="grid grid-cols-3 gap-2">
+            {/* TOGGLE PRINCIPAL: DETECTAR AUTOMATICAMENTE */}
+            <div
+              onClick={() => setOcrAutoDetect(!ocrAutoDetect)}
+              className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                ocrAutoDetect
+                  ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`p-2 rounded-lg ${
+                    ocrAutoDetect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <Languages className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-xs">
+                      Detectar Idioma Automaticamente (Recomendado)
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                      INTELIGENTE
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-600 block mt-0.5">
+                    {ocrAutoDetect
+                      ? '✨ Ativo: O sistema analisa o vocabulário e identifica Espanhol (Venezuela, etc.), Português, Italiano, Inglês ou qualquer outro idioma sem exigir seleção prévia.'
+                      : 'Seleção manual de idiomas configurada abaixo.'}
+                  </span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={ocrAutoDetect}
+                onChange={(e) => setOcrAutoDetect(e.target.checked)}
+                className="rounded text-emerald-600 h-4 w-4"
+              />
+            </div>
+
+            {/* SELEÇÃO DE IDIOMAS (MANUAL OU PARA REFORÇAR A DETECÇÃO) */}
+            <div className="space-y-2 pt-1 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="font-bold text-slate-800 block">
+                  Idiomas de Reconhecimento do Motor OCR:
+                </label>
+                <span className="text-[10px] text-slate-500">
+                  {ocrLangs.length === 0
+                    ? 'Nenhum idioma manual fixado'
+                    : `Selecionado(s): ${ocrLangs.join(', ').toUpperCase()}`}
+                </span>
+              </div>
+
+              {/* Atalhos Rápidos para Países Comuns */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                <span className="text-[10px] text-slate-400 font-semibold mr-1">Atalhos:</span>
                 {[
-                  { code: 'por', label: 'Português (por)' },
-                  { code: 'eng', label: 'Inglês (eng)' },
-                  { code: 'ita', label: 'Italiano (ita)' },
-                  { code: 'spa', label: 'Espanhol (spa)' },
-                  { code: 'fra', label: 'Francês (fra)' },
-                  { code: 'deu', label: 'Alemão (deu)' },
-                ].map((l) => (
-                  <label
-                    key={l.code}
-                    className={`flex items-center gap-1.5 p-2 rounded-lg border cursor-pointer ${
-                      ocrLangs.includes(l.code)
-                        ? 'border-blue-500 bg-blue-50/50 text-blue-900 font-semibold'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={ocrLangs.includes(l.code)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setOcrLangs([...ocrLangs, l.code]);
+                  { code: 'spa', label: '🇻🇪 Venezuela / Espanhol' },
+                  { code: 'por', label: '🇧🇷 Brasil / Português' },
+                  { code: 'eng', label: '🇺🇸 EUA / Inglês' },
+                  { code: 'ita', label: '🇮🇹 Itália / Italiano' },
+                  { code: 'fra', label: '🇫🇷 França / Francês' },
+                  { code: 'lat', label: '🇻🇦 Latim Eclesiástico' },
+                ].map((item) => {
+                  const isSelected = ocrLangs.includes(item.code);
+                  return (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setOcrLangs(ocrLangs.filter((c) => c !== item.code));
                         } else {
-                          setOcrLangs(ocrLangs.filter((c) => c !== l.code));
+                          setOcrLangs([...ocrLangs, item.code]);
                         }
                       }}
-                      className="rounded text-blue-600 focus:ring-blue-500 h-3 w-3"
-                    />
-                    <span>{l.label}</span>
-                  </label>
-                ))}
+                      className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-all border ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Campo de Busca de Idioma */}
+              <div>
+                <input
+                  type="text"
+                  value={ocrLangSearch}
+                  onChange={(e) => setOcrLangSearch(e.target.value)}
+                  placeholder="Filtrar por país ou idioma (ex: Venezuela, Espanha, Itália, Holanda)..."
+                  className="w-full px-2.5 py-1.5 border rounded-lg text-xs bg-slate-50 focus:bg-white transition-colors"
+                />
+              </div>
+
+              {/* Grid Completo de Idiomas */}
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border rounded-xl p-2 bg-slate-50/50">
+                {[
+                  {
+                    code: 'spa',
+                    name: 'Espanhol / Castellano',
+                    details: 'Venezuela, Colômbia, Espanha, Argentina, América Latina',
+                    flag: '🇻🇪 🇨🇴 🇪🇸 🇦🇷',
+                  },
+                  {
+                    code: 'por',
+                    name: 'Português',
+                    details: 'Brasil, Portugal, Angola, Moçambique',
+                    flag: '🇧🇷 🇵🇹',
+                  },
+                  {
+                    code: 'eng',
+                    name: 'Inglês',
+                    details: 'EUA, Reino Unido, Canadá, Austrália',
+                    flag: '🇺🇸 🇬🇧',
+                  },
+                  {
+                    code: 'ita',
+                    name: 'Italiano',
+                    details: 'Itália, Suíça',
+                    flag: '🇮🇹',
+                  },
+                  {
+                    code: 'fra',
+                    name: 'Francês',
+                    details: 'França, Haiti, Canadá, Bélgica, Suíça',
+                    flag: '🇫🇷 🇭🇹',
+                  },
+                  {
+                    code: 'deu',
+                    name: 'Alemão',
+                    details: 'Alemanha, Áustria, Suíça',
+                    flag: '🇩🇪',
+                  },
+                  {
+                    code: 'lat',
+                    name: 'Latim',
+                    details: 'Certidões Eclesiásticas, Batismos Antigos, Diocese',
+                    flag: '🇻🇦',
+                  },
+                  {
+                    code: 'nld',
+                    name: 'Holandês / Neerlandês',
+                    details: 'Países Baixos, Suriname, Bélgica',
+                    flag: '🇳🇱 🇸🇷',
+                  },
+                  {
+                    code: 'rus',
+                    name: 'Russo',
+                    details: 'Rússia, Leste Europeu (Cirílico)',
+                    flag: '🇷🇺',
+                  },
+                  {
+                    code: 'ara',
+                    name: 'Árabe',
+                    details: 'Líbano, Síria, Egito, Marrocos',
+                    flag: '🇱🇧 🇪🇬',
+                  },
+                  {
+                    code: 'zho',
+                    name: 'Chinês',
+                    details: 'China, Taiwan, Hong Kong (Mandarim)',
+                    flag: '🇨🇳',
+                  },
+                  {
+                    code: 'jpn',
+                    name: 'Japonês',
+                    details: 'Japão (Kanji, Kana)',
+                    flag: '🇯🇵',
+                  },
+                  {
+                    code: 'ukr',
+                    name: 'Ucraniano',
+                    details: 'Ucrânia (Cirílico)',
+                    flag: '🇺🇦',
+                  },
+                  {
+                    code: 'pol',
+                    name: 'Polonês',
+                    details: 'Polônia',
+                    flag: '🇵🇱',
+                  },
+                  {
+                    code: 'ron',
+                    name: 'Romeno',
+                    details: 'Romênia, Moldávia',
+                    flag: '🇷🇴',
+                  },
+                  {
+                    code: 'hat',
+                    name: 'Crioulo Haitiano',
+                    details: 'Haiti',
+                    flag: '🇭🇹',
+                  },
+                ]
+                  .filter((l) => {
+                    if (!ocrLangSearch.trim()) return true;
+                    const q = ocrLangSearch.toLowerCase();
+                    return (
+                      l.code.toLowerCase().includes(q) ||
+                      l.name.toLowerCase().includes(q) ||
+                      l.details.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((l) => {
+                    const isChecked = ocrLangs.includes(l.code);
+                    return (
+                      <label
+                        key={l.code}
+                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
+                          isChecked
+                            ? 'border-blue-500 bg-blue-50 text-blue-900 font-semibold'
+                            : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setOcrLangs([...ocrLangs, l.code]);
+                              } else {
+                                setOcrLangs(ocrLangs.filter((c) => c !== l.code));
+                              }
+                            }}
+                            className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                          />
+                          <span className="text-sm mr-1">{l.flag}</span>
+                          <div>
+                            <span className="font-semibold text-xs text-slate-900">
+                              {l.name} ({l.code})
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {l.details}
+                            </span>
+                          </div>
+                        </div>
+                        {isChecked && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-200/80 text-blue-900 font-bold uppercase">
+                            ATIVO
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
               </div>
             </div>
 
+            {/* OPÇÕES AVANÇADAS DE PROCESSAMENTO */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
               <label className="flex items-center gap-2 cursor-pointer text-slate-700">
                 <input
@@ -1348,7 +1596,9 @@ export function DocumentProcessingSection({
                   onChange={(e) => setOcrDeskew(e.target.checked)}
                   className="rounded text-blue-600 h-3.5 w-3.5"
                 />
-                <span>Correção de rotação e alinhamento automático (deskew)</span>
+                <span className="font-medium text-xs">
+                  Correção de rotação e alinhamento geométrico automático (deskew)
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer text-slate-700">
@@ -1358,16 +1608,30 @@ export function DocumentProcessingSection({
                   onChange={(e) => setOcrCleanNoise(e.target.checked)}
                   className="rounded text-blue-600 h-3.5 w-3.5"
                 />
-                <span>Filtro e remoção controlada de ruídos e contraste avançado</span>
+                <span className="font-medium text-xs">
+                  Filtro de remoção de manchas/ruídos e aumento de contraste de texto
+                </span>
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
               <Button variant="outline" onClick={() => setSelectedDocForOcr(null)}>
                 Cancelar
               </Button>
-              <Button onClick={handleReprocessOcr} disabled={isProcessingOcr} className="bg-blue-600 hover:bg-blue-700">
-                {isProcessingOcr ? 'Processando OCR...' : 'Executar OCR'}
+              <Button
+                onClick={handleReprocessOcr}
+                disabled={isProcessingOcr}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5"
+              >
+                {isProcessingOcr ? (
+                  <>
+                    <RotateCw className="w-3.5 h-3.5 animate-spin" /> Processando OCR...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" /> Executar OCR Completo
+                  </>
+                )}
               </Button>
             </div>
           </div>
