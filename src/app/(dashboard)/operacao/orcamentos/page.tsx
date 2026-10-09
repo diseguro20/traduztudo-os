@@ -83,7 +83,9 @@ export default function OrcamentosPage() {
     }
 
     // 2. From DocumentItem collection in databaseStore
-    const linkedDocs = databaseStore.getDocuments().filter((d) => d.quoteId === q.id);
+    const linkedDocs = databaseStore.getDocuments().filter(
+      (d) => d.quoteId === q.id || (d.quoteId && d.quoteId.toLowerCase() === q.code.toLowerCase())
+    );
     linkedDocs.forEach((d) => {
       if (!docs.some((existing) => existing.name === d.name)) {
         docs.push({

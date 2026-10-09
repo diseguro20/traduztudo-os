@@ -227,6 +227,48 @@ class DatabaseStore {
     }
   }
 
+  private sanitizeForRemote(data: any): any {
+    if (!data || typeof data !== 'object') return data;
+    try {
+      const clone = JSON.parse(JSON.stringify(data));
+
+      const cleanNode = (node: any) => {
+        if (!node || typeof node !== 'object') return;
+        for (const key of Object.keys(node)) {
+          const val = node[key];
+          if (typeof val === 'string') {
+            if (val.startsWith('data:') && val.length > 500) {
+              node[key] = '';
+            } else if (val.length > 25000) {
+              node[key] = val.substring(0, 25000);
+            }
+          } else if (typeof val === 'object' && val !== null) {
+            cleanNode(val);
+          }
+        }
+      };
+
+      cleanNode(clone);
+
+      if (Array.isArray(clone.versions)) {
+        clone.versions = clone.versions.map((v: any) => {
+          if (!v || typeof v !== 'object') return v;
+          const vCopy = { ...v };
+          if (vCopy.dataUrl) vCopy.dataUrl = '';
+          if (vCopy.fileUrl && vCopy.fileUrl.startsWith('data:')) vCopy.fileUrl = '';
+          return vCopy;
+        });
+      }
+
+      if (clone.dataUrl) clone.dataUrl = '';
+      if (clone.fileUrl && clone.fileUrl.startsWith('data:')) clone.fileUrl = '';
+
+      return clone;
+    } catch {
+      return data;
+    }
+  }
+
   private saveToLocalStorage() {
     if (typeof window === 'undefined') return;
     try {
@@ -237,6 +279,12 @@ class DatabaseStore {
         }
         if (docCopy.fileUrl && docCopy.fileUrl.startsWith('data:') && docCopy.fileUrl.length > 50000) {
           docCopy.fileUrl = '';
+        }
+        if (docCopy.extractedText && docCopy.extractedText.length > 20000) {
+          docCopy.extractedText = docCopy.extractedText.substring(0, 20000);
+        }
+        if (docCopy.cleanExtractedText && docCopy.cleanExtractedText.length > 20000) {
+          docCopy.cleanExtractedText = docCopy.cleanExtractedText.substring(0, 20000);
         }
         if (Array.isArray(docCopy.versions)) {
           docCopy.versions = docCopy.versions.map((v) => {
@@ -249,6 +297,34 @@ class DatabaseStore {
         return docCopy;
       });
 
+      const sanitizedQuotes = this.quotes.map((q) => {
+        const qCopy = { ...q };
+        if (Array.isArray(qCopy.files)) {
+          qCopy.files = qCopy.files.map((f: any) => {
+            if (typeof f === 'object' && f.dataUrl && f.dataUrl.length > 50000) {
+              const { dataUrl, ...rest } = f;
+              return rest;
+            }
+            return f;
+          });
+        }
+        return qCopy;
+      });
+
+      const sanitizedRequests = this.requests.map((r) => {
+        const rCopy = { ...r };
+        if (Array.isArray(rCopy.files)) {
+          rCopy.files = rCopy.files.map((f: any) => {
+            if (typeof f === 'object' && f.dataUrl && f.dataUrl.length > 50000) {
+              const { dataUrl, ...rest } = f;
+              return rest;
+            }
+            return f;
+          });
+        }
+        return rCopy;
+      });
+
       const payload = {
         tenant: this.tenant,
         users: this.users,
@@ -256,8 +332,8 @@ class DatabaseStore {
         leads: this.leads,
         services: this.services,
         languages: this.languages,
-        requests: this.requests,
-        quotes: this.quotes,
+        requests: sanitizedRequests,
+        quotes: sanitizedQuotes,
         workOrders: this.workOrders,
         documents: sanitizedDocuments,
         tasks: this.tasks,
@@ -267,14 +343,39 @@ class DatabaseStore {
         payables: this.payables,
         expenses: this.expenses,
         notifications: this.notifications,
-        auditLogs: this.auditLogs,
+        auditLogs: this.auditLogs.slice(0, 50),
         isDemoMode: this.isDemoMode,
         currentUserId: this.currentUserId,
         clicksignConfig: this.clicksignConfig,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
-      console.warn('Failed to save to localStorage:', e);
+      console.warn('Failed to save to localStorage, attempting emergency minimal cache:', e);
+      try {
+        const minimalDocuments = this.documents.map((d) => {
+          const { extractedText, cleanExtractedText, dataUrl, fileUrl, ...rest } = d;
+          return {
+            ...rest,
+            fileUrl: fileUrl && !fileUrl.startsWith('data:') ? fileUrl : '',
+            versions: Array.isArray(d.versions)
+              ? d.versions.map((v) => ({ ...v, dataUrl: '', fileUrl: v.fileUrl && !v.fileUrl.startsWith('data:') ? v.fileUrl : '' }))
+              : [],
+          };
+        });
+        const emergencyPayload = {
+          tenant: this.tenant,
+          users: this.users,
+          customers: this.customers,
+          leads: this.leads,
+          quotes: this.quotes,
+          documents: minimalDocuments,
+          currentUserId: this.currentUserId,
+          clicksignConfig: this.clicksignConfig,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(emergencyPayload));
+      } catch (err2) {
+        console.warn('Emergency localStorage save failed:', err2);
+      }
     }
   }
 
@@ -301,22 +402,7 @@ class DatabaseStore {
     if (this.isSyncingFromRemote) return;
     try {
       const docRef = doc(db, 'traduztudo_' + collectionName, id);
-      const payload = JSON.parse(JSON.stringify(data));
-      // Guard against Firestore 1MB document limit
-      if (JSON.stringify(payload).length > 750000) {
-        if (payload.files && Array.isArray(payload.files)) {
-          payload.files = payload.files.map((f: any) => {
-            if (typeof f === 'object' && f.dataUrl) {
-              const { dataUrl, ...rest } = f;
-              return rest;
-            }
-            return f;
-          });
-        }
-        if (payload.dataUrl) {
-          delete payload.dataUrl;
-        }
-      }
+      const payload = this.sanitizeForRemote(data);
       await setDoc(docRef, payload, { merge: true });
     } catch (e) {
       console.warn(`Firestore sync note for ${collectionName}/${id}:`, e);
@@ -402,14 +488,40 @@ class DatabaseStore {
               .map((d) => d.data() as T)
               .filter((item) => item && item.id);
 
+            // Merge with local items: never discard local items that aren't yet in Firestore
+            const currentItems = getList();
+            const remoteIds = new Set(remoteItems.map((r) => r.id));
+            const localOnly = currentItems.filter((local) => !remoteIds.has(local.id));
+
+            const mergedRemote = remoteItems.map((remote: any) => {
+              const local: any = currentItems.find((l) => l.id === remote.id);
+              if (local) {
+                return {
+                  ...local,
+                  ...remote,
+                  dataUrl: local.dataUrl || remote.dataUrl,
+                  fileUrl: local.fileUrl && !remote.fileUrl ? local.fileUrl : (remote.fileUrl || local.fileUrl),
+                  versions: Array.isArray(remote.versions) && Array.isArray(local.versions)
+                    ? remote.versions.map((rv: any) => {
+                        const lv = local.versions.find((v: any) => v.id === rv.id);
+                        return lv ? { ...lv, ...rv, dataUrl: lv.dataUrl || rv.dataUrl } : rv;
+                      })
+                    : remote.versions || local.versions,
+                };
+              }
+              return remote;
+            });
+
+            const combinedList = [...localOnly, ...mergedRemote];
+
             // Order by createdAt descending when present
-            remoteItems.sort((a: any, b: any) => {
+            combinedList.sort((a: any, b: any) => {
               const timeA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
               const timeB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
               return timeB - timeA;
             });
 
-            setList(remoteItems);
+            setList(combinedList as T[]);
             if (postProcess) postProcess();
             this.isSyncingFromRemote = true;
             this.persistAndNotify();
@@ -1614,17 +1726,19 @@ class DatabaseStore {
     return this.documents.find((d) => d.id === id);
   }
 
-  getDocuments(filter?: { workOrderId?: string; quoteId?: string } | string): DocumentItem[] {
+  getDocuments(filter?: { workOrderId?: string; quoteId?: string; leadId?: string; customerId?: string } | string): DocumentItem[] {
     if (typeof filter === 'string') {
-      return this.documents.filter((d) => d.workOrderId === filter);
+      return this.documents.filter((d) => d.workOrderId === filter || d.quoteId === filter || d.leadId === filter);
     }
     if (filter) {
-      if (!filter.workOrderId && !filter.quoteId) {
+      if (!filter.workOrderId && !filter.quoteId && !filter.leadId && !filter.customerId) {
         return this.documents;
       }
       return this.documents.filter((d) => {
         if (filter.workOrderId && d.workOrderId !== filter.workOrderId) return false;
         if (filter.quoteId && d.quoteId !== filter.quoteId) return false;
+        if (filter.leadId && d.leadId !== filter.leadId) return false;
+        if (filter.customerId && d.customerId !== filter.customerId) return false;
         return true;
       });
     }

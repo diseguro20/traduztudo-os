@@ -54,11 +54,13 @@ export default function DocumentosPage() {
     const term = searchTerm.toLowerCase();
     const quote = d.quoteId ? databaseStore.getQuote(d.quoteId) : null;
     const cust = d.customerId ? databaseStore.getCustomer(d.customerId) : null;
+    const lead = d.leadId ? databaseStore.getLeads().find((l) => l.id === d.leadId) : null;
 
     return (
       d.name.toLowerCase().includes(term) ||
       (quote && quote.code.toLowerCase().includes(term)) ||
       (cust && cust.name.toLowerCase().includes(term)) ||
+      (lead && lead.name.toLowerCase().includes(term)) ||
       (d.uploaderName && d.uploaderName.toLowerCase().includes(term))
     );
   });
@@ -162,6 +164,16 @@ export default function DocumentosPage() {
             Todos ({databaseStore.getDocuments().length})
           </button>
           <button
+            onClick={() => setStatusFilter('UPLOADED')}
+            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+              statusFilter === 'UPLOADED'
+                ? 'bg-blue-100 text-blue-900 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Abertos / Enviados
+          </button>
+          <button
             onClick={() => setStatusFilter('OCR_COMPLETED')}
             className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
               statusFilter === 'OCR_COMPLETED'
@@ -233,6 +245,7 @@ export default function DocumentosPage() {
                 documents.map((doc) => {
                   const quote = doc.quoteId ? databaseStore.getQuote(doc.quoteId) : null;
                   const cust = doc.customerId ? databaseStore.getCustomer(doc.customerId) : null;
+                  const lead = doc.leadId ? databaseStore.getLeads().find((l) => l.id === doc.leadId) : null;
                   const metrics = doc.originalWordCount;
                   const docxVer = doc.versions?.find((v) => v.type === 'GENERATED_DOCX');
 
@@ -275,7 +288,7 @@ export default function DocumentosPage() {
 
                       {/* Cliente */}
                       <td className="px-4 py-3.5 text-xs text-slate-700">
-                        {cust ? cust.name : quote ? quote.customerName : '---'}
+                        {cust ? cust.name : quote ? quote.customerName : lead ? `${lead.name} (Lead)` : '---'}
                       </td>
 
                       {/* Idioma */}

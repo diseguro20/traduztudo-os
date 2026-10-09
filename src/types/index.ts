@@ -460,6 +460,7 @@ export interface DocumentItem {
   workOrderId?: string;
   customerId?: string;
   quoteId?: string;
+  leadId?: string;
   name: string;
   category: DocumentCategory;
   fileUrl: string;
