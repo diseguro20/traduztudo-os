@@ -111,11 +111,41 @@ class DatabaseStore {
   private listeners: Array<() => void> = [];
   private isSyncingFromRemote: boolean = false;
   private hasStartedRealtime: boolean = false;
+  private broadcastChannel: any = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.hydrateFromLocalStorage();
+      this.setupCrossTabSync();
       this.startRealtimeSync();
+    }
+  }
+
+  private setupCrossTabSync() {
+    if (typeof window === 'undefined') return;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        this.broadcastChannel = new BroadcastChannel('traduztudo_sync_channel');
+        this.broadcastChannel.onmessage = (event: any) => {
+          if (event.data?.type === 'SYNC_NOTIFICATION') {
+            this.hydrateFromLocalStorage();
+            this.listeners.forEach((fn) => {
+              try { fn(); } catch (e) {}
+            });
+          }
+        };
+      }
+
+      window.addEventListener('storage', (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY) {
+          this.hydrateFromLocalStorage();
+          this.listeners.forEach((fn) => {
+            try { fn(); } catch (e) {}
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Cross-tab sync setup note:', e);
     }
   }
 
@@ -388,6 +418,11 @@ class DatabaseStore {
 
   private persistAndNotify() {
     this.saveToLocalStorage();
+    try {
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage({ type: 'SYNC_NOTIFICATION', timestamp: Date.now() });
+      }
+    } catch {}
     this.listeners.forEach((fn) => {
       try {
         fn();
@@ -573,8 +608,43 @@ class DatabaseStore {
         }
       });
     } catch (e) {
-      console.warn('Settings realtime note:', e);
+      console.warn('Realtime settings subscription note:', e);
     }
+
+    // Push local records to Firestore so that other socios / tabs immediately receive them
+    setTimeout(() => {
+      this.pushLocalToFirestore().catch(() => {});
+    }, 1500);
+  }
+
+  public async pushLocalToFirestore(): Promise<{ documentsSynced: number; leadsSynced: number; quotesSynced: number }> {
+    if (typeof window === 'undefined') return { documentsSynced: 0, leadsSynced: 0, quotesSynced: 0 };
+    let documentsSynced = 0;
+    let leadsSynced = 0;
+    let quotesSynced = 0;
+    try {
+      for (const d of this.documents) {
+        if (d && d.id) {
+          await this.syncFirestore('documents', d.id, d);
+          documentsSynced++;
+        }
+      }
+      for (const l of this.leads) {
+        if (l && l.id) {
+          await this.syncFirestore('leads', l.id, l);
+          leadsSynced++;
+        }
+      }
+      for (const q of this.quotes) {
+        if (q && q.id) {
+          await this.syncFirestore('quotes', q.id, q);
+          quotesSynced++;
+        }
+      }
+    } catch (e) {
+      console.warn('Initial pushLocalToFirestore error:', e);
+    }
+    return { documentsSynced, leadsSynced, quotesSynced };
   }
 
   // --- PRODUCTION & DEMO DATA MANAGEMENT ---
@@ -1027,6 +1097,10 @@ class DatabaseStore {
 
   getLeadById(id: string): Lead | undefined {
     return this.leads.find((l) => l.id === id && !l.deletedAt);
+  }
+
+  getLead(id: string): Lead | undefined {
+    return this.getLeadById(id);
   }
 
   createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Lead {

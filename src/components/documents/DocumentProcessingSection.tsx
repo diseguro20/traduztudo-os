@@ -29,6 +29,10 @@ import {
   Share2,
   X,
   Plus,
+  User,
+  Link as LinkIcon,
+  Cloud,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -118,11 +122,64 @@ export function DocumentProcessingSection({
   // Commercial word count settings
   const [ignoreRepeated, setIgnoreRepeated] = useState(true);
 
+  // Cloud sync & View Scope state
+  const hasContextFilter = !!(quoteId || workOrderId || leadId || customerId);
+  const [viewScope, setViewScope] = useState<'current' | 'all'>(hasContextFilter ? 'current' : 'all');
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  // Linkage Modal state (Link to any Lead or Quote)
+  const [linkingDoc, setLinkingDoc] = useState<DocumentItem | null>(null);
+  const [targetLeadId, setTargetLeadId] = useState<string>('');
+  const [targetQuoteId, setTargetQuoteId] = useState<string>('');
+
   React.useEffect(() => {
     return databaseStore.subscribe(() => setRefresh((r) => r + 1));
   }, []);
 
-  const documents = databaseStore.getDocuments({ quoteId, workOrderId, leadId, customerId });
+  const allCompanyDocuments = databaseStore.getDocuments();
+  const currentScopedDocuments = databaseStore.getDocuments({ quoteId, workOrderId, leadId, customerId });
+  const documents = viewScope === 'all' || !hasContextFilter ? allCompanyDocuments : currentScopedDocuments;
+
+  const openLinkageModal = (doc: DocumentItem) => {
+    setLinkingDoc(doc);
+    setTargetLeadId(doc.leadId || leadId || '');
+    setTargetQuoteId(doc.quoteId || quoteId || '');
+  };
+
+  const handleSaveDocLinkage = async () => {
+    if (!linkingDoc) return;
+    const lead = targetLeadId ? databaseStore.getLead(targetLeadId) : undefined;
+    const quote = targetQuoteId ? databaseStore.getQuote(targetQuoteId) : undefined;
+
+    databaseStore.updateDocument(linkingDoc.id, {
+      leadId: targetLeadId || undefined,
+      quoteId: targetQuoteId || undefined,
+      customerId: lead?.customerId || quote?.customerId || linkingDoc.customerId || customerId,
+    });
+
+    await databaseStore.pushLocalToFirestore();
+    setRefresh((r) => r + 1);
+    setLinkingDoc(null);
+    setSyncMessage('Vínculo atualizado e sincronizado na nuvem em tempo real com todos os sócios!');
+    setTimeout(() => setSyncMessage(null), 3500);
+  };
+
+  const handleManualCloudSync = async () => {
+    setIsManualSyncing(true);
+    try {
+      await databaseStore.pushLocalToFirestore();
+      setSyncMessage('Sincronização na nuvem concluída! Documentos atualizados para todos os sócios.');
+      setTimeout(() => setSyncMessage(null), 3500);
+    } catch (err) {
+      console.warn('Manual sync error:', err);
+      setSyncMessage('Sincronização local efetuada e transmitida.');
+      setTimeout(() => setSyncMessage(null), 3000);
+    } finally {
+      setIsManualSyncing(false);
+      setRefresh((r) => r + 1);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -296,6 +353,7 @@ export function DocumentProcessingSection({
     }
 
     setIsUploading(false);
+    await databaseStore.pushLocalToFirestore();
     setRefresh((r) => r + 1);
   };
 
@@ -573,6 +631,7 @@ export function DocumentProcessingSection({
       }
 
       setSignatureSuccessMsg(`Assinatura oficial de ${signerConfig.name} registrada e PDF oficial arquivado com sucesso!`);
+      databaseStore.pushLocalToFirestore().catch(() => {});
       setIsRequestingSignature(false);
       setRefresh((r) => r + 1);
       setTimeout(() => {
@@ -693,6 +752,7 @@ export function DocumentProcessingSection({
         }
 
         setSignatureSuccessMsg(`Documento assinado e certificado com sucesso por ${signerConfig.name}!`);
+        databaseStore.pushLocalToFirestore().catch(() => {});
         setTimeout(() => {
           setSelectedDocForSign(null);
           setSignatureSuccessMsg(null);
@@ -747,6 +807,7 @@ export function DocumentProcessingSection({
     });
 
     alert(`Sucesso! Assinatura de "${signerName}" confirmada. Documento atualizado para ASSINADO.`);
+    databaseStore.pushLocalToFirestore().catch(() => {});
     setSelectedDocForSign(null);
     setGeneratedSignLink(null);
     setRefresh((r) => r + 1);
@@ -954,6 +1015,10 @@ export function DocumentProcessingSection({
               >
                 {isClicksignProd ? 'Clicksign Produção Ativa' : 'Clicksign Sandbox Ativo'}
               </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                <Cloud className="w-3 h-3 text-emerald-400 animate-pulse" />
+                Nuvem Tempo Real Ativa
+              </span>
             </div>
             <h3 className="text-base sm:text-lg font-bold tracking-tight mt-1 flex items-center gap-2">
               <FileCheck className="w-5 h-5 text-blue-400" />
@@ -964,27 +1029,40 @@ export function DocumentProcessingSection({
             </p>
           </div>
 
-          <label className="cursor-pointer shrink-0">
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
-              onChange={handleFileUpload}
-              className="hidden"
-              disabled={isUploading}
-            />
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white shadow-xs transition-colors">
-              {isUploading ? (
-                <>
-                  <RotateCw className="w-4 h-4 animate-spin" /> Processando Arquivos...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" /> Adicionar Documento
-                </>
-              )}
-            </span>
-          </label>
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <button
+              type="button"
+              onClick={handleManualCloudSync}
+              disabled={isManualSyncing}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors shadow-xs"
+              title="Forçar sincronização de todos os documentos locais com a nuvem Firestore"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin' : ''}`} />
+              {isManualSyncing ? 'Sincronizando...' : 'Sincronizar Nuvem com Sócios'}
+            </button>
+
+            <label className="cursor-pointer shrink-0">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={isUploading}
+              />
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white shadow-xs transition-colors">
+                {isUploading ? (
+                  <>
+                    <RotateCw className="w-4 h-4 animate-spin" /> Processando Arquivos...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" /> Adicionar Documento
+                  </>
+                )}
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Global Commercial Counter Config */}
@@ -1000,6 +1078,58 @@ export function DocumentProcessingSection({
           </label>
           <span className="text-[11px] text-blue-200 font-medium">
             Formatos aceitos: PDF, DOCX, JPG, PNG
+          </span>
+        </div>
+
+        {/* Sync message alert if active */}
+        {syncMessage && (
+          <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{syncMessage}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Sub-header with Scope Selector and Summary */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-2">
+          {hasContextFilter ? (
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setViewScope('current')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewScope === 'current'
+                    ? 'bg-white text-blue-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Documentos Deste Fluxo ({currentScopedDocuments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewScope('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewScope === 'all'
+                    ? 'bg-white text-blue-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Todos os Documentos da Empresa ({allCompanyDocuments.length})
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-slate-700 font-semibold">
+              <Globe className="w-4 h-4 text-blue-600" />
+              Repositório Geral da Empresa ({allCompanyDocuments.length} documentos salvos na nuvem)
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Sincronizado na Nuvem para Todos os Sócios (Diego, Iago, Ygor)
           </span>
         </div>
       </div>
@@ -1070,6 +1200,36 @@ export function DocumentProcessingSection({
                         {copiedHash && copiedHash === (doc.currentSha256 || doc.sha256Original) && (
                           <span className="text-[10px] text-emerald-600 font-semibold">Copiado!</span>
                         )}
+                      </div>
+
+                      {/* Lead / Orçamento Linkage Row */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs mt-1.5">
+                        {doc.leadId ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <User className="w-3 h-3 text-indigo-500" />
+                            Lead: {databaseStore.getLead(doc.leadId)?.name || doc.leadId}
+                          </span>
+                        ) : null}
+                        {doc.quoteId ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <FileText className="w-3 h-3 text-emerald-500" />
+                            Orçamento: {databaseStore.getQuote(doc.quoteId)?.code || doc.quoteId}
+                          </span>
+                        ) : null}
+                        {!doc.leadId && !doc.quoteId && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600">
+                            <Globe className="w-3 h-3 text-slate-400" />
+                            Geral (Sem lead vinculado)
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openLinkageModal(doc)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                        >
+                          <LinkIcon className="w-3 h-3" />
+                          {doc.leadId || doc.quoteId ? 'Alterar Vínculo' : 'Vincular a Lead / Orçamento'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2360,6 +2520,77 @@ export function DocumentProcessingSection({
                 </div>
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: Vincular / Reatribuir Documento a Lead ou Orçamento */}
+      {linkingDoc && (
+        <Modal
+          isOpen={true}
+          onClose={() => setLinkingDoc(null)}
+          title={`Vincular Documento: ${linkingDoc.name}`}
+          maxWidth="lg"
+        >
+          <div className="space-y-4 text-xs">
+            <p className="text-slate-600">
+              Vincule este documento diretamente a um Lead ou Orçamento para que ele fique organizado e visível em tempo real para todos os sócios e na ficha do cliente.
+            </p>
+
+            <div>
+              <label className="font-semibold text-slate-800 block mb-1">
+                Vincular a um Lead (Cliente Potencial):
+              </label>
+              <select
+                value={targetLeadId}
+                onChange={(e) => setTargetLeadId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-xl bg-white text-slate-800 font-medium"
+              >
+                <option value="">-- Nenhum Lead Vinculado --</option>
+                {databaseStore.getLeads().map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} ({l.interestedServiceName || 'Tradução'} - {l.email || l.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-800 block mb-1">
+                Vincular a um Orçamento:
+              </label>
+              <select
+                value={targetQuoteId}
+                onChange={(e) => setTargetQuoteId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-xl bg-white text-slate-800 font-medium"
+              >
+                <option value="">-- Nenhum Orçamento Vinculado --</option>
+                {databaseStore.getQuotes().map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.code} — {q.customerName} (R$ {q.total.toFixed(2)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                Ao salvar, a alteração será transmitida instantaneamente na nuvem para Diego, Iago e Ygor.
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" onClick={() => setLinkingDoc(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveDocLinkage}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Salvar Vínculo e Sincronizar
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

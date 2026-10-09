@@ -53,6 +53,25 @@ export function UniversalDocumentViewerModal({
   const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Guarantee opened document is preserved in databaseStore and synced to Firestore in real time
+  useEffect(() => {
+    if (isOpen && doc && doc.id) {
+      const existing = databaseStore.getDocument(doc.id);
+      if (!existing) {
+        databaseStore.createDocument({
+          ...doc,
+          tenantId: doc.tenantId || databaseStore.getTenant().id,
+          uploaderUserId: doc.uploaderUserId || databaseStore.getCurrentUser().id,
+          uploaderName: doc.uploaderName || databaseStore.getCurrentUser().name,
+          category: doc.category || 'original',
+          fileSize: doc.fileSize || 0,
+          fileType: doc.fileType || 'application/pdf',
+        });
+      }
+      databaseStore.pushLocalToFirestore().catch(() => {});
+    }
+  }, [isOpen, doc]);
+
   // Initialize and load Blob URL whenever doc or selectedVersion changes
   useEffect(() => {
     let currentUrl: string | null = null;
