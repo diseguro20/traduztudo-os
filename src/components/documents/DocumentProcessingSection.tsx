@@ -51,9 +51,10 @@ import {
   analyzeDocumentFile,
   generateDocxFromText,
   calculateWordMetrics,
+  generateCertifiedSignedPdf,
 } from '@/lib/documents/documentProcessor';
 import { UniversalDocumentViewerModal } from './UniversalDocumentViewerModal';
-import { saveDocumentBlob, getDocumentBlob } from '@/lib/storage/documentStorage';
+import { saveDocumentBlob, getDocumentBlob, isValidPdfBlob } from '@/lib/storage/documentStorage';
 
 interface DocumentProcessingSectionProps {
   quoteId?: string;
@@ -185,6 +186,78 @@ export function DocumentProcessingSection({
     navigator.clipboard.writeText(text);
     setCopiedHash(text);
     setTimeout(() => setCopiedHash(null), 2500);
+  };
+
+  const ensureSignedPdfBlob = async (doc: DocumentItem, targetVer?: DocumentVersion): Promise<Blob | null> => {
+    const ver = targetVer || doc.versions?.slice().reverse().find((v) => v.type === 'SIGNED_PDF');
+    const targetId = ver?.id || doc.id;
+
+    let blob = await getDocumentBlob(targetId);
+    let isOk = await isValidPdfBlob(blob);
+
+    if (!blob || !isOk) {
+      if (targetId !== doc.id) {
+        blob = await getDocumentBlob(doc.id);
+        isOk = await isValidPdfBlob(blob);
+      }
+    }
+
+    if (!blob || !isOk) {
+      try {
+        let existingBlob = await getDocumentBlob(doc.id);
+        let existingBytes: Uint8Array | undefined;
+        if (existingBlob && (await isValidPdfBlob(existingBlob))) {
+          existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
+        }
+
+        const { pdfBytes, pdfDataUrl } = await generateCertifiedSignedPdf(
+          doc,
+          doc.signatureRequest?.signer || { name: 'Carla Strambio' },
+          existingBytes
+        );
+
+        blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+        await saveDocumentBlob(targetId, blob, ver?.fileName || `${doc.name}_ASSINADO.pdf`, 'application/pdf');
+        await saveDocumentBlob(doc.id, blob, doc.name, 'application/pdf');
+
+        if (ver) {
+          databaseStore.updateDocument(doc.id, {
+            dataUrl: pdfDataUrl,
+            versions: doc.versions?.map((v) => (v.id === ver.id ? { ...v, dataUrl: pdfDataUrl } : v)),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to generate certified signed PDF on-the-fly:', err);
+      }
+    }
+
+    return blob;
+  };
+
+  const handleViewSignedPdf = async (doc: DocumentItem, version?: DocumentVersion) => {
+    const blob = await ensureSignedPdfBlob(doc, version);
+    if (blob) {
+      setPreviewDoc(doc);
+    } else {
+      alert('Não foi possível carregar a visualização do documento assinado.');
+    }
+  };
+
+  const handleDownloadSignedPdf = async (doc: DocumentItem, version?: DocumentVersion) => {
+    const ver = version || doc.versions?.slice().reverse().find((v) => v.type === 'SIGNED_PDF');
+    const blob = await ensureSignedPdfBlob(doc, ver);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = ver?.fileName || `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+      alert('Não foi possível gerar o arquivo para download.');
+    }
   };
 
   // Multiple File Upload Handler
@@ -605,6 +678,18 @@ export function DocumentProcessingSection({
         ],
       };
 
+      // Generate authentic certified signed PDF with all pages and stamps
+      let existingBlob = await getDocumentBlob(doc.id);
+      let existingBytes: Uint8Array | undefined;
+      if (existingBlob && (await isValidPdfBlob(existingBlob))) {
+        existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
+      }
+
+      const { pdfBytes, pdfDataUrl: generatedPdfDataUrl, sha256: certifiedSha256 } =
+        await generateCertifiedSignedPdf(doc, signerConfig, existingBytes);
+
+      const realSignedBlob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+
       databaseStore.updateDocument(doc.id, {
         signatureRequest: manualReq,
         status: 'SIGNED',
@@ -615,19 +700,17 @@ export function DocumentProcessingSection({
         versionNumber: (doc.versions?.length || 1) + 1,
         type: 'SIGNED_PDF',
         fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
-        fileUrl: pdfDataUrl || doc.fileUrl,
-        dataUrl: pdfDataUrl || doc.dataUrl,
-        fileSize: doc.fileSize || 42000,
+        fileUrl: generatedPdfDataUrl,
+        dataUrl: generatedPdfDataUrl,
+        fileSize: realSignedBlob.size,
         fileType: 'application/pdf',
-        sha256: `signed_manual_${Date.now()}`,
+        sha256: certifiedSha256,
         notes: `Assinatura oficial e carimbo de ${signerConfig.name} vinculados com sucesso!`,
       });
 
       if (newVer?.id) {
-        const originalBlob = await getDocumentBlob(doc.id);
-        if (originalBlob) {
-          await saveDocumentBlob(newVer.id, originalBlob, newVer.fileName, 'application/pdf');
-        }
+        await saveDocumentBlob(newVer.id, realSignedBlob, newVer.fileName, 'application/pdf');
+        await saveDocumentBlob(doc.id, realSignedBlob, doc.name, 'application/pdf');
       }
 
       setSignatureSuccessMsg(`Assinatura oficial de ${signerConfig.name} registrada e PDF oficial arquivado com sucesso!`);
@@ -669,28 +752,37 @@ export function DocumentProcessingSection({
         });
 
         if (req.status === 'SIGNED') {
+          let existingBlob = await getDocumentBlob(doc.id);
+          let existingBytes: Uint8Array | undefined;
+          if (existingBlob && (await isValidPdfBlob(existingBlob))) {
+            existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
+          }
+
+          const { pdfBytes, pdfDataUrl: generatedPdfDataUrl, sha256: certifiedSha256 } =
+            await generateCertifiedSignedPdf(doc, signerConfig, existingBytes);
+
+          const realSignedBlob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+
           const newVer = databaseStore.addDocumentVersion(doc.id, {
             documentId: doc.id,
             versionNumber: (doc.versions?.length || 1) + 1,
             type: 'SIGNED_PDF',
             fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
-            fileUrl: pdfDataUrl || doc.fileUrl,
-            dataUrl: pdfDataUrl || doc.dataUrl,
-            fileSize: doc.fileSize || 42000,
+            fileUrl: generatedPdfDataUrl,
+            dataUrl: generatedPdfDataUrl,
+            fileSize: realSignedBlob.size,
             fileType: 'application/pdf',
-            sha256: `signed_sha256_${Date.now()}`,
+            sha256: certifiedSha256,
             notes: `Assinatura ${signerConfig.policy} por ${signerConfig.name} certificada com sucesso!`,
           });
 
-          // Link original binary blob in IndexedDB to signed version so it renders in full resolution
           if (newVer?.id) {
-            const originalBlob = await getDocumentBlob(doc.id);
-            if (originalBlob) {
-              await saveDocumentBlob(newVer.id, originalBlob, newVer.fileName, 'application/pdf');
-            }
+            await saveDocumentBlob(newVer.id, realSignedBlob, newVer.fileName, 'application/pdf');
+            await saveDocumentBlob(doc.id, realSignedBlob, doc.name, 'application/pdf');
           }
 
           setSignatureSuccessMsg(`Documento assinado com sucesso via Clicksign oficial (${signerConfig.name})!`);
+          databaseStore.pushLocalToFirestore().catch(() => {});
           setTimeout(() => {
             setSelectedDocForSign(null);
             setSignatureSuccessMsg(null);
@@ -731,24 +823,33 @@ export function DocumentProcessingSection({
           status: 'SIGNED',
         });
 
+        let existingBlob = await getDocumentBlob(doc.id);
+        let existingBytes: Uint8Array | undefined;
+        if (existingBlob && (await isValidPdfBlob(existingBlob))) {
+          existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
+        }
+
+        const { pdfBytes, pdfDataUrl: generatedPdfDataUrl, sha256: certifiedSha256 } =
+          await generateCertifiedSignedPdf(doc, signerConfig, existingBytes);
+
+        const realSignedBlob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+
         const newVer = databaseStore.addDocumentVersion(doc.id, {
           documentId: doc.id,
           versionNumber: (doc.versions?.length || 1) + 1,
           type: 'SIGNED_PDF',
           fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
-          fileUrl: pdfDataUrl || doc.fileUrl,
-          dataUrl: pdfDataUrl || doc.dataUrl,
-          fileSize: doc.fileSize || 42000,
+          fileUrl: generatedPdfDataUrl,
+          dataUrl: generatedPdfDataUrl,
+          fileSize: realSignedBlob.size,
           fileType: 'application/pdf',
-          sha256: `signed_cert_${Date.now()}`,
+          sha256: certifiedSha256,
           notes: `Assinatura e carimbo de ${signerConfig.name} certificados com sucesso!`,
         });
 
         if (newVer?.id) {
-          const originalBlob = await getDocumentBlob(doc.id);
-          if (originalBlob) {
-            await saveDocumentBlob(newVer.id, originalBlob, newVer.fileName, 'application/pdf');
-          }
+          await saveDocumentBlob(newVer.id, realSignedBlob, newVer.fileName, 'application/pdf');
+          await saveDocumentBlob(doc.id, realSignedBlob, doc.name, 'application/pdf');
         }
 
         setSignatureSuccessMsg(`Documento assinado e certificado com sucesso por ${signerConfig.name}!`);
@@ -768,14 +869,32 @@ export function DocumentProcessingSection({
   };
 
   // Confirm Manual Signature (from modal or card)
-  const handleConfirmSignature = (doc: DocumentItem) => {
+  const handleConfirmSignature = async (doc: DocumentItem) => {
     const signerName =
       doc.signatureRequest?.signers?.[0]?.signer?.name ||
       doc.signatureRequest?.signer?.name ||
       customSignerName ||
       'Tradutor';
     const finalVer = doc.versions?.slice().reverse().find((v) => v.type === 'FINAL_PDF') || doc.versions?.[0];
-    const pdfDataUrl = finalVer?.dataUrl || doc.dataUrl || doc.fileUrl;
+
+    let existingBlob = await getDocumentBlob(doc.id);
+    let existingBytes: Uint8Array | undefined;
+    if (existingBlob && (await isValidPdfBlob(existingBlob))) {
+      existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
+    }
+
+    const { pdfBytes, pdfDataUrl: generatedPdfDataUrl, sha256: certifiedSha256 } =
+      await generateCertifiedSignedPdf(
+        doc,
+        {
+          name: signerName,
+          cpfCnpj: customSignerCpf || '123.456.789-00',
+          signatureType: signatureTypeChoice,
+        },
+        existingBytes
+      );
+
+    const realSignedBlob = new Blob([pdfBytes as any], { type: 'application/pdf' });
 
     databaseStore.updateDocument(doc.id, {
       status: 'SIGNED',
@@ -793,18 +912,23 @@ export function DocumentProcessingSection({
       },
     });
 
-    databaseStore.addDocumentVersion(doc.id, {
+    const newVer = databaseStore.addDocumentVersion(doc.id, {
       documentId: doc.id,
       versionNumber: (doc.versions?.length || 1) + 1,
       type: 'SIGNED_PDF',
       fileName: `${doc.name.replace(/\.[^/.]+$/, '')}_ASSINADO.pdf`,
-      fileUrl: pdfDataUrl,
-      dataUrl: pdfDataUrl,
-      fileSize: 42000,
+      fileUrl: generatedPdfDataUrl,
+      dataUrl: generatedPdfDataUrl,
+      fileSize: realSignedBlob.size,
       fileType: 'application/pdf',
-      sha256: `signed_confirmed_${Date.now()}`,
+      sha256: certifiedSha256,
       notes: `Assinatura de ${signerName} confirmada e concluída com sucesso!`,
     });
+
+    if (newVer?.id) {
+      await saveDocumentBlob(newVer.id, realSignedBlob, newVer.fileName, 'application/pdf');
+      await saveDocumentBlob(doc.id, realSignedBlob, doc.name, 'application/pdf');
+    }
 
     alert(`Sucesso! Assinatura de "${signerName}" confirmada. Documento atualizado para ASSINADO.`);
     databaseStore.pushLocalToFirestore().catch(() => {});
@@ -1312,6 +1436,17 @@ export function DocumentProcessingSection({
                     <Eye className="w-3.5 h-3.5 text-blue-600" /> Ver Original
                   </Button>
 
+                  {/* Ver PDF Assinado */}
+                  {signedPdfVer && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleViewSignedPdf(doc, signedPdfVer)}
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-2xs"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" /> Ver PDF Assinado
+                    </Button>
+                  )}
+
                   {/* Ver Texto / OCR */}
                   {doc.extractedText && (
                     <Button
@@ -1519,13 +1654,20 @@ export function DocumentProcessingSection({
                           <CheckCircle2 className="w-3.5 h-3.5" /> PDF Assinado e Arquivado com Evidências Oficiais
                         </span>
                         <div className="flex items-center gap-2">
-                          <a
-                            href={signedPdfVer.dataUrl || signedPdfVer.fileUrl}
-                            download={signedPdfVer.fileName}
-                            className="text-blue-300 hover:text-blue-200 underline text-xs"
+                          <button
+                            type="button"
+                            onClick={() => handleViewSignedPdf(doc, signedPdfVer)}
+                            className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-400/40 rounded text-[11px] font-medium flex items-center gap-1 transition-colors"
                           >
-                            Baixar PDF Assinado
-                          </a>
+                            <Eye className="w-3 h-3" /> Ver PDF Assinado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSignedPdf(doc, signedPdfVer)}
+                            className="px-2.5 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-500/40 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-xs"
+                          >
+                            <Download className="w-3 h-3" /> Baixar PDF Assinado
+                          </button>
                           <button
                             type="button"
                             onClick={() => openClientSendModal(doc)}

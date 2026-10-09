@@ -27,7 +27,9 @@ import {
   revokeDocumentBlobUrl,
   saveDocumentBlob,
   getDocumentBlob,
+  isValidPdfBlob,
 } from '@/lib/storage/documentStorage';
+import { generateCertifiedSignedPdf } from '@/lib/documents/documentProcessor';
 import { databaseStore } from '@/lib/db';
 
 interface UniversalDocumentViewerModalProps {
@@ -103,18 +105,46 @@ export function UniversalDocumentViewerModal({
           }
         }
 
-        // Try to obtain a reliable blob URL
-        let url = await createDocumentBlobUrl(targetId, fallbackDataUrl, mimeType);
-
-        // If not found by version ID, fallback to document ID
-        if (!url && targetId !== doc.id) {
-          url = await createDocumentBlobUrl(doc.id, doc.dataUrl || doc.fileUrl, doc.fileType);
+        // 1. Try to get or validate the Blob
+        let blob = await getDocumentBlob(targetId, fallbackDataUrl, mimeType);
+        if (!blob && targetId !== doc.id) {
+          blob = await getDocumentBlob(doc.id, doc.dataUrl || doc.fileUrl, doc.fileType);
         }
 
-        // If dataUrl starts with data: and is complete
-        if (!url && fallbackDataUrl && fallbackDataUrl.startsWith('data:') && fallbackDataUrl.length > 500) {
-          const blob = await saveDocumentBlob(targetId, fallbackDataUrl, targetName, mimeType);
+        const isTargetPdf =
+          mimeType === 'application/pdf' ||
+          targetName.toLowerCase().endsWith('.pdf') ||
+          doc.status === 'SIGNED' ||
+          initialVersionType === 'SIGNED_PDF';
+
+        // Check if blob is a valid PDF
+        let isPdfValid = false;
+        if (isTargetPdf && blob) {
+          isPdfValid = await isValidPdfBlob(blob);
+        }
+
+        // If it's a PDF but invalid or not found, generate a certified signed PDF on the fly!
+        if (isTargetPdf && (!blob || !isPdfValid)) {
+          try {
+            const { pdfBytes } = await generateCertifiedSignedPdf(
+              doc,
+              doc.signatureRequest?.signer || { name: 'Carla Strambio' }
+            );
+            blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+            await saveDocumentBlob(targetId, blob, targetName, 'application/pdf');
+            await saveDocumentBlob(doc.id, blob, doc.name, 'application/pdf');
+            isPdfValid = true;
+          } catch (genErr) {
+            console.warn('PDF on-the-fly generation note:', genErr);
+          }
+        }
+
+        let url: string | null = null;
+        if (blob && blob.size > 50) {
           url = URL.createObjectURL(blob);
+        } else if (fallbackDataUrl && fallbackDataUrl.startsWith('data:') && fallbackDataUrl.length > 200) {
+          const fbBlob = await saveDocumentBlob(targetId, fallbackDataUrl, targetName, mimeType);
+          url = URL.createObjectURL(fbBlob);
         }
 
         if (!isMounted) {
@@ -204,6 +234,44 @@ export function UniversalDocumentViewerModal({
     } catch (err: any) {
       alert(`Erro ao carregar arquivo: ${err.message}`);
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadVersion = async (ver: DocumentVersion) => {
+    try {
+      let blob = await getDocumentBlob(ver.id, ver.dataUrl || ver.fileUrl, ver.fileType);
+      if (!blob && ver.type === 'SIGNED_PDF') {
+        const { pdfBytes } = await generateCertifiedSignedPdf(
+          doc,
+          doc.signatureRequest?.signer || { name: 'Carla Strambio' }
+        );
+        blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      }
+      if (!blob) {
+        blob = await getDocumentBlob(doc.id, doc.dataUrl || doc.fileUrl, doc.fileType);
+      }
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ver.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } else if (ver.dataUrl && ver.dataUrl.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = ver.dataUrl;
+        a.download = ver.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        alert('Não foi possível obter o arquivo desta versão.');
+      }
+    } catch (e: any) {
+      console.error('Erro ao baixar versão:', e);
+      alert('Erro ao baixar versão do documento.');
     }
   };
 
@@ -381,31 +449,11 @@ export function UniversalDocumentViewerModal({
                 ) : isPdf ? (
                   <div className="w-full h-full flex flex-col space-y-2">
                     <div className="w-full h-[75vh] bg-white rounded-xl overflow-hidden shadow-lg border border-slate-800">
-                      <object
-                        data={blobUrl}
-                        type="application/pdf"
-                        className="w-full h-full rounded-xl"
-                      >
-                        {/* Fallback iframe inside object tag */}
-                        <iframe
-                          src={blobUrl}
-                          className="w-full h-full rounded-xl"
-                          title={doc.name}
-                        >
-                          <div className="flex flex-col items-center justify-center h-full p-6 text-center bg-slate-50 space-y-3">
-                            <FileText className="w-12 h-12 text-slate-400" />
-                            <p className="text-sm font-semibold text-slate-800">
-                              O leitor interno não pôde renderizar automaticamente neste dispositivo.
-                            </p>
-                            <Button
-                              onClick={() => window.open(blobUrl, '_blank')}
-                              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                            >
-                              <ExternalLink className="w-4 h-4" /> Abrir PDF em Nova Janela
-                            </Button>
-                          </div>
-                        </iframe>
-                      </object>
+                      <iframe
+                        src={`${blobUrl}#toolbar=1&navpanes=0`}
+                        className="w-full h-full rounded-xl border-0 bg-white"
+                        title={doc.name}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -579,15 +627,13 @@ export function UniversalDocumentViewerModal({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {(ver.dataUrl || ver.fileUrl) && (
-                        <a
-                          href={ver.dataUrl || ver.fileUrl}
-                          download={ver.fileName}
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors flex items-center gap-1.5"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Baixar Versão
-                        </a>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadVersion(ver)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Baixar Versão
+                      </button>
                     </div>
                   </div>
                 ))}

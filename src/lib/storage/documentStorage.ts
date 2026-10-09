@@ -32,8 +32,10 @@ export function base64ToBlob(base64OrDataUrl: string, defaultMime = 'application
     base64 = parts[1] || '';
   }
 
-  // Clean whitespace/newlines
-  base64 = base64.replace(/\s/g, '');
+  // If string is a file path or URL (e.g. /uploads/...), it is not base64
+  if (base64.startsWith('/') || base64.startsWith('http')) {
+    return new Blob([], { type: mimeType });
+  }
 
   try {
     const byteCharacters = atob(base64);
@@ -51,8 +53,21 @@ export function base64ToBlob(base64OrDataUrl: string, defaultMime = 'application
 
     return new Blob(byteArrays as unknown as BlobPart[], { type: mimeType });
   } catch (err) {
-    console.error('Failed to convert base64 to Blob:', err);
-    return new Blob([base64], { type: 'text/plain' });
+    console.warn('Failed to convert base64 to Blob, returning empty blob:', err);
+    return new Blob([], { type: mimeType });
+  }
+}
+
+/**
+ * Validates if a Blob is a genuine, parsable PDF binary (starts with %PDF)
+ */
+export async function isValidPdfBlob(blob: Blob | null | undefined): Promise<boolean> {
+  if (!blob || blob.size < 50) return false;
+  try {
+    const header = await blob.slice(0, 5).text();
+    return header.startsWith('%PDF');
+  } catch {
+    return false;
   }
 }
 
@@ -145,7 +160,10 @@ export async function getDocumentBlob(
 ): Promise<Blob | null> {
   // 1. Check in-memory cache
   if (inMemoryBlobs.has(id)) {
-    return inMemoryBlobs.get(id)!;
+    const memBlob = inMemoryBlobs.get(id)!;
+    if (memBlob && memBlob.size > 50 && memBlob.type !== 'text/plain') {
+      return memBlob;
+    }
   }
 
   // 2. Check IndexedDB
@@ -160,7 +178,7 @@ export async function getDocumentBlob(
         req.onerror = () => resolve(null);
       });
 
-      if (record && record.blob instanceof Blob) {
+      if (record && record.blob instanceof Blob && record.blob.size > 50 && record.blob.type !== 'text/plain') {
         inMemoryBlobs.set(id, record.blob);
         return record.blob;
       }
