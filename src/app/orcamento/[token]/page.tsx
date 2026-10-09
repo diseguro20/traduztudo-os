@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { databaseStore } from '@/lib/db';
 import { formatCurrency, formatDate, formatDocument } from '@/lib/utils';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 export default function PublicQuoteApprovalPage() {
   const params = useParams();
@@ -100,9 +101,7 @@ export default function PublicQuoteApprovalPage() {
         {/* Brand Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              TT
-            </div>
+            <TraduzTudoLogo variant="icon" size="md" className="drop-shadow-sm" />
             <div>
               <p className="font-bold text-slate-900 leading-tight">TraduzTudo</p>
               <p className="text-xs text-slate-500">Traduções Juramentadas e Certificadas</p>

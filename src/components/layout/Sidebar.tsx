@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { databaseStore } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -239,9 +240,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={() => onClose?.()}
             className="flex items-center gap-3 group"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              TT
-            </div>
+            <TraduzTudoLogo variant="icon" size="md" className="drop-shadow-md group-hover:scale-105 transition-transform" />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-white text-base tracking-tight">

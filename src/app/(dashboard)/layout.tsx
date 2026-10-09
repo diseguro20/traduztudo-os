@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 export default function DashboardLayout({
   children,
@@ -25,9 +26,7 @@ export default function DashboardLayout({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-extrabold text-xl shadow-xl shadow-blue-500/20 mb-4 animate-pulse">
-          TT
-        </div>
+        <TraduzTudoLogo variant="icon" size="lg" className="mb-4 animate-pulse drop-shadow-xl" />
         <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
         <p className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
           Verificando Acesso TraduzTudo OS...

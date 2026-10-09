@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { databaseStore } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 export default function PortalDoClientePage() {
   // Demo client session: Dr. Roberto Alencar (cli-001)
@@ -51,9 +52,7 @@ export default function PortalDoClientePage() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3 sm:py-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
-              TT
-            </div>
+            <TraduzTudoLogo variant="icon" size="sm" className="drop-shadow-sm" />
             <div>
               <p className="font-bold text-slate-900 leading-tight">TraduzTudo Portal</p>
               <p className="text-[11px] text-slate-500">Área Exclusiva do Cliente</p>

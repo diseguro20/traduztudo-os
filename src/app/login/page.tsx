@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -61,16 +62,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 text-slate-100 flex flex-col justify-center items-center p-4 selection:bg-blue-600 selection:text-white">
       {/* Brand Header */}
-      <div className="max-w-md w-full text-center mb-6 space-y-2">
-        <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 items-center justify-center text-white font-black text-2xl shadow-xl shadow-blue-500/25 mb-2">
-          TT
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          TraduzTudo OS
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400">
-          Sistema Operacional SaaS para Gestão de Traduções Juramentadas
-        </p>
+      <div className="max-w-md w-full text-center mb-6 space-y-3 flex flex-col items-center">
+        <TraduzTudoLogo variant="full" size="lg" className="drop-shadow-2xl mb-1" />
+        <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          SaaS OS • Gestão Inteligente de Traduções
+        </span>
       </div>
 
       {/* Main Login Card */}

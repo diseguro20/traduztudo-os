@@ -19,6 +19,7 @@ import { QuickActionModal } from './QuickActionModal';
 import { databaseStore } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -52,6 +53,10 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
           >
             <Menu className="w-5 h-5" />
           </button>
+
+          <Link href="/" className="flex items-center lg:hidden">
+            <TraduzTudoLogo variant="horizontal" theme="light" size="xs" className="h-7 w-auto" />
+          </Link>
 
           {/* Search trigger - Compact icon on mobile, input-style bar on sm+ */}
           <button

@@ -9,7 +9,14 @@ export const metadata: Metadata = {
   description:
     'Sistema operacional SaaS completo para gestão de traduções juramentadas, certificadas, técnicas, CRM, ordens de serviço, financeiro e portal do cliente.',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo-icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
