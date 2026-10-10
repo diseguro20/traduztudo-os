@@ -366,18 +366,18 @@ export default function LeadsPage() {
         /* Table View */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto touch-scroll">
-            <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
+            <table className="w-full min-w-[960px] text-left text-sm text-slate-600">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3">Lead</th>
-                  <th className="px-4 py-3">Tipo</th>
-                  <th className="px-4 py-3">Contato</th>
-                  <th className="px-4 py-3">Serviço de Interesse</th>
-                  <th className="px-4 py-3">Origem</th>
-                  <th className="px-4 py-3">Documentos</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Data</th>
-                  <th className="px-4 py-3 text-right">Ação</th>
+                  <th className="px-4 py-3 min-w-[170px]">Lead</th>
+                  <th className="px-4 py-3 w-[80px] whitespace-nowrap">Tipo</th>
+                  <th className="px-4 py-3 min-w-[150px]">Contato</th>
+                  <th className="px-4 py-3 min-w-[160px]">Serviço de Interesse</th>
+                  <th className="px-4 py-3 w-[110px] whitespace-nowrap">Origem</th>
+                  <th className="px-4 py-3 w-[110px] whitespace-nowrap">Documentos</th>
+                  <th className="px-4 py-3 w-[125px] whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 w-[95px] whitespace-nowrap">Data</th>
+                  <th className="px-4 py-3 w-[120px] text-right whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

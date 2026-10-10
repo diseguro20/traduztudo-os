@@ -223,17 +223,17 @@ export default function OrcamentosPage() {
       {/* Table of Quotes */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto touch-scroll">
-          <table className="w-full text-left text-sm text-slate-600 min-w-[850px]">
+          <table className="w-full text-left text-sm text-slate-600 min-w-[960px]">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3">Código</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Itens / Serviços</th>
-                <th className="px-4 py-3">Emissão / Validade</th>
-                <th className="px-4 py-3">Prazo</th>
-                <th className="px-4 py-3">Valor Total</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Ações</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Código</th>
+                <th className="px-4 py-3 min-w-[160px]">Cliente</th>
+                <th className="px-4 py-3 min-w-[180px]">Itens / Serviços</th>
+                <th className="px-4 py-3 w-[140px] whitespace-nowrap">Emissão / Validade</th>
+                <th className="px-4 py-3 w-[95px] whitespace-nowrap">Prazo</th>
+                <th className="px-4 py-3 w-[115px] whitespace-nowrap">Valor Total</th>
+                <th className="px-4 py-3 w-[120px] whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 w-[160px] text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

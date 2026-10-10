@@ -1089,31 +1089,32 @@ export function DocumentProcessingSection({
   };
 
   const getStatusBadge = (status?: DocumentProcessingStatus) => {
+    const base = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border shrink-0 tracking-wide';
     switch (status) {
       case 'UPLOADED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">ENVIADO</span>;
+        return <span className={`${base} bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700`}>ENVIADO</span>;
       case 'ANALYZING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">ANALISANDO</span>;
+        return <span className={`${base} bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800 animate-pulse`}>ANALISANDO</span>;
       case 'OCR_PROCESSING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 animate-pulse">PROCESSANDO OCR</span>;
+        return <span className={`${base} bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-400 dark:border-purple-800 animate-pulse`}>PROCESSANDO OCR</span>;
       case 'OCR_COMPLETED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">OCR CONCLUÍDO</span>;
+        return <span className={`${base} bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-400 dark:border-indigo-800`}>OCR CONCLUÍDO</span>;
       case 'DOCX_READY':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">WORD PRONTO</span>;
+        return <span className={`${base} bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:border-blue-800`}>WORD PRONTO</span>;
       case 'TRANSLATION_PENDING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">AGUARDANDO TRADUÇÃO</span>;
+        return <span className={`${base} bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800`}>AGUARDANDO TRADUÇÃO</span>;
       case 'TRANSLATED_DOCX_UPLOADED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800">TRADUÇÃO ENVIADA</span>;
+        return <span className={`${base} bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-400 dark:border-teal-800`}>TRADUÇÃO ENVIADA</span>;
       case 'FINAL_PDF_READY':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800">PDF FINAL PRONTO</span>;
+        return <span className={`${base} bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800`}>PDF FINAL PRONTO</span>;
       case 'SIGNATURE_PENDING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800">AGUARDANDO ASSINATURA</span>;
+        return <span className={`${base} bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-400 dark:border-orange-800`}>AGUARDANDO ASSINATURA</span>;
       case 'SIGNED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> ASSINADO</span>;
+        return <span className={`${base} bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800`}><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> ASSINADO</span>;
       case 'ERROR':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">ERRO</span>;
+        return <span className={`${base} bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800`}>ERRO</span>;
       default:
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">CONCLUÍDO</span>;
+        return <span className={`${base} bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700`}>CONCLUÍDO</span>;
     }
   };
 
@@ -1287,6 +1288,9 @@ export function DocumentProcessingSection({
             const finalPdfVer = doc.versions?.find((v) => v.type === 'FINAL_PDF');
             const signedPdfVer = doc.versions?.find((v) => v.type === 'SIGNED_PDF');
             const metrics = doc.originalWordCount;
+            const ext = (doc.name.split('.').pop() || 'DOC').toUpperCase().slice(0, 4);
+            const isPdf = ext === 'PDF';
+            const isDocx = ext === 'DOCX' || ext === 'DOC';
 
             return (
               <div
@@ -1296,12 +1300,23 @@ export function DocumentProcessingSection({
                 {/* Header row: Name, status, hash */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold text-xs">
-                      {doc.name.split('.').pop()?.toUpperCase() || 'DOC'}
+                    <div
+                      className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
+                        isPdf
+                          ? 'bg-red-50 text-red-600 border-red-200/80 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60'
+                          : isDocx
+                          ? 'bg-blue-50 text-blue-600 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'
+                          : 'bg-indigo-50 text-indigo-600 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/60'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">
+                        {ext}
+                      </span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-sm font-bold text-slate-900 truncate" title={doc.name}>
+                        <h4 className="text-sm font-bold text-slate-900 truncate max-w-sm sm:max-w-md" title={doc.name}>
                           {doc.name}
                         </h4>
                         {getStatusBadge(doc.status)}

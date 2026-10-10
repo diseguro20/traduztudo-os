@@ -281,16 +281,16 @@ export default function DashboardPage() {
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" /> Tarefa Pendente
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Tarefa Pendente
                   </span>
                   <PriorityBadge priority={task.priority} />
                 </div>
-                <p className="text-sm font-medium text-slate-900 mt-2">{task.title}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white mt-2">{task.title}</p>
               </div>
-              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                 <span>Resp: {task.assignedToName}</span>
-                <span className="text-amber-700 font-medium">Vence: {formatDate(task.dueDate)}</span>
+                <span className="text-amber-700 dark:text-amber-400 font-medium">Vence: {formatDate(task.dueDate)}</span>
               </div>
             </div>
           ))}
@@ -462,32 +462,32 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/operacao/orcamentos"
-              className="text-xs font-semibold text-blue-600 hover:underline"
+              className="text-xs font-semibold text-blue-600 dark:text-cyan-400 hover:underline"
             >
               Ver todos ({quotes.length}) →
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100 overflow-x-auto">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-x-auto">
             {quotes.slice(0, 4).map((quote) => (
               <div
                 key={quote.id}
-                className="p-4 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-700/50 px-2 py-0.5 rounded">
                       {quote.code}
                     </span>
-                    <p className="text-sm font-medium text-slate-900">{quote.customerName}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{quote.customerName}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     Emitido: {formatDate(quote.issueDate)} • Validade: {formatDate(quote.expirationDate)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <StatusBadge status={quote.status} />
-                  <p className="text-xs font-bold text-slate-900 mt-1.5">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white mt-1.5">
                     {formatCurrency(quote.total)}
                   </p>
                 </div>

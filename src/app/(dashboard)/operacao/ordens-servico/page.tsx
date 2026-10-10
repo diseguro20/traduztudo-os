@@ -218,18 +218,18 @@ export default function OrdensServicoPage() {
       {viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto touch-scroll">
-            <table className="w-full text-left text-sm text-slate-600 min-w-[900px]">
+            <table className="w-full text-left text-sm text-slate-600 min-w-[980px]">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3">Código</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">Serviço / Idiomas</th>
-                  <th className="px-4 py-3">Prioridade</th>
-                  <th className="px-4 py-3">Tradutor / Revisor</th>
-                  <th className="px-4 py-3">Prazo</th>
-                  <th className="px-4 py-3">Valor</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Dossiê</th>
+                  <th className="px-4 py-3 w-[110px] whitespace-nowrap">Código</th>
+                  <th className="px-4 py-3 min-w-[150px]">Cliente</th>
+                  <th className="px-4 py-3 min-w-[170px]">Serviço / Idiomas</th>
+                  <th className="px-4 py-3 w-[105px] whitespace-nowrap">Prioridade</th>
+                  <th className="px-4 py-3 min-w-[150px]">Tradutor / Revisor</th>
+                  <th className="px-4 py-3 w-[95px] whitespace-nowrap">Prazo</th>
+                  <th className="px-4 py-3 w-[110px] whitespace-nowrap">Valor</th>
+                  <th className="px-4 py-3 w-[130px] whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 w-[140px] text-right whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

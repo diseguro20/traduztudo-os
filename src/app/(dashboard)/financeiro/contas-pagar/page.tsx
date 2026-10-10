@@ -163,16 +163,16 @@ export default function ContasPagarPage() {
         </div>
 
         <div className="overflow-x-auto touch-scroll">
-          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
+          <table className="w-full min-w-[900px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3">Favorecido / Beneficiário</th>
-                <th className="px-4 py-3">Descrição</th>
-                <th className="px-4 py-3">Categoria</th>
-                <th className="px-4 py-3">Vencimento</th>
-                <th className="px-4 py-3">Valor</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Ação</th>
+                <th className="px-4 py-3 min-w-[190px]">Favorecido / Beneficiário</th>
+                <th className="px-4 py-3 min-w-[180px]">Descrição</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Categoria</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Vencimento</th>
+                <th className="px-4 py-3 w-[120px] whitespace-nowrap">Valor</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 w-[130px] text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

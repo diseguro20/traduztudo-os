@@ -168,16 +168,16 @@ export default function ContasReceberPage() {
         </div>
 
         <div className="overflow-x-auto touch-scroll">
-          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
+          <table className="w-full min-w-[900px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3">Cliente / Descrição</th>
-                <th className="px-4 py-3">OS Vinculada</th>
-                <th className="px-4 py-3">Forma</th>
-                <th className="px-4 py-3">Vencimento</th>
-                <th className="px-4 py-3">Valor</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Ação</th>
+                <th className="px-4 py-3 min-w-[200px]">Cliente / Descrição</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">OS Vinculada</th>
+                <th className="px-4 py-3 w-[90px] whitespace-nowrap">Forma</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Vencimento</th>
+                <th className="px-4 py-3 w-[120px] whitespace-nowrap">Valor</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 w-[130px] text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

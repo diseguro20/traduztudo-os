@@ -79,31 +79,32 @@ export default function DocumentosPage() {
   };
 
   const getStatusBadge = (status?: DocumentProcessingStatus) => {
+    const base = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border shrink-0 tracking-wide';
     switch (status) {
       case 'UPLOADED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">ENVIADO</span>;
+        return <span className={`${base} bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700`}>ENVIADO</span>;
       case 'ANALYZING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">ANALISANDO</span>;
+        return <span className={`${base} bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800 animate-pulse`}>ANALISANDO</span>;
       case 'OCR_PROCESSING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 animate-pulse">PROCESSANDO OCR</span>;
+        return <span className={`${base} bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-400 dark:border-purple-800 animate-pulse`}>PROCESSANDO OCR</span>;
       case 'OCR_COMPLETED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">OCR CONCLUÍDO</span>;
+        return <span className={`${base} bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-400 dark:border-indigo-800`}>OCR CONCLUÍDO</span>;
       case 'DOCX_READY':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">WORD PRONTO</span>;
+        return <span className={`${base} bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:border-blue-800`}>WORD PRONTO</span>;
       case 'TRANSLATION_PENDING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">EM TRADUÇÃO</span>;
+        return <span className={`${base} bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800`}>EM TRADUÇÃO</span>;
       case 'TRANSLATED_DOCX_UPLOADED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800">TRADUZIDO</span>;
+        return <span className={`${base} bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-400 dark:border-teal-800`}>TRADUZIDO</span>;
       case 'FINAL_PDF_READY':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800">PDF FINAL</span>;
+        return <span className={`${base} bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800`}>PDF FINAL</span>;
       case 'SIGNATURE_PENDING':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800">AGUARDANDO ASSINATURA</span>;
+        return <span className={`${base} bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-400 dark:border-orange-800`}>AGUARDANDO ASSINATURA</span>;
       case 'SIGNED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> ASSINADO</span>;
+        return <span className={`${base} bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800`}><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> ASSINADO</span>;
       case 'ERROR':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">ERRO</span>;
+        return <span className={`${base} bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800`}>ERRO</span>;
       default:
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">CONCLUÍDO</span>;
+        return <span className={`${base} bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700`}>CONCLUÍDO</span>;
     }
   };
 
@@ -112,103 +113,109 @@ export default function DocumentosPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <FolderOpen className="w-5 h-5 sm:w-6 h-6 text-blue-600" /> Repositório de Documentos & OCR
             </h1>
             {databaseStore.getClicksignConfig().environment === 'production' ? (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700">
                 Clicksign Produção
               </span>
             ) : (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700">
                 Clicksign Sandbox
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
             Módulo centralizado de OCR, extração de texto, geração de Word editável, contagem comercial e assinaturas digitais autorizadas.
           </p>
         </div>
 
         <Button
           onClick={() => setIsUploadModalOpen(true)}
-          className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto bg-blue-600 hover:bg-blue-700"
+          className="gap-2 shadow-xs text-xs sm:text-sm self-start sm:self-auto bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
         >
           <Upload className="w-4 h-4" /> Enviar Novo Documento
         </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Pesquisar por documento, orçamento, cliente ou responsável..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-2xl">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Pesquisar por documento, orçamento, cliente ou hash..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="text-xs text-slate-500 whitespace-nowrap">
+            Exibindo <span className="font-bold text-slate-900">{documents.length}</span> documento(s)
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto touch-scroll text-xs pb-1 sm:pb-0">
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto touch-scroll text-xs pt-2 border-t border-slate-100 pb-0.5">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'ALL'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             Todos ({databaseStore.getDocuments().length})
           </button>
           <button
             onClick={() => setStatusFilter('UPLOADED')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'UPLOADED'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             Abertos / Enviados
           </button>
           <button
             onClick={() => setStatusFilter('OCR_COMPLETED')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'OCR_COMPLETED'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             OCR Concluído
           </button>
           <button
             onClick={() => setStatusFilter('DOCX_READY')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'DOCX_READY'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             Word Pronto
           </button>
           <button
             onClick={() => setStatusFilter('SIGNATURE_PENDING')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'SIGNATURE_PENDING'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             Aguardando Assinatura
           </button>
           <button
             onClick={() => setStatusFilter('SIGNED')}
-            className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all border ${
               statusFilter === 'SIGNED'
-                ? 'bg-blue-100 text-blue-900 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200'
             }`}
           >
             Assinados
@@ -219,25 +226,25 @@ export default function DocumentosPage() {
       {/* Main Documents Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto touch-scroll">
-          <table className="w-full min-w-[1050px] text-left text-sm text-slate-600">
+          <table className="w-full min-w-[1100px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3">Documento & Hash</th>
-                <th className="px-4 py-3">Orçamento</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Idioma</th>
-                <th className="px-4 py-3">Palavras</th>
-                <th className="px-4 py-3">Páginas</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Assinatura</th>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3 text-right">Pipeline</th>
+                <th className="px-4 py-3 min-w-[280px]">Documento & Hash</th>
+                <th className="px-4 py-3 w-[110px] whitespace-nowrap">Orçamento</th>
+                <th className="px-4 py-3 min-w-[140px]">Cliente</th>
+                <th className="px-4 py-3 w-[80px] text-center whitespace-nowrap">Idioma</th>
+                <th className="px-4 py-3 w-[120px] whitespace-nowrap">Palavras</th>
+                <th className="px-4 py-3 w-[75px] text-center whitespace-nowrap">Páginas</th>
+                <th className="px-4 py-3 w-[140px] whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 w-[170px] whitespace-nowrap">Assinatura</th>
+                <th className="px-4 py-3 w-[100px] whitespace-nowrap">Data</th>
+                <th className="px-4 py-3 w-[130px] text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-xs text-slate-400">
+                  <td colSpan={10} className="px-4 py-12 text-center text-xs text-slate-400">
                     Nenhum documento encontrado com os filtros atuais.
                   </td>
                 </tr>
@@ -248,25 +255,42 @@ export default function DocumentosPage() {
                   const lead = doc.leadId ? databaseStore.getLeads().find((l) => l.id === doc.leadId) : null;
                   const metrics = doc.originalWordCount;
                   const docxVer = doc.versions?.find((v) => v.type === 'GENERATED_DOCX');
+                  const ext = (doc.name.split('.').pop() || 'DOC').toUpperCase().slice(0, 4);
+                  const isPdf = ext === 'PDF';
+                  const isDocx = ext === 'DOCX' || ext === 'DOC';
 
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* Documento & Hash */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                            {doc.name.split('.').pop()?.toUpperCase() || 'DOC'}
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
+                              isPdf
+                                ? 'bg-red-50 text-red-600 border-red-200/80 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60'
+                                : isDocx
+                                ? 'bg-blue-50 text-blue-600 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'
+                                : 'bg-indigo-50 text-indigo-600 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/60'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">
+                              {ext}
+                            </span>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 text-xs truncate max-w-[200px]" title={doc.name}>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="font-semibold text-slate-900 text-xs sm:text-sm truncate max-w-[260px] lg:max-w-[340px]"
+                              title={doc.name}
+                            >
                               {doc.name}
                             </p>
                             <div className="flex items-center gap-1 font-mono text-[10px] text-slate-400 mt-0.5">
                               <span>{(doc.currentSha256 || doc.sha256Original || '---').substring(0, 10)}...</span>
                               <button
                                 onClick={() => copyToClipboard(doc.currentSha256 || doc.sha256Original || '')}
-                                title="Copiar SHA-256"
-                                className="hover:text-blue-600"
+                                title="Copiar SHA-256 completo"
+                                className="hover:text-blue-600 p-0.5 transition-colors"
                               >
                                 <Copy className="w-2.5 h-2.5" />
                               </button>
@@ -276,7 +300,7 @@ export default function DocumentosPage() {
                       </td>
 
                       {/* Orçamento */}
-                      <td className="px-4 py-3.5 text-xs">
+                      <td className="px-4 py-3.5 text-xs whitespace-nowrap">
                         {quote ? (
                           <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
                             {quote.code}
@@ -288,25 +312,27 @@ export default function DocumentosPage() {
 
                       {/* Cliente */}
                       <td className="px-4 py-3.5 text-xs text-slate-700">
-                        {cust ? cust.name : quote ? quote.customerName : lead ? `${lead.name} (Lead)` : '---'}
+                        <span className="truncate max-w-[160px] block" title={cust ? cust.name : quote ? quote.customerName : lead ? lead.name : '---'}>
+                          {cust ? cust.name : quote ? quote.customerName : lead ? `${lead.name} (Lead)` : '---'}
+                        </span>
                       </td>
 
                       {/* Idioma */}
-                      <td className="px-4 py-3.5 text-xs">
-                        <span className="font-semibold text-indigo-700 uppercase bg-indigo-50 px-1.5 py-0.5 rounded">
+                      <td className="px-4 py-3.5 text-xs text-center whitespace-nowrap">
+                        <span className="font-semibold text-indigo-700 uppercase bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                           {doc.sourceLanguage || 'POR'}
                         </span>
                       </td>
 
                       {/* Palavras */}
-                      <td className="px-4 py-3.5 text-xs">
+                      <td className="px-4 py-3.5 text-xs whitespace-nowrap">
                         {metrics ? (
-                          <div>
-                            <span className="font-bold text-emerald-700">
-                              {metrics.billableWords.toLocaleString()} fat.
+                          <div className="space-y-0.5">
+                            <span className="font-semibold text-emerald-700 block">
+                              {metrics.billableWords.toLocaleString('pt-BR')} fat.
                             </span>
                             <span className="text-[10px] text-slate-400 block">
-                              ({metrics.words.toLocaleString()} tot.)
+                              ({metrics.words.toLocaleString('pt-BR')} tot.)
                             </span>
                           </div>
                         ) : (
@@ -315,27 +341,27 @@ export default function DocumentosPage() {
                       </td>
 
                       {/* Páginas */}
-                      <td className="px-4 py-3.5 text-xs font-semibold text-slate-700">
+                      <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 text-center whitespace-nowrap">
                         {metrics?.pages || 1}
                       </td>
 
                       {/* Status */}
-                      <td className="px-4 py-3.5">{getStatusBadge(doc.status)}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">{getStatusBadge(doc.status)}</td>
 
                       {/* Assinatura */}
-                      <td className="px-4 py-3.5 text-xs">
+                      <td className="px-4 py-3.5 text-xs whitespace-nowrap">
                         {doc.signatureRequest ? (
-                          <div className="flex items-center gap-1 text-[11px]">
-                            {doc.signatureRequest.status === 'SIGNED' ? (
-                              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                                <ShieldCheck className="w-3.5 h-3.5" /> Clicksign Assinado
-                              </span>
-                            ) : (
-                              <span className="text-amber-700 font-medium">Aguardando Clicksign</span>
-                            )}
-                          </div>
+                          doc.signatureRequest.status === 'SIGNED' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Clicksign Assinado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                              <RotateCw className="w-3.5 h-3.5 text-amber-500 animate-spin" /> Aguardando Clicksign
+                            </span>
+                          )
                         ) : (
-                          <span className="text-slate-400 text-[11px]">Não iniciada</span>
+                          <span className="text-slate-400 text-[11px] px-1">Não iniciada</span>
                         )}
                       </td>
 
@@ -345,22 +371,21 @@ export default function DocumentosPage() {
                       </td>
 
                       {/* Ações */}
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
+                          <button
                             onClick={() => setSelectedDocForPipeline(doc)}
-                            className="text-xs gap-1 text-blue-700 hover:bg-blue-50"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 transition-colors"
+                            title="Ver detalhes do pipeline"
                           >
                             <Layers className="w-3.5 h-3.5" /> Detalhes
-                          </Button>
+                          </button>
 
                           {docxVer?.dataUrl && (
                             <a
                               href={docxVer.dataUrl}
                               download={docxVer.fileName}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-200 transition-colors"
                               title="Baixar Word DOCX"
                             >
                               <Download className="w-4 h-4" />
@@ -369,7 +394,7 @@ export default function DocumentosPage() {
 
                           <button
                             onClick={() => handleDelete(doc.id, doc.name)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-200 transition-colors"
                             title="Excluir documento"
                           >
                             <Trash2 className="w-4 h-4" />

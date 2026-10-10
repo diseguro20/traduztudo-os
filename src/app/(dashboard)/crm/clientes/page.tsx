@@ -164,17 +164,17 @@ export default function ClientesPage() {
       {/* Table of Customers */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto touch-scroll">
-          <table className="w-full min-w-[850px] text-left text-sm text-slate-600">
+          <table className="w-full min-w-[920px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Documento</th>
-                <th className="px-4 py-3">Contato</th>
-                <th className="px-4 py-3">Localização</th>
-                <th className="px-4 py-3">Total Faturado</th>
-                <th className="px-4 py-3">Pedidos</th>
-                <th className="px-4 py-3 text-right">Ações</th>
+                <th className="px-4 py-3 min-w-[180px]">Cliente</th>
+                <th className="px-4 py-3 w-[80px] whitespace-nowrap">Tipo</th>
+                <th className="px-4 py-3 w-[130px] whitespace-nowrap">Documento</th>
+                <th className="px-4 py-3 min-w-[160px]">Contato</th>
+                <th className="px-4 py-3 min-w-[130px]">Localização</th>
+                <th className="px-4 py-3 w-[120px] whitespace-nowrap">Total Faturado</th>
+                <th className="px-4 py-3 w-[85px] text-center whitespace-nowrap">Pedidos</th>
+                <th className="px-4 py-3 w-[120px] text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
