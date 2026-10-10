@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import React, { Suspense } from 'react';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { SystemTourModal } from '@/components/tour/SystemTourModal';
 
 export const metadata: Metadata = {
@@ -26,14 +27,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className="h-full">
-      <body className="h-full bg-slate-50 text-slate-900 font-sans antialiased">
-        <AuthProvider>
-          {children}
-          <Suspense fallback={null}>
-            <SystemTourModal />
-          </Suspense>
-        </AuthProvider>
+    <html lang="pt-BR" className="h-full dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var theme = localStorage.getItem('traduztudo_theme');
+                if (theme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add('light');
+                  document.documentElement.style.colorScheme = 'light';
+                } else {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                  document.documentElement.style.colorScheme = 'dark';
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="h-full bg-[#090d16] text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-white">
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+            <Suspense fallback={null}>
+              <SystemTourModal />
+            </Suspense>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

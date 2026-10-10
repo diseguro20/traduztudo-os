@@ -58,24 +58,24 @@ export function Modal({
       {/* Dialog */}
       <div
         className={cn(
-          'relative w-full max-h-[92vh] flex flex-col rounded-2xl bg-white shadow-2xl transition-all z-10 my-auto border border-slate-100 animate-in zoom-in-95',
+          'relative w-full max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl transition-all z-10 my-auto border border-slate-100 dark:border-slate-800 animate-in zoom-in-95',
           maxWidthClasses[maxWidth]
         )}
       >
-        <div className="flex items-start justify-between p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-start justify-between p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
             {title && (
-              <h3 className="text-base sm:text-lg font-semibold text-slate-900 leading-tight">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
                 {title}
               </h3>
             )}
             {description && (
-              <p className="mt-1 text-xs sm:text-sm text-slate-500">{description}</p>
+              <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors ml-2 shrink-0"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors ml-2 shrink-0 cursor-pointer"
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />

@@ -161,91 +161,91 @@ export default function DashboardPage() {
       {/* KPI Cards (6 Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {/* Faturamento */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Faturamento</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-emerald-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Faturamento</span>
+            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 shadow-xs">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(totalBilled)}</p>
-          <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{formatCurrency(totalBilled)}</p>
+          <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>+18.4% vs mês anterior</span>
           </div>
         </div>
 
         {/* A Receber */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">A Receber</span>
-            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-cyan-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">A Receber</span>
+            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-cyan-400 shadow-xs">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(pendingReceivables)}</p>
-          <p className="mt-2 text-[11px] text-slate-500">Saldo em aberto a faturar</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{formatCurrency(pendingReceivables)}</p>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">Saldo em aberto a faturar</p>
         </div>
 
         {/* Em Atraso */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Em Atraso</span>
-            <div className="p-2 rounded-lg bg-rose-50 text-rose-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-rose-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Em Atraso</span>
+            <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 shadow-xs">
               <AlertCircle className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(overdueReceivables)}</p>
-          <p className="mt-2 text-[11px] text-emerald-600 font-medium">Inadimplência sob controle (0%)</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{formatCurrency(overdueReceivables)}</p>
+          <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Inadimplência sob controle (0%)</p>
         </div>
 
         {/* Serviços em Andamento */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Em Andamento</span>
-            <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-purple-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Em Andamento</span>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 shadow-xs">
               <FileCheck2 className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{activeWorkOrders.length} OS</p>
-          <p className="mt-2 text-[11px] text-slate-500">Ordens de serviço ativas</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{activeWorkOrders.length} OS</p>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">Ordens de serviço ativas</p>
         </div>
 
         {/* Orçamentos Pendentes */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Orçamentos</span>
-            <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-amber-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Orçamentos</span>
+            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 shadow-xs">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{pendingQuotes.length} pendentes</p>
-          <p className="mt-2 text-[11px] text-slate-500">Aguardando decisão do cliente</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{pendingQuotes.length} pendentes</p>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">Aguardando decisão do cliente</p>
         </div>
 
         {/* Novos Clientes */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Clientes</span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-500/40">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Clientes</span>
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl font-bold text-slate-900">{customers.length} ativos</p>
-          <p className="mt-2 text-[11px] text-slate-500">Pessoas Físicas e Jurídicas</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{customers.length} ativos</p>
+          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">Pessoas Físicas e Jurídicas</p>
         </div>
       </div>
 
       {/* SEÇÃO ATENÇÃO CRÍTICA */}
-      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/5 rounded-2xl border border-amber-200/80 p-5 space-y-4">
+      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/5 dark:from-amber-950/40 dark:via-amber-900/15 dark:to-rose-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-700/50 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4 text-amber-600" /> Seção Atenção Operacional
+            <h2 className="text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Seção Atenção Operacional
             </h2>
           </div>
-          <span className="text-xs text-amber-800 font-medium">
+          <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold">
             {urgentOrders.length + pendingTasks.length} alertas prioritários
           </span>
         </div>
@@ -255,20 +255,20 @@ export default function DashboardPage() {
             <Link
               key={order.id}
               href={`/operacao/ordens-servico/${order.id}`}
-              className="bg-white p-3.5 rounded-xl border border-amber-200/80 hover:border-amber-400 hover:shadow-sm transition-all group"
+              className="card-hover bg-white dark:bg-slate-900/95 p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-700/50 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                <span className="text-xs font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded">
                   {order.code}
                 </span>
                 <PriorityBadge priority={order.priority} />
               </div>
-              <p className="text-sm font-medium text-slate-900 mt-2 group-hover:text-blue-600 truncate">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-2 group-hover:text-cyan-400 truncate">
                 {order.customerName}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">{order.serviceName}</p>
-              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">Prazo: {formatDate(order.deadline)}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{order.serviceName}</p>
+              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                <span className="text-slate-500 dark:text-slate-400">Prazo: {formatDate(order.deadline)}</span>
                 <StatusBadge status={order.status} />
               </div>
             </Link>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
           {pendingTasks.slice(0, 2).map((task) => (
             <div
               key={task.id}
-              className="bg-white p-3.5 rounded-xl border border-amber-200/80 hover:shadow-sm transition-all flex flex-col justify-between"
+              className="card-hover bg-white dark:bg-slate-900/95 p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-700/50 hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -300,19 +300,19 @@ export default function DashboardPage() {
       {/* Gráficos Operacionais e Financeiros */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Faturamento Mensal (2 Cols) */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="lg:col-span-2 card-hover bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                 Faturamento e Recebimentos (R$)
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Comparativo de serviços faturados versus liquidados
               </p>
             </div>
             <Link
               href="/financeiro/fluxo-caixa"
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className="text-xs font-semibold text-cyan-500 hover:text-cyan-400 flex items-center gap-1 transition-colors"
             >
               Ver Fluxo <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -323,15 +323,15 @@ export default function DashboardPage() {
               <AreaChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorRecebido" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.35} />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
                 <YAxis
                   stroke="#94a3b8"
@@ -341,23 +341,23 @@ export default function DashboardPage() {
                 />
                 <Tooltip
                   formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR')}`, '']}
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' }}
                 />
-                <Area type="monotone" dataKey="faturamento" name="Faturado" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorFaturamento)" />
-                <Area type="monotone" dataKey="recebido" name="Recebido" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorRecebido)" />
+                <Area type="monotone" dataKey="faturamento" name="Faturado" stroke="#0ea5e9" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFaturamento)" />
+                <Area type="monotone" dataKey="recebido" name="Recebido" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRecebido)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Serviços por Status (Donut) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="card-hover bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                 Serviços por Status
               </h3>
-              <p className="text-xs text-slate-500">Distribuição do fluxo de trabalho</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Distribuição do fluxo de trabalho</p>
             </div>
             <Link
               href="/operacao/ordens-servico"
@@ -407,42 +407,42 @@ export default function DashboardPage() {
       {/* Tabela de Ordens Recentes & Orçamentos em Aberto */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Ordens de Serviço Recentes */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="card-hover bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                 Ordens de Serviço em Operação
               </h3>
-              <p className="text-xs text-slate-500">Últimas ordens em fluxo com linguistas</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Últimas ordens em fluxo com linguistas</p>
             </div>
             <Link
               href="/operacao/ordens-servico"
-              className="text-xs font-semibold text-blue-600 hover:underline"
+              className="text-xs font-semibold text-cyan-500 hover:text-cyan-400 hover:underline transition-colors"
             >
               Ver todas ({workOrders.length}) →
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100 overflow-x-auto">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-x-auto">
             {workOrders.slice(0, 4).map((order) => (
               <div
                 key={order.id}
-                className="p-4 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded">
                       {order.code}
                     </span>
-                    <p className="text-sm font-medium text-slate-900">{order.customerName}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{order.customerName}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {order.serviceName} • {order.sourceLanguage} → {order.targetLanguage}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <StatusBadge status={order.status} />
-                  <p className="text-xs font-bold text-slate-900 mt-1.5">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white mt-1.5">
                     {formatCurrency(order.amount)}
                   </p>
                 </div>
@@ -452,13 +452,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Orçamentos Recentes */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="card-hover bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                 Orçamentos Recentes
               </h3>
-              <p className="text-xs text-slate-500">Propostas emitidas e status de aprovação</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Propostas emitidas e status de aprovação</p>
             </div>
             <Link
               href="/operacao/orcamentos"

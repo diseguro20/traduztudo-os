@@ -287,17 +287,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       href={item.href}
                       onClick={() => onClose?.()}
                       className={cn(
-                        'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
+                        'flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group',
                         isActive
-                          ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30 font-semibold'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                          ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-cyan-500/20 font-semibold border-l-2 border-cyan-300 pl-2.5'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/70 hover:translate-x-1'
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <Icon
                           className={cn(
-                            'w-4 h-4 shrink-0 transition-colors',
-                            isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                            'w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110',
+                            isActive ? 'text-cyan-200 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]' : 'text-slate-400 group-hover:text-cyan-300'
                           )}
                         />
                         <span className="truncate">{item.label}</span>

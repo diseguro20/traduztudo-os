@@ -20,6 +20,7 @@ import { databaseStore } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -43,12 +44,12 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
   return (
     <>
-      <header className="h-14 sm:h-16 bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6">
+      <header className="h-14 sm:h-16 bg-white/95 dark:bg-[#0f172a]/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 backdrop-blur-md transition-colors duration-200">
         {/* Left: Mobile hamburger & Search trigger */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleMobileMenu}
-            className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden transition-colors"
+            className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden transition-colors"
             aria-label="Abrir Menu Principal"
           >
             <Menu className="w-5 h-5" />
@@ -69,29 +70,32 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 text-slate-400 hover:text-slate-600 transition-all text-xs w-60 md:w-80 justify-between"
+            className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 hover:bg-slate-100 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all text-xs w-60 md:w-80 justify-between shadow-2xs"
           >
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-slate-400 shrink-0" />
               <span className="truncate">Buscar clientes, OS, orçamentos...</span>
             </div>
-            <kbd className="font-mono bg-white border border-slate-200 text-slate-400 text-[10px] px-1.5 py-0.5 rounded shadow-2xs shrink-0">
+            <kbd className="font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400 text-[10px] px-1.5 py-0.5 rounded shadow-2xs shrink-0">
               Ctrl+K
             </kbd>
           </button>
         </div>
 
-        {/* Right: Quick actions, notifications, user menu */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        {/* Right: Quick actions, theme toggle, notifications, user menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* Quick Action (+) button */}
           <Button
             size="sm"
             onClick={() => setIsQuickActionOpen(true)}
-            className="gap-1.5 px-2.5 sm:px-3 h-8 sm:h-9 font-medium shadow-xs"
+            className="gap-1.5 px-2.5 sm:px-3 h-8 sm:h-9 font-semibold shadow-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Criar</span>
           </Button>
+
+          {/* Theme Toggle Button */}
+          <ThemeToggle />
 
           {/* Notifications dropdown trigger */}
           <div className="relative">

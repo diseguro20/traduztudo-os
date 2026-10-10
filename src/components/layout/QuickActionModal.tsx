@@ -156,37 +156,37 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
       {successMessage ? (
         <div className="py-8 text-center space-y-3">
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
-          <p className="text-base font-medium text-slate-800">{successMessage}</p>
+          <p className="text-base font-medium text-slate-800 dark:text-slate-100">{successMessage}</p>
         </div>
       ) : activeTab === 'menu' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
           <button
             onClick={() => setActiveTab('customer')}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 text-left transition-all group"
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-800/40 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-left transition-all group"
           >
-            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-600">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
                 Novo Cliente
               </p>
-              <p className="text-xs text-slate-500">Pessoa física ou jurídica</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Pessoa física ou jurídica</p>
             </div>
           </button>
 
           <button
             onClick={() => setActiveTab('lead')}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-left transition-all group"
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-800/40 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-left transition-all group"
           >
-            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 group-hover:text-emerald-600">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                 Novo Lead
               </p>
-              <p className="text-xs text-slate-500">Entrada no pipeline CRM</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Entrada no pipeline CRM</p>
             </div>
           </button>
 
@@ -195,16 +195,16 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               handleClose();
               router.push('/operacao/orcamentos/novo');
             }}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 text-left transition-all group"
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-800/40 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 text-left transition-all group"
           >
-            <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 group-hover:text-amber-600">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
                 Novo Orçamento
               </p>
-              <p className="text-xs text-slate-500">Com cálculo automático</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Com cálculo automático</p>
             </div>
           </button>
 
@@ -213,38 +213,38 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               handleClose();
               router.push('/operacao/ordens-servico');
             }}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 text-left transition-all group"
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-800/40 hover:border-purple-500 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 text-left transition-all group"
           >
-            <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <FileCheck2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 group-hover:text-purple-600">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400">
                 Nova Ordem de Serviço
               </p>
-              <p className="text-xs text-slate-500">Atribuir linguistas e prazos</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Atribuir linguistas e prazos</p>
             </div>
           </button>
 
           <button
             onClick={() => setActiveTab('payment')}
-            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-left transition-all group sm:col-span-2"
+            className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-800/40 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-left transition-all group sm:col-span-2"
           >
-            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 group-hover:text-emerald-600">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                 Registrar Pagamento / Recebimento
               </p>
-              <p className="text-xs text-slate-500">Baixa no contas a receber e fluxo de caixa</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Baixa no contas a receber e fluxo de caixa</p>
             </div>
           </button>
         </div>
       ) : activeTab === 'customer' ? (
         <form onSubmit={handleCreateCustomer} className="space-y-4">
           <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
               <input
                 type="radio"
                 name="type"
@@ -254,7 +254,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               />
               Pessoa Física (PF)
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
               <input
                 type="radio"
                 name="type"
@@ -267,7 +267,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               {custType === 'PF' ? 'Nome Completo' : 'Razão Social / Nome da Empresa'} *
             </label>
             <input
@@ -276,13 +276,13 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               value={custName}
               onChange={(e) => setCustName(e.target.value)}
               placeholder="Ex: Carlos Albuquerque"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 E-mail *
               </label>
               <input
@@ -291,11 +291,11 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={custEmail}
                 onChange={(e) => setCustEmail(e.target.value)}
                 placeholder="cliente@email.com"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Telefone / WhatsApp
               </label>
               <input
@@ -303,7 +303,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={custPhone}
                 onChange={(e) => setCustPhone(e.target.value)}
                 placeholder="(11) 99999-9999"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -320,7 +320,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
       ) : activeTab === 'lead' ? (
         <form onSubmit={handleCreateLead} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Nome do Contato / Lead *
             </label>
             <input
@@ -329,13 +329,13 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               value={leadName}
               onChange={(e) => setLeadName(e.target.value)}
               placeholder="Ex: Ana Clara Martins"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 E-mail *
               </label>
               <input
@@ -344,11 +344,11 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={leadEmail}
                 onChange={(e) => setLeadEmail(e.target.value)}
                 placeholder="ana@email.com"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Telefone / WhatsApp
               </label>
               <input
@@ -356,19 +356,19 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={leadPhone}
                 onChange={(e) => setLeadPhone(e.target.value)}
                 placeholder="(11) 98888-7777"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Serviço de Interesse
             </label>
             <select
               value={leadService}
               onChange={(e) => setLeadService(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="Tradução Juramentada">Tradução Juramentada</option>
               <option value="Tradução Certificada">Tradução Certificada</option>
@@ -390,7 +390,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
       ) : (
         <form onSubmit={handleCreatePayment} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Descrição do Recebimento *
             </label>
             <input
@@ -399,13 +399,13 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
               value={payDesc}
               onChange={(e) => setPayDesc(e.target.value)}
               placeholder="Ex: Pagamento 50% entrada tradução juramentada"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Valor (R$) *
               </label>
               <input
@@ -415,11 +415,11 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
                 placeholder="Ex: 950.00"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Nome do Cliente
               </label>
               <input
@@ -427,7 +427,7 @@ export function QuickActionModal({ isOpen, onClose, onSuccess }: QuickActionModa
                 value={payCustomer}
                 onChange={(e) => setPayCustomer(e.target.value)}
                 placeholder="Ex: Dr. Roberto Alencar"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>

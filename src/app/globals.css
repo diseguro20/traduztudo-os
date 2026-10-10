@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,17 +8,178 @@
   :root {
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
+    --font-jakarta: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+  }
+
+  html {
+    font-family: var(--font-jakarta);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans selection:bg-blue-600 selection:text-white;
+    @apply antialiased selection:bg-cyan-500 selection:text-white transition-colors duration-200;
   }
+
+  /* Default light theme */
+  body:not(.dark) {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  /* Dark theme root */
+  html.dark,
+  html.dark body {
+    background-color: #090d16;
+    color: #f8fafc;
+    color-scheme: dark;
+  }
+}
+
+/* ==========================================================================
+   Dark Theme Global Refinements & High-Contrast Typography
+   ========================================================================== */
+
+.dark {
+  /* Ambient deep obsidian backdrop */
+  background-color: #090d16;
+}
+
+/* Surfaces and containers in dark mode */
+.dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #090d16 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #131c31 !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #1e293b !important;
+}
+
+/* Borders in dark mode */
+.dark .border-slate-200 {
+  border-color: #1e293b !important;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b/70 !important;
+}
+
+.dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+/* Crisp Typography Contrast in Dark Mode */
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Hover highlights in dark mode */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #141e33 !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1b2640 !important;
+}
+
+.dark .hover\:bg-slate-200:hover {
+  background-color: #243252 !important;
+}
+
+/* Form inputs & controls in dark mode */
+.dark input:not([type='checkbox']):not([type='radio']):not([type='submit']):not([type='button']),
+.dark select,
+.dark textarea {
+  background-color: #0c1220 !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25) !important;
+}
+
+/* Table styles in dark mode */
+.dark table th {
+  color: #94a3b8 !important;
+  border-color: #1e293b !important;
+}
+
+.dark table td {
+  border-color: #1e293b !important;
+}
+
+.dark table tr:hover td {
+  background-color: rgba(20, 30, 51, 0.6) !important;
+}
+
+/* Shadows with subtle elevation in dark mode */
+.dark .shadow-sm,
+.dark .shadow-xs,
+.dark .shadow-2xs {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .shadow-md {
+  box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .shadow-lg,
+.dark .shadow-xl {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -32,10 +195,73 @@
   background: #94a3b8;
 }
 
-/* Glassmorphism accents */
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ==========================================================================
+   Modern Animations & Micro-Interactions
+   ========================================================================== */
+
+/* Modern Card Hover Lift */
+.card-hover {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(14, 165, 233, 0.12);
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Glassmorphism panels */
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.82) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Ambient glow accents */
+.glow-cyan {
+  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.3);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.3);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.3);
+}
+
+/* Shimmer animation utility */
+.shimmer-gradient {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite linear;
+}
+
+/* Interactive button press */
+.btn-press:active {
+  transform: scale(0.97);
 }

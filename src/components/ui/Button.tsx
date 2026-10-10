@@ -22,21 +22,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer';
+      'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer active:scale-[0.97]';
 
     const variantStyles = {
       primary:
-        'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm active:bg-blue-800',
+        'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 focus:ring-cyan-500',
       secondary:
-        'bg-slate-800 text-white hover:bg-slate-900 focus:ring-slate-700 shadow-sm',
+        'bg-slate-800 text-slate-100 hover:bg-slate-700 focus:ring-slate-700 shadow-sm border border-slate-700/60',
       outline:
-        'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400 shadow-xs',
+        'border border-slate-300 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 focus:ring-cyan-500 shadow-xs',
       ghost:
-        'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-300',
+        'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white focus:ring-slate-500',
       danger:
-        'bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500 shadow-sm',
+        'bg-rose-600 hover:bg-rose-500 text-white focus:ring-rose-500 shadow-md shadow-rose-600/20',
       success:
-        'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm',
+        'bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-emerald-500 shadow-md shadow-emerald-600/20',
     };
 
     const sizeStyles = {

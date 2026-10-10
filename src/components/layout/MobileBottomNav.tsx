@@ -67,7 +67,7 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
   return (
     <nav
       aria-label="Navegação Rápida Mobile"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-2 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-lg px-2 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors duration-200"
     >
       <div className="grid grid-cols-5 items-center justify-around max-w-lg mx-auto">
         {navItems.map((item) => {
@@ -79,15 +79,15 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
               className={cn(
                 'flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all relative text-center',
                 item.isActive
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-slate-500 hover:text-slate-900 active:scale-95'
+                  ? 'text-cyan-600 dark:text-cyan-400 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95'
               )}
             >
               <div className="relative">
                 <Icon
                   className={cn(
                     'w-5 h-5 transition-transform',
-                    item.isActive ? 'scale-110 text-blue-600' : 'text-slate-500'
+                    item.isActive ? 'scale-110 text-cyan-600 dark:text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.4)]' : 'text-slate-500 dark:text-slate-400'
                   )}
                 />
                 {item.badge && (
@@ -104,7 +104,7 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
               <span
                 className={cn(
                   'text-[10px] mt-0.5 tracking-tight truncate max-w-[64px]',
-                  item.isActive ? 'font-bold text-blue-600' : 'text-slate-500'
+                  item.isActive ? 'font-bold text-cyan-600 dark:text-cyan-400' : 'text-slate-500 dark:text-slate-400'
                 )}
               >
                 {item.label}
@@ -117,12 +117,12 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
         <button
           onClick={onOpenMenu}
           type="button"
-          className="flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-500 hover:text-slate-900 active:scale-95 transition-all text-center"
+          className="flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all text-center"
         >
           <div className="w-5 h-5 flex items-center justify-center">
-            <Menu className="w-5 h-5 text-slate-600" />
+            <Menu className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight font-medium text-slate-600">
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium text-slate-500 dark:text-slate-400">
             Mais
           </span>
         </button>
