@@ -37,3 +37,4 @@ firebase-debug.log*
 next-env.d.ts
 
 .vercel
+.env*
