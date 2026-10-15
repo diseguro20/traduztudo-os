@@ -167,6 +167,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       title: 'Comunicação',
       items: [
         {
+          label: 'Central de E-mails (IA)',
+          href: '/comunicacao/emails',
+          icon: Mail,
+          badge: 'Hostinger',
+          badgeVariant: 'purple' as const,
+        },
+        {
           label: 'Notificações',
           href: '/comunicacao/notificacoes',
           icon: Bell,
@@ -176,7 +183,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {
           label: 'Templates de E-mail',
           href: '/comunicacao/templates',
-          icon: Mail,
+          icon: FileSpreadsheet,
         },
         {
           label: 'WhatsApp API',
