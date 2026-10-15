@@ -57,7 +57,6 @@ export default function CentralEmailsPage() {
   const [draftContent, setDraftContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
 
   // Rejection modal
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -231,28 +230,6 @@ export default function CentralEmailsPage() {
     }
   };
 
-  const handleSimulateInbound = async (scenario?: string) => {
-    try {
-      setIsSimulating(true);
-      const res = await fetch('/api/email/central/simulate-inbound', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        await fetchEmails();
-        if (data.email) {
-          handleSelectEmail(data.email);
-        }
-      }
-    } catch {
-      alert('Erro na simulação de e-mail.');
-    } finally {
-      setIsSimulating(false);
-    }
-  };
-
   // Filtered emails
   const filteredEmails = emails.filter((item) => {
     if (activeTab === 'AWAITING' && item.status !== 'AWAITING_APPROVAL') return false;
@@ -352,17 +329,6 @@ export default function CentralEmailsPage() {
             title="Atualizar caixa de entrada"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleSimulateInbound()}
-            disabled={isSimulating}
-            className="text-xs gap-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100"
-            title="Testar simulação de e-mail de cliente"
-          >
-            <Bot className="w-3.5 h-3.5" /> Simular E-mail de Teste
           </Button>
         </div>
       </div>
