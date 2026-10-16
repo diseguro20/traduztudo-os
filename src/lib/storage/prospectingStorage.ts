@@ -409,8 +409,26 @@ export class ProspectingStorage {
     return { items: paged, total };
   }
 
+  public async ensureCompaniesHydrated(limitCount = 500): Promise<void> {
+    try {
+      if (db) {
+        const q = query(collection(db, COLLECTIONS.COMPANIES), limit(limitCount));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          snap.forEach((d) => {
+            const item = d.data() as ProspectCompany;
+            companiesStore.set(item.id, item);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[ProspectingStorage] Firestore hydration notice:', e);
+    }
+  }
+
   // --- Campaign Eligible Prospects Query ---
   public async getEligibleProspectsForCampaign(campaignSegment?: ProspectSegment | 'ALL', limitCount = 30): Promise<ProspectCompany[]> {
+    await this.ensureCompaniesHydrated(limitCount * 4);
     const list = Array.from(companiesStore.values());
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
@@ -540,6 +558,7 @@ export class ProspectingStorage {
 
   // --- Comprehensive Dashboard Stats ---
   public async getDashboardStats(): Promise<ProspectingDashboardStats> {
+    await this.ensureCompaniesHydrated(500);
     const companies = Array.from(companiesStore.values());
     const total = companies.length;
     const now = new Date();
