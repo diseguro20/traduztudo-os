@@ -212,6 +212,57 @@ export async function POST(req: NextRequest) {
     // 10. Persist Atomically
     await emailStorage.saveEmail(newEmailMessage);
 
+    // 11. Cross-reference with B2B Intelligent Prospecting Engine
+    try {
+      const { prospectingStorage } = await import('@/lib/storage/prospectingStorage');
+      const { prospectingAIAgent } = await import('@/lib/ai/prospectingAIAgent');
+      const matchedCompany = await prospectingStorage.getCompanyByEmail(senderEmail);
+
+      if (matchedCompany) {
+        const replyAnalysis = prospectingAIAgent.classifyInboundReply(bodyText, subject);
+
+        await prospectingStorage.saveInboundReply({
+          id: `inb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          tenantId: 'traduztudo-matriz',
+          companyId: matchedCompany.id,
+          fromEmail: senderEmail,
+          fromName: senderName,
+          subject,
+          bodyText,
+          classification: replyAnalysis.classification,
+          confidence: replyAnalysis.confidence,
+          suggestedFollowUp: replyAnalysis.suggestedFollowUp,
+          receivedAt: new Date().toISOString(),
+          processed: true,
+          convertedToLead: ['INTERESSE_PARCERIA', 'SOLICITACAO_ORCAMENTO'].includes(replyAnalysis.classification),
+        });
+
+        if (replyAnalysis.classification === 'SOLICITACAO_REMOCAO') {
+          await prospectingStorage.addToSuppression(
+            senderEmail,
+            matchedCompany.website,
+            'OPTOUT',
+            'Solicitação de remoção recebida via resposta de e-mail.'
+          );
+        } else if (['INTERESSE_PARCERIA', 'SOLICITACAO_ORCAMENTO'].includes(replyAnalysis.classification)) {
+          await prospectingStorage.updateCompany(matchedCompany.id, {
+            status: replyAnalysis.classification === 'SOLICITACAO_ORCAMENTO' ? 'ORCAMENTO' : 'LEAD_QUALIFICADO',
+          });
+          await prospectingStorage.addActivity(matchedCompany.id, {
+            type: 'REPLY_RECEIVED',
+            description: `Resposta de interesse comercial recebida: "${subject}". Classificação: ${replyAnalysis.classification}.`,
+            actor: 'AI_AGENT',
+            metadata: {
+              classification: replyAnalysis.classification,
+              confidence: replyAnalysis.confidence,
+            },
+          });
+        }
+      }
+    } catch (prospectErr) {
+      console.warn('[Hostinger Webhook] Prospecting cross-reference note:', prospectErr);
+    }
+
     const duration = Date.now() - startTime;
     console.log(`[Hostinger Webhook] E-mail [${rawMessageId}] de [${senderEmail}] processado e salvo com sucesso em ${duration}ms.`);
 

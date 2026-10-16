@@ -30,8 +30,8 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  GraduationCap,
   X,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -73,6 +73,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       title: 'CRM & Vendas',
       items: [
+        {
+          label: 'Prospecção Inteligente',
+          href: '/crm/prospeccao',
+          icon: Target,
+          badge: 'IA B2B',
+          badgeVariant: 'purple' as const,
+        },
         {
           label: 'Leads (Pipeline)',
           href: '/crm/leads',

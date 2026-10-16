@@ -638,4 +638,4 @@ export interface AuditLog {
 }
 
 export * from './emailCentral';
-
+export * from './prospecting';
