@@ -3,13 +3,15 @@ import { discoveryEngine } from '@/lib/prospecting/discoveryEngine';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+async function handleDiscover(req: NextRequest) {
   try {
-    let options = {};
-    try {
-      options = await req.json();
-    } catch {
-      // Empty body is fine for cron
+    let options: any = {};
+    if (req.method === 'POST') {
+      try {
+        options = await req.json();
+      } catch {
+        // Empty body is fine for cron
+      }
     }
 
     const result = await discoveryEngine.executeDiscovery(options);
@@ -27,3 +29,12 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function GET(req: NextRequest) {
+  return handleDiscover(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleDiscover(req);
+}
+

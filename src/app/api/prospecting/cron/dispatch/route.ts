@@ -1,18 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { campaignEngine } from '@/lib/prospecting/campaignEngine';
+import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+async function handleDispatch(req: NextRequest) {
   try {
-    let options = {};
-    try {
-      options = await req.json();
-    } catch {
-      // Empty body is fine for cron
+    let options: any = {};
+    if (req.method === 'POST') {
+      try {
+        options = await req.json();
+      } catch {
+        // Empty body is fine for cron
+      }
     }
 
-    const result = await campaignEngine.executeCampaignDispatch(options);
+    const settings = await prospectingStorage.getSettings();
+    const isManualTrigger = req.headers.get('x-manual-trigger') === 'true' || options.force === true;
+
+    // Check if auto-send is enabled or manual trigger requested
+    if (!settings.autoSendEligible && !isManualTrigger) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        message: 'Envio automático pausado nas configurações (autoSendEligible = false). Disparo ignorado.',
+      });
+    }
+
+    // Enforce dailySendLimit (Option B: strictly 15 emails max per day)
+    const limitCount = options.limitCount || settings.dailySendLimit || 15;
+
+    const result = await campaignEngine.executeCampaignDispatch({
+      ...options,
+      limitCount,
+    });
 
     return NextResponse.json({
       success: true,
@@ -27,3 +48,12 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function GET(req: NextRequest) {
+  return handleDispatch(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleDispatch(req);
+}
+

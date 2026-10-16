@@ -99,11 +99,11 @@ function getDefaultCampaigns(): OutreachCampaign[] {
 const defaultSettings: ProspectingSettings = {
   id: 'settings-default',
   tenantId: 'traduztudo-matriz',
-  dailyDiscoveryTarget: 50,
-  dailySendLimit: 30,
-  intervalMinutes: 5,
-  autoSendEligible: false, // Default human control / toggleable
-  senderName: 'Traduz Tudo Comercial',
+  dailyDiscoveryTarget: 20,
+  dailySendLimit: 15,
+  intervalMinutes: 10,
+  autoSendEligible: true, // Option B Activated: Controlled daily autonomous outreach
+  senderName: 'Iago Peixoto | Traduz Tudo',
   senderEmail: 'contato@traduztudo.com',
   replyToEmail: 'contato@traduztudo.com',
   activeSegments: [
@@ -157,14 +157,19 @@ export class ProspectingStorage {
   }
 
   public async updateSettings(updates: Partial<ProspectingSettings>): Promise<ProspectingSettings> {
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== undefined)
+    );
+
     currentSettings = {
       ...currentSettings,
-      ...updates,
+      ...cleanUpdates,
       updatedAt: new Date().toISOString(),
     };
     try {
       if (db) {
-        await setDoc(doc(db, COLLECTIONS.SETTINGS, 'default'), currentSettings, { merge: true });
+        const serialized = JSON.parse(JSON.stringify(currentSettings));
+        await setDoc(doc(db, COLLECTIONS.SETTINGS, 'default'), serialized, { merge: true });
       }
     } catch (e) {
       console.warn('[ProspectingStorage] Failed to persist settings to Firestore:', e);
@@ -579,6 +584,7 @@ export class ProspectingStorage {
     const responseRate = sent > 0 ? Number(((replies / sent) * 100).toFixed(1)) : 0;
 
     const hasSmtp = !!process.env.HOSTINGER_SMTP_PASS;
+    const settings = await this.getSettings();
 
     return {
       totalCompanies: total,
@@ -597,7 +603,7 @@ export class ProspectingStorage {
       conversionRate,
       responseRate,
       hostingerSmtpOnline: hasSmtp,
-      autoSendActive: currentSettings.autoSendEligible,
+      autoSendActive: settings.autoSendEligible,
     };
   }
 }

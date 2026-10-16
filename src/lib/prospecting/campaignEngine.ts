@@ -239,6 +239,12 @@ export class CampaignEngine {
           error: err?.message || 'Falha de conexão',
         });
       }
+
+      // Human-like cadence delay (8 to 14 seconds) between emails to protect SMTP sender reputation
+      if (result.processedCount < eligibleCompanies.length) {
+        const delayMs = 8000 + Math.floor(Math.random() * 6000);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
 
     // Update Campaign Counters

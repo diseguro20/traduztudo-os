@@ -162,7 +162,13 @@ export default function ProspeccaoInteligentePage() {
     try {
       setIsDispatching(true);
       setActionSuccess(null);
-      const res = await fetch('/api/prospecting/cron/dispatch', { method: 'POST' });
+      const res = await fetch('/api/prospecting/cron/dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-manual-trigger': 'true',
+        },
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         setActionSuccess(data.message);
@@ -197,6 +203,33 @@ export default function ProspeccaoInteligentePage() {
       }
     } catch {
       alert('Erro de comunicação.');
+    }
+  };
+
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Handle save operational settings
+  const handleSaveSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!settings) return;
+    try {
+      setIsSavingSettings(true);
+      const res = await fetch('/api/prospecting/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionSuccess('Configurações operacionais salvas com sucesso!');
+        await fetchData();
+      } else {
+        alert(data.error || 'Erro ao salvar configurações.');
+      }
+    } catch {
+      alert('Erro de conexão ao salvar configurações.');
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -978,7 +1011,8 @@ export default function ProspeccaoInteligentePage() {
               </label>
               <input
                 type="number"
-                defaultValue={settings?.dailyDiscoveryTarget || 50}
+                value={settings?.dailyDiscoveryTarget ?? 20}
+                onChange={(e) => settings && setSettings({ ...settings, dailyDiscoveryTarget: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
               <span className="text-[11px] text-slate-400 mt-1 block">Quantidade máxima de empresas prospectadas por dia.</span>
@@ -986,14 +1020,15 @@ export default function ProspeccaoInteligentePage() {
 
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Limite Diário de Disparos de E-mail
+                Limite Diário de Disparos de E-mail (Opção B: 15 e-mails/dia)
               </label>
               <input
                 type="number"
-                defaultValue={settings?.dailySendLimit || 30}
+                value={settings?.dailySendLimit ?? 15}
+                onChange={(e) => settings && setSettings({ ...settings, dailySendLimit: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
-              <span className="text-[11px] text-slate-400 mt-1 block">Respeita os limites de envio seguro da Hostinger para proteger a reputação do domínio.</span>
+              <span className="text-[11px] text-slate-400 mt-1 block">Proteção rígida contra SPAM. Recomendado manter em 15/dia.</span>
             </div>
           </div>
 
@@ -1001,18 +1036,30 @@ export default function ProspeccaoInteligentePage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block">
-                  Envio Automático Sem Aprovação Individual (Piloto Automático)
+                  Envio Automático Sem Aprovação Individual (Opção B - Ativo)
                 </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">
-                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelo agendador diário da Vercel.
+                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelo cron diário da Vercel (dias úteis às 11h).
                 </span>
               </div>
               <input
                 type="checkbox"
-                defaultChecked={settings?.autoSendEligible || false}
+                checked={settings?.autoSendEligible ?? true}
+                onChange={(e) => settings && setSettings({ ...settings, autoSendEligible: e.target.checked })}
                 className="w-4 h-4 text-indigo-600 rounded"
               />
             </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => handleSaveSettings()}
+              disabled={isSavingSettings}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs"
+            >
+              {isSavingSettings ? 'Salvando...' : 'Salvar Alterações de Configuração'}
+            </Button>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
