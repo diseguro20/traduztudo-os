@@ -35,7 +35,7 @@ export class HostingerMailService {
 
   /**
    * Checks if auto-send is allowed by environment.
-   * STRICT SAFETY RULE: Defaults to false!
+   * STRICT SAFETY RULE: Defaults to false (Option 1 - Copilot with human approval)!
    */
   public isAutoSendEnabled(): boolean {
     return process.env.AUTO_SEND === 'true';
@@ -47,7 +47,7 @@ export class HostingerMailService {
   public getConfigStatus() {
     const hasToken = !!process.env.HOSTINGER_API_TOKEN;
     const hasWebhookSecret = !!process.env.HOSTINGER_WEBHOOK_SECRET;
-    const hasSmtp = !!process.env.HOSTINGER_SMTP_HOST;
+    const hasSmtp = !!process.env.HOSTINGER_SMTP_PASS;
     const autoSend = this.isAutoSendEnabled();
 
     return {
@@ -56,10 +56,10 @@ export class HostingerMailService {
       hasWebhookSecret,
       hasSmtp,
       autoSend,
-      activeProvider: hasToken
+      activeProvider: hasSmtp
+        ? 'Hostinger SMTP Corporativo Oficial (Ativo)'
+        : hasToken
         ? 'Hostinger Mail API Oficial'
-        : hasSmtp
-        ? 'Hostinger SMTP Corporativo'
         : process.env.RESEND_API_KEY
         ? 'Resend API Gateway'
         : 'Ambiente de Simulação Seguro (Sandbox)',
@@ -67,13 +67,58 @@ export class HostingerMailService {
   }
 
   /**
-   * Sends an email message through Hostinger Mail or compliant fallback.
+   * Sends an email message through Hostinger Mail SMTP or compliant fallback.
    */
   public async sendEmail(params: HostingerSendEmailParams): Promise<HostingerSendEmailResult> {
-    const sender = this.defaultSender;
+    const sender = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
     const timestamp = new Date().toISOString();
 
-    // 1. Check if Hostinger Official API Token is provided
+    // 1. Direct Real Hostinger SMTP (Primary production delivery)
+    const smtpPass = process.env.HOSTINGER_SMTP_PASS;
+    const smtpUser = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
+    const smtpHost = process.env.HOSTINGER_SMTP_HOST || 'smtp.hostinger.com';
+    const smtpPort = Number(process.env.HOSTINGER_SMTP_PORT) || 465;
+
+    if (smtpPass) {
+      try {
+        const nodemailer = await import('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+
+        const info = await transporter.sendMail({
+          from: `"Traduz Tudo" <${smtpUser}>`,
+          to: params.to,
+          subject: params.subject,
+          text: params.bodyText,
+          html: params.bodyHtml || `<p style="white-space: pre-wrap;">${params.bodyText}</p>`,
+          inReplyTo: params.inReplyTo,
+          references: params.references,
+        });
+
+        console.log(`[HostingerMailService] E-mail entregue com sucesso via Hostinger SMTP para [${params.to}]. Message-ID: ${info.messageId}`);
+
+        return {
+          success: true,
+          messageId: info.messageId || `hostinger_smtp_${Date.now()}`,
+          sender: smtpUser,
+          recipient: params.to,
+          timestamp,
+          mode: 'HOSTINGER_SMTP',
+        };
+      } catch (err: any) {
+        console.error('[HostingerMailService] Erro no envio via Hostinger SMTP:', err?.message);
+        // We will continue to fallback if SMTP fails
+      }
+    }
+
+    // 2. Check if Hostinger Official REST API Token is provided
     const hostingerToken = process.env.HOSTINGER_API_TOKEN;
     const hostingerApiUrl = process.env.HOSTINGER_API_URL || 'https://api.hostinger.com/v1/mail';
 
@@ -106,15 +151,13 @@ export class HostingerMailService {
             timestamp,
             mode: 'HOSTINGER_API',
           };
-        } else {
-          console.warn('[HostingerMailService] Hostinger API returned status:', response.status);
         }
       } catch (err: any) {
-        console.warn('[HostingerMailService] Erro ao comunicar com Hostinger API, tentando fallback seguro:', err?.message);
+        console.warn('[HostingerMailService] Erro ao comunicar com Hostinger API:', err?.message);
       }
     }
 
-    // 2. Check if Resend or standard EmailService is available
+    // 3. Fallback: Resend Gateway
     if (process.env.RESEND_API_KEY) {
       try {
         const res = await emailService.sendEmail(params.to, params.subject, params.bodyHtml || `<p style="white-space: pre-wrap;">${params.bodyText}</p>`, {
@@ -137,7 +180,7 @@ export class HostingerMailService {
       }
     }
 
-    // 3. Fallback: Safe Simulation Mode (Compliant with Vercel and zero side-effects during review)
+    // 4. Fallback: Safe Simulation Mode
     const simulatedMessageId = `<sim_${Date.now()}.${Math.random().toString(36).substring(2, 9)}@traduztudo.com>`;
     console.log(`[HostingerMailService - Simulação Segura] E-mail aprovado para [${params.to}]. Message-ID: ${simulatedMessageId}`);
 
