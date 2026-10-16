@@ -167,113 +167,68 @@ export class ProspectingAIAgent {
     const appUrl = options?.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://traduztudo-os.vercel.app';
     const unsubUrl = `${appUrl}/api/prospecting/unsubscribe?token=${encodeURIComponent(company.contactEmail)}`;
 
-    const companyDisplayName = company.tradeName || company.name;
-    const servicesList = company.relevantServices.slice(0, 3).map((s) => `• ${s}`).join('\n');
-    const languages = company.targetLanguages.join(', ');
-
-    let subject = '';
-    let introHook = '';
-
-    switch (company.segment) {
-      case 'CIDADANIA_ITALIANA':
-        subject = `Parceria em Traduções Juramentadas e Apostilamento — ${companyDisplayName} & Traduz Tudo`;
-        introHook =
-          `Olá equipe da ${companyDisplayName},\n\n` +
-          `Acompanhamos o trabalho sério que vocês realizam na assessoria de cidadania e gostaríamos de propor uma parceria comercial.\n\n` +
-          `Sabemos como o prazo e a aceitação das certidões perante consulados e tribunais italianos são vitais para o sucesso dos processos dos seus clientes.`;
-        break;
-
-      case 'CIDADANIA_PORTUGUESA_ESPANHOLA':
-        subject = `Traduções Juramentadas para Cidadania & Dossiês — ${companyDisplayName}`;
-        introHook =
-          `Olá equipe da ${companyDisplayName},\n\n` +
-          `Entramos em contato para apresentar a Traduz Tudo como parceira oficial de traduções juramentadas para seus processos de cidadania portuguesa e espanhola.`;
-        break;
-
-      case 'VISTOS_IMIGRACAO':
-        subject = `Agilidade em Traduções Juramentadas para Processos de Vistos — ${companyDisplayName}`;
-        introHook =
-          `Olá,\n\n` +
-          `A Traduz Tudo apoia assessorias de imigração e vistos com traduções juramentadas e certificadas de comprovantes, certidões e cartas de recomendação em prazos prioritários.`;
-        break;
-
-      case 'INTERCAMBIO':
-      case 'ENSINO_INTERNACIONAL':
-        subject = `Traduções Juramentadas de Diplomas e Históricos para ${companyDisplayName}`;
-        introHook =
-          `Olá equipe da ${companyDisplayName},\n\n` +
-          `Sabemos que seus intercambistas e alunos frequentemente necessitam de traduções juramentadas de históricos escolares, ementas e diplomas para admissão no exterior.\n\n` +
-          `Gostaríamos de firmar uma parceria com condições exclusivas e tabela especial para os seus estudantes.`;
-        break;
-
-      case 'COMERCIO_EXTERIOR':
-      case 'IMPORTACAO_EXPORTACAO':
-        subject = `Traduções Técnicas e Juramentadas de Contratos Internacionais — ${companyDisplayName}`;
-        introHook =
-          `Prezados da ${companyDisplayName},\n\n` +
-          `A Traduz Tudo é especializada em traduções corporativas, técnicas e juramentadas de contratos mercantis, faturas comerciais, laudos e documentos alfandegários com faturamento direto para PJ.`;
-        break;
-
-      case 'ADVOCACIA_INTERNACIONAL':
-        subject = `Suporte em Traduções Juramentadas Oficiais para ${companyDisplayName}`;
-        introHook =
-          `Prezados doutores da ${companyDisplayName},\n\n` +
-          `Entramos em contato para colocar a Traduz Tudo à disposição do seu escritório para a tradução juramentada de procurações, cartas rogatórias, laudos periciais e contratos internacionais.`;
-        break;
-
-      default:
-        subject = `Parceria Comercial em Traduções Juramentadas e Técnicas — ${companyDisplayName}`;
-        introHook =
-          `Olá equipe da ${companyDisplayName},\n\n` +
-          `Apresentamos a Traduz Tudo, especializada em traduções juramentadas oficiais, técnicas e simultâneas para empresas com atuação internacional.`;
-        break;
-    }
+    const subject = `Tradução juramentada.`;
 
     const bodyText =
-      `${introHook}\n\n` +
-      `Por que empresas do seu segmento escolhem a Traduz Tudo?\n` +
-      `${servicesList}\n` +
-      `• Idiomas atendidos: ${languages} e demais idiomas internacionais\n` +
-      `• Tradutores Juramentados habilitados na Junta Comercial\n` +
-      `• Emissão com assinatura digital ICP-Brasil (validade jurídica imediata) e vias físicas\n` +
-      `• Tabela de preços exclusiva e condições diferenciadas para parceiros recorrentes\n\n` +
-      `Podemos agendar uma rápida conversa de 5 minutos ou enviar nossa apresentação e tabela de parceiros?\n\n` +
-      `Será um prazer colaborar com os projetos da ${companyDisplayName}!\n\n` +
-      `Atenciosamente,\n` +
-      `Departamento Comercial | Traduz Tudo\n` +
-      `E-mail: contato@traduztudo.com\n` +
-      `Website: https://traduztudo.com\n` +
-      `WhatsApp Corporativo: +55 (11) 94748-5091\n\n` +
-      `---\n` +
-      `Informação Legal e Privacidade (LGPD):\n` +
-      `Este e-mail é uma comunicação institucional B2B enviada com base no Legítimo Interesse (Art. 7º, IX da Lei 13.709/18). ` +
-      `Caso sua empresa não deseje mais receber nossas apresentações, você pode solicitar a remoção imediata respondendo este e-mail ou clicando no link seguro de descadastro:\n` +
-      `${unsubUrl}`;
+`Olá, tudo bem?
+
+Meu nome é Iago Peixoto e represento a Traduz Tudo, uma empresa especializada em soluções linguísticas para pessoas físicas e jurídicas.
+
+Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com sua empresa.
+
+🌐 Trabalhamos com mais de 15 idiomas, oferecendo:
+
+- Tradução juramentada, com assinatura física ou digital;
+- Tradução técnica e especializada;
+- Tradução livre de documentos;
+- Tradução simultânea.
+
+Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes de documentos.
+
+Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas para empresas com demandas recorrentes.
+
+📌 Segue em anexo PDF contendo os valores para tradução juramentada no idioma italiano.
+
+Será um prazer entender as necessidades da sua empresa e apresentar uma proposta personalizada, com excelentes condições comerciais.
+
+Fico à disposição para conversarmos!
+
+Atenciosamente,
+
+--
+Iago Peixoto | Traduz Tudo
+contato@traduztudo.com | +55 11 94748-5091
+https://traduztudo.com
+
+---
+Informação Legal e Privacidade (LGPD):
+Este e-mail é uma comunicação institucional B2B enviada com base no Legítimo Interesse (Art. 7º, IX da Lei 13.709/18).
+Caso sua empresa não deseje mais receber nossas apresentações, você pode solicitar a remoção imediata respondendo este e-mail ou clicando no link seguro de descadastro:
+${unsubUrl}`;
 
     const bodyHtml =
-      `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">` +
-      `<p style="font-size: 15px; margin-bottom: 16px;">${introHook.replace(/\n\n/g, '</p><p style="font-size: 15px; margin-bottom: 16px;">').replace(/\n/g, '<br/>')}</p>` +
-      `<div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0;">` +
-      `<p style="font-weight: 600; margin: 0 0 10px 0; color: #0f172a; font-size: 14px;">Diferenciais Traduz Tudo para sua empresa:</p>` +
-      `<ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155;">` +
-      company.relevantServices.slice(0, 3).map((s) => `<li style="margin-bottom: 4px;">${s}</li>`).join('') +
-      `<li style="margin-bottom: 4px;">Idiomas: <strong>${languages}</strong></li>` +
-      `<li style="margin-bottom: 4px;">Tradutores habilitados na Junta Comercial e assinatura digital ICP-Brasil</li>` +
-      `<li style="margin-bottom: 4px;">Tabela especial com faturamento PJ para parceiros</li>` +
-      `</ul>` +
-      `</div>` +
-      `<p style="font-size: 15px; margin-bottom: 20px;">Podemos agendar uma rápida conversa ou enviar nossa tabela de parceiros em PDF?</p>` +
-      `<p style="font-size: 15px; margin-bottom: 24px;">Será um prazer apoiar as demandas da <strong>${companyDisplayName}</strong>!</p>` +
-      `<div style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 24px; font-size: 13px; color: #475569;">` +
-      `<p style="margin: 0 0 4px 0; font-weight: 600; color: #0f172a;">Departamento Comercial | Traduz Tudo</p>` +
-      `<p style="margin: 0 0 4px 0;">E-mail: <a href="mailto:contato@traduztudo.com" style="color: #2563eb; text-decoration: none;">contato@traduztudo.com</a> | Site: <a href="https://traduztudo.com" style="color: #2563eb; text-decoration: none;">traduztudo.com</a></p>` +
-      `<p style="margin: 0;">WhatsApp Comercial: <strong>+55 (11) 94748-5091</strong></p>` +
-      `</div>` +
-      `<div style="border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 24px; font-size: 11px; color: #94a3b8; line-height: 1.4;">` +
-      `Este e-mail é uma comunicação corporativa B2B baseada no Legítimo Interesse (Art. 7º, IX da LGPD). Caso não deseje receber nossos contatos, ` +
-      `<a href="${unsubUrl}" style="color: #64748b; text-decoration: underline;">clique aqui para descadastrar com 1 clique</a>.` +
-      `</div>` +
-      `</div>`;
+`<div>Olá, tudo bem?</div><div><br></div>` +
+`<div>Meu nome é <strong>Iago Peixoto</strong> e represento a <strong>Traduz Tudo</strong>, uma empresa especializada em soluções linguísticas para pessoas físicas e jurídicas.</div><div><br></div>` +
+`<div>Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com sua empresa.</div><div><br></div>` +
+`<div>🌐 Trabalhamos com mais de 15 idiomas, oferecendo:</div><div><br></div>` +
+`<div>- Tradução juramentada, com assinatura física ou digital;</div>` +
+`<div>- Tradução técnica e especializada;</div>` +
+`<div>- Tradução livre de documentos;</div>` +
+`<div>- Tradução simultânea.</div><div><br></div>` +
+`<div>Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes de documentos.</div><div><br></div>` +
+`<div>Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas para empresas com demandas recorrentes.</div><div><br></div>` +
+`<div>📌 Segue em anexo PDF contendo os valores para tradução juramentada no idioma italiano.<br></div><div><br></div>` +
+`<div>Será um prazer entender as necessidades da sua empresa e apresentar uma proposta personalizada, com excelentes condições comerciais.</div><div><br></div>` +
+`<div>Fico à disposição para conversarmos!</div><div><br></div>` +
+`<div>Atenciosamente,</div><div><br></div>` +
+`<div class="hmail-signature-prefix">--</div>` +
+`<div class="hmail-signature">` +
+`<div><img src="cid:cartao-traduztudo" width="556" height="207" style="width: 556px; max-width: 100%; height: auto; display: block;" alt="Traduz Tudo"><br></div>` +
+`</div><div><br></div>` +
+`<div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.4;">` +
+`Comunicação corporativa B2B em conformidade com a LGPD (Lei 13.709/2018). Caso não queira mais receber nossas apresentações, ` +
+`<a href="${unsubUrl}" style="color: #64748b; text-decoration: underline;">clique aqui para descadastrar com 1 clique</a>.` +
+`</div>`;
 
     return { subject, bodyText, bodyHtml };
   }

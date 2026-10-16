@@ -2,6 +2,8 @@ import { OutboundMessageRecord, OutreachCampaign, ProspectCompany } from '@/type
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
 import { hostingerMailService } from '@/lib/services/hostingerMailService';
+import fs from 'fs';
+import path from 'path';
 
 export interface CampaignDispatchOptions {
   campaignId?: string;
@@ -36,6 +38,48 @@ export class CampaignEngine {
       CampaignEngine.instance = new CampaignEngine();
     }
     return CampaignEngine.instance;
+  }
+
+  /**
+   * Retrieves the official company proposal PDF and business card image for outbound prospecting.
+   */
+  public getStandardAttachments(): Array<{
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+    cid?: string;
+  }> {
+    const list: Array<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+      cid?: string;
+    }> = [];
+
+    try {
+      const pdfPath = path.join(process.cwd(), 'public', 'attachments', 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf');
+      if (fs.existsSync(pdfPath)) {
+        list.push({
+          filename: 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf',
+          content: fs.readFileSync(pdfPath),
+          contentType: 'application/pdf',
+        });
+      }
+
+      const imgPath = path.join(process.cwd(), 'public', 'attachments', 'assinatura-cartao-traduztudo.png');
+      if (fs.existsSync(imgPath)) {
+        list.push({
+          filename: 'assinatura corrigidda.jpeg',
+          content: fs.readFileSync(imgPath),
+          cid: 'cartao-traduztudo',
+          contentType: 'image/jpeg',
+        });
+      }
+    } catch (err: any) {
+      console.warn('[CampaignEngine] Erro ao carregar anexos padrão:', err?.message);
+    }
+
+    return list;
   }
 
   /**
@@ -78,6 +122,8 @@ export class CampaignEngine {
       `[CampaignEngine] Disparando campanha "${targetCampaign?.name || 'Geral'}". Empresas elegíveis encontradas: ${eligibleCompanies.length}`
     );
 
+    const attachments = this.getStandardAttachments();
+
     for (const company of eligibleCompanies) {
       result.processedCount++;
 
@@ -119,6 +165,8 @@ export class CampaignEngine {
           subject: emailContent.subject,
           bodyText: emailContent.bodyText,
           bodyHtml: emailContent.bodyHtml,
+          fromName: 'Iago Peixoto | Traduz Tudo',
+          attachments,
         });
 
         const now = new Date().toISOString();

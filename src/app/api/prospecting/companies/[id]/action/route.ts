@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { ProspectStage } from '@/types/prospecting';
 import { databaseStore } from '@/lib/db';
+import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
+import { hostingerMailService } from '@/lib/services/hostingerMailService';
+import { campaignEngine } from '@/lib/prospecting/campaignEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +99,53 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({
         success: true,
         message: newOptOut ? 'Empresa adicionada à lista de supressão (LGPD).' : 'Opt-out removido.',
+      });
+    }
+
+    if (action === 'send_email') {
+      if (!company.contactEmail) {
+        return NextResponse.json({ error: 'Empresa não possui e-mail de contato cadastrado.' }, { status: 400 });
+      }
+
+      const isSuppressed = await prospectingStorage.isSuppressed(company.contactEmail, company.website);
+      if (isSuppressed || company.optOut) {
+        return NextResponse.json({ error: 'Envio bloqueado: Este e-mail está na lista de supressão (Opt-Out LGPD).' }, { status: 400 });
+      }
+
+      const emailContent = prospectingAIAgent.generateOutreachEmail(company);
+      const attachments = campaignEngine.getStandardAttachments();
+
+      const sendResult = await hostingerMailService.sendEmail({
+        to: company.contactEmail,
+        subject: emailContent.subject,
+        bodyText: emailContent.bodyText,
+        bodyHtml: emailContent.bodyHtml,
+        fromName: 'Iago Peixoto | Traduz Tudo',
+        attachments,
+      });
+
+      if (!sendResult.success) {
+        return NextResponse.json({ error: sendResult.error || 'Falha ao enviar e-mail via Hostinger SMTP.' }, { status: 500 });
+      }
+
+      const now = new Date().toISOString();
+      await prospectingStorage.updateCompany(companyId, {
+        status: 'EMAIL_ENVIADO',
+        lastContactedAt: now,
+        contactCount: (company.contactCount || 0) + 1,
+      });
+
+      await prospectingStorage.addActivity(companyId, {
+        type: 'EMAIL_SENT',
+        description: `E-mail de apresentação enviado com sucesso via Hostinger SMTP para ${company.contactEmail}. Anexos: PDF de proposta e cartão de visita digital.`,
+        actor: operatorName,
+        metadata: { messageId: sendResult.messageId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `E-mail enviado com sucesso para ${company.contactEmail}! (Sincronizado na pasta Enviados do Webmail)`,
+        messageId: sendResult.messageId,
       });
     }
 

@@ -92,6 +92,7 @@ export default function ProspeccaoInteligentePage() {
   // Discovery & Dispatch loading states
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // New company form state
   const [newCompanyForm, setNewCompanyForm] = useState({
@@ -196,6 +197,33 @@ export default function ProspeccaoInteligentePage() {
       }
     } catch {
       alert('Erro de comunicação.');
+    }
+  };
+
+  // Handle send email manually for a company
+  const handleSendEmail = async (companyId: string) => {
+    try {
+      setIsSendingEmail(true);
+      setActionSuccess(null);
+      const res = await fetch(`/api/prospecting/companies/${companyId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_email' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionSuccess(data.message);
+        await fetchData();
+        const updated = await fetch(`/api/prospecting/companies`).then((r) => r.json());
+        const comp = updated.items?.find((c: ProspectCompany) => c.id === companyId);
+        if (comp) setSelectedCompany(comp);
+      } else {
+        alert(data.error || 'Falha ao enviar e-mail.');
+      }
+    } catch {
+      alert('Erro de comunicação ao enviar e-mail.');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -1110,6 +1138,15 @@ export default function ProspeccaoInteligentePage() {
               </Button>
 
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleSendEmail(selectedCompany.id)}
+                  disabled={isSendingEmail || !selectedCompany.contactEmail || selectedCompany.optOut}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                >
+                  <Send className={`w-3.5 h-3.5 mr-1.5 ${isSendingEmail ? 'animate-spin' : ''}`} />
+                  {isSendingEmail ? 'Enviando...' : 'Enviar E-mail (com PDF e Cartão)'}
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => handleConvertToLead(selectedCompany.id)}
