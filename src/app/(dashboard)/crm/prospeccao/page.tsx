@@ -574,7 +574,7 @@ export default function ProspeccaoInteligentePage() {
                   <Sparkles className="w-4 h-4" /> Motor de Prospecção Diária
                 </span>
                 <span className="text-xs bg-indigo-500/30 px-2 py-0.5 rounded-full border border-indigo-400/30">
-                  Meta: {settings?.dailyDiscoveryTarget || 30} empresas/dia
+                  Meta: {settings?.dailyDiscoveryTarget || 60} empresas/dia
                 </span>
               </div>
               <h2 className="text-lg font-bold">Buscar Novas Empresas Brasileiras</h2>
@@ -619,7 +619,7 @@ export default function ProspeccaoInteligentePage() {
                   <Send className={`w-3.5 h-3.5 mr-1.5 ${isDispatching ? 'animate-spin' : ''}`} />
                   {isDispatching ? 'Enviando...' : 'Disparar Contatos Elegíveis'}
                 </Button>
-                <span className="text-xs text-slate-400">Limite: {settings?.dailySendLimit || 30}/dia</span>
+                <span className="text-xs text-slate-400">Limite: {settings?.dailySendLimit || 60}/dia (30 manhã + 30 tarde)</span>
               </div>
             </div>
           </div>
@@ -1007,11 +1007,11 @@ export default function ProspeccaoInteligentePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Meta Diária de Novas Empresas (Meta: 30 empresas/dia)
+                Meta Diária de Novas Empresas (Meta: 60 empresas/dia)
               </label>
               <input
                 type="number"
-                value={settings?.dailyDiscoveryTarget ?? 30}
+                value={settings?.dailyDiscoveryTarget ?? 60}
                 onChange={(e) => settings && setSettings({ ...settings, dailyDiscoveryTarget: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
@@ -1020,15 +1020,15 @@ export default function ProspeccaoInteligentePage() {
 
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Limite Diário de Disparos de E-mail (30 e-mails/dia)
+                Limite Diário de Disparos de E-mail (60 e-mails/dia: 30 manhã + 30 tarde)
               </label>
               <input
                 type="number"
-                value={settings?.dailySendLimit ?? 30}
+                value={settings?.dailySendLimit ?? 60}
                 onChange={(e) => settings && setSettings({ ...settings, dailySendLimit: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
-              <span className="text-[11px] text-slate-400 mt-1 block">Cadência segura anti-spam via Hostinger SMTP com verificação MX e link LGPD.</span>
+              <span className="text-[11px] text-slate-400 mt-1 block">Cadência segura anti-spam via Hostinger SMTP (2 lotes de 30/dia, 100% sob o teto de 100/hora).</span>
             </div>
           </div>
 
@@ -1039,7 +1039,7 @@ export default function ProspeccaoInteligentePage() {
                   Envio Automático Sem Aprovação Individual (Piloto Automático 100% Funcional)
                 </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">
-                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelos agendadores diários da Vercel nos dias úteis.
+                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelos agendadores diários da Vercel (manhã às 10h e tarde às 14h BRT, todos os dias).
                 </span>
               </div>
               <input

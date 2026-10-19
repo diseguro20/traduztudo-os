@@ -2,12 +2,15 @@
   "crons": [
     {
       "path": "/api/prospecting/cron/discover",
-      "schedule": "0 11 * * 1-5"
+      "schedule": "0 11 * * *"
     },
     {
       "path": "/api/prospecting/cron/dispatch",
-      "schedule": "0 14 * * 1-5"
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/prospecting/cron/dispatch-afternoon",
+      "schedule": "0 17 * * *"
     }
   ]
 }
-
