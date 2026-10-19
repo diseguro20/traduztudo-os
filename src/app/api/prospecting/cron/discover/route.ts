@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { discoveryEngine } from '@/lib/prospecting/discoveryEngine';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 async function handleDiscover(req: NextRequest) {
   try {

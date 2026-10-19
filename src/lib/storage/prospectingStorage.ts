@@ -99,10 +99,10 @@ function getDefaultCampaigns(): OutreachCampaign[] {
 const defaultSettings: ProspectingSettings = {
   id: 'settings-default',
   tenantId: 'traduztudo-matriz',
-  dailyDiscoveryTarget: 20,
-  dailySendLimit: 15,
+  dailyDiscoveryTarget: 30,
+  dailySendLimit: 30,
   intervalMinutes: 10,
-  autoSendEligible: true, // Option B Activated: Controlled daily autonomous outreach
+  autoSendEligible: true, // Controlled daily autonomous outreach (30/day)
   senderName: 'Iago Peixoto | Traduz Tudo',
   senderEmail: 'contato@traduztudo.com',
   replyToEmail: 'contato@traduztudo.com',

@@ -3,6 +3,7 @@ import { campaignEngine } from '@/lib/prospecting/campaignEngine';
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 async function handleDispatch(req: NextRequest) {
   try {

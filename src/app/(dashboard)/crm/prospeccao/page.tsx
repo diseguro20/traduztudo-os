@@ -574,7 +574,7 @@ export default function ProspeccaoInteligentePage() {
                   <Sparkles className="w-4 h-4" /> Motor de Prospecção Diária
                 </span>
                 <span className="text-xs bg-indigo-500/30 px-2 py-0.5 rounded-full border border-indigo-400/30">
-                  Meta: {settings?.dailyDiscoveryTarget || 50} empresas/dia
+                  Meta: {settings?.dailyDiscoveryTarget || 30} empresas/dia
                 </span>
               </div>
               <h2 className="text-lg font-bold">Buscar Novas Empresas Brasileiras</h2>
@@ -1007,28 +1007,28 @@ export default function ProspeccaoInteligentePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Meta Diária de Novas Empresas
+                Meta Diária de Novas Empresas (Meta: 30 empresas/dia)
               </label>
               <input
                 type="number"
-                value={settings?.dailyDiscoveryTarget ?? 20}
+                value={settings?.dailyDiscoveryTarget ?? 30}
                 onChange={(e) => settings && setSettings({ ...settings, dailyDiscoveryTarget: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
-              <span className="text-[11px] text-slate-400 mt-1 block">Quantidade máxima de empresas prospectadas por dia.</span>
+              <span className="text-[11px] text-slate-400 mt-1 block">Quantidade máxima de novas empresas prospectadas e qualificadas por dia.</span>
             </div>
 
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Limite Diário de Disparos de E-mail (Opção B: 15 e-mails/dia)
+                Limite Diário de Disparos de E-mail (30 e-mails/dia)
               </label>
               <input
                 type="number"
-                value={settings?.dailySendLimit ?? 15}
+                value={settings?.dailySendLimit ?? 30}
                 onChange={(e) => settings && setSettings({ ...settings, dailySendLimit: Number(e.target.value) })}
                 className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
               />
-              <span className="text-[11px] text-slate-400 mt-1 block">Proteção rígida contra SPAM. Recomendado manter em 15/dia.</span>
+              <span className="text-[11px] text-slate-400 mt-1 block">Cadência segura anti-spam via Hostinger SMTP com verificação MX e link LGPD.</span>
             </div>
           </div>
 
@@ -1036,10 +1036,10 @@ export default function ProspeccaoInteligentePage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block">
-                  Envio Automático Sem Aprovação Individual (Opção B - Ativo)
+                  Envio Automático Sem Aprovação Individual (Piloto Automático 100% Funcional)
                 </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">
-                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelo cron diário da Vercel (dias úteis às 11h).
+                  Quando ativado, os e-mails elegíveis são despachados automaticamente pelos agendadores diários da Vercel nos dias úteis.
                 </span>
               </div>
               <input
