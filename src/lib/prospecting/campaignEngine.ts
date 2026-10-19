@@ -1,4 +1,4 @@
-import { OutboundMessageRecord, OutreachCampaign, ProspectCompany } from '@/types/prospecting';
+import { OutboundMessageRecord, OutreachCampaign, ProspectCompany, ProspectSegment } from '@/types/prospecting';
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
 import { hostingerMailService } from '@/lib/services/hostingerMailService';
@@ -91,18 +91,22 @@ export class CampaignEngine {
 
     // Select active campaign or specified
     let targetCampaign: OutreachCampaign | null = null;
+    let campaignSegment: ProspectSegment | 'ALL' = 'ALL';
+
     if (options?.campaignId) {
       targetCampaign = await prospectingStorage.getCampaignById(options.campaignId);
+      campaignSegment = targetCampaign ? targetCampaign.segment : 'ALL';
     } else {
+      // General batch: dispatch to all eligible prospects across all active segments
+      campaignSegment = 'ALL';
       targetCampaign = campaigns.find((c) => c.status === 'ACTIVE') || campaigns[0] || null;
     }
 
-    const campaignSegment = targetCampaign ? targetCampaign.segment : 'ALL';
-    const maxLimit = options?.limitCount || targetCampaign?.dailyLimit || settings.dailySendLimit || 20;
+    const maxLimit = options?.limitCount || targetCampaign?.dailyLimit || settings.dailySendLimit || 15;
 
     const result: CampaignDispatchResult = {
       campaignId: targetCampaign?.id,
-      campaignName: targetCampaign?.name,
+      campaignName: options?.campaignId ? targetCampaign?.name : 'Disparo Geral Multi-Segmento',
       processedCount: 0,
       sentCount: 0,
       failedCount: 0,
@@ -119,7 +123,7 @@ export class CampaignEngine {
     const eligibleCompanies = await prospectingStorage.getEligibleProspectsForCampaign(campaignSegment, maxLimit);
 
     console.log(
-      `[CampaignEngine] Disparando campanha "${targetCampaign?.name || 'Geral'}". Empresas elegíveis encontradas: ${eligibleCompanies.length}`
+      `[CampaignEngine] Disparando campanha "${options?.campaignId ? targetCampaign?.name : 'Geral'}". Empresas elegíveis encontradas: ${eligibleCompanies.length}`
     );
 
     const attachments = this.getStandardAttachments();
@@ -174,11 +178,16 @@ export class CampaignEngine {
         if (sendResult.success) {
           result.sentCount++;
 
+          // Match campaign per company segment
+          const matchedCampaign = options?.campaignId
+            ? targetCampaign
+            : (campaigns.find((c) => c.segment === company.segment) || campaigns[0] || targetCampaign);
+
           // Record Outbound Message
           const outboundRecord: OutboundMessageRecord = {
             id: `out-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             tenantId: 'traduztudo-matriz',
-            campaignId: targetCampaign?.id || 'camp-default',
+            campaignId: matchedCampaign?.id || 'camp-default',
             companyId: company.id,
             recipientEmail: company.contactEmail,
             recipientName: company.tradeName || company.name,
@@ -196,7 +205,7 @@ export class CampaignEngine {
           // Update Company Stage and Activity
           await prospectingStorage.updateCompany(company.id, {
             status: 'EMAIL_ENVIADO',
-            campaignId: targetCampaign?.id,
+            campaignId: matchedCampaign?.id,
             lastContactedAt: now,
             contactCount: (company.contactCount || 0) + 1,
           });
@@ -207,10 +216,18 @@ export class CampaignEngine {
             actor: 'AI_AGENT',
             metadata: {
               messageId: sendResult.messageId,
-              campaignId: targetCampaign?.id,
+              campaignId: matchedCampaign?.id,
               mode: sendResult.mode,
             },
           });
+
+          // Update campaign stats
+          if (matchedCampaign) {
+            await prospectingStorage.updateCampaign(matchedCampaign.id, {
+              sentCount: (matchedCampaign.sentCount || 0) + 1,
+              deliveredCount: (matchedCampaign.deliveredCount || 0) + 1,
+            });
+          }
 
           result.details.push({
             companyId: company.id,
@@ -245,14 +262,6 @@ export class CampaignEngine {
         const delayMs = 8000 + Math.floor(Math.random() * 6000);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
-    }
-
-    // Update Campaign Counters
-    if (targetCampaign && result.sentCount > 0) {
-      await prospectingStorage.updateCampaign(targetCampaign.id, {
-        sentCount: (targetCampaign.sentCount || 0) + result.sentCount,
-        deliveredCount: (targetCampaign.deliveredCount || 0) + result.sentCount,
-      });
     }
 
     // Update global settings metrics
