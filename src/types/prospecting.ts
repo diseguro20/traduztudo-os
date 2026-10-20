@@ -208,6 +208,8 @@ export interface ProspectingSettings {
   replyToEmail: string;
   activeSegments: ProspectSegment[];
   targetStates: string[]; // UFs
+  allowedSources?: Array<'BUSCA_PUBLICA' | 'DIRETORIO_EMPRESARIAL' | 'BRASIL_API'>;
+  customSearchKeywords?: string[];
   enableHostingerSmtp: boolean;
   circuitBreakerTripped: boolean;
   lastCronRunAt?: string;

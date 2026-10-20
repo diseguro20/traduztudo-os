@@ -117,6 +117,8 @@ const defaultSettings: ProspectingSettings = {
     'CONSULTORIA_INTERNACIONAL',
   ],
   targetStates: ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS', 'DF', 'BA'],
+  allowedSources: ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API'],
+  customSearchKeywords: [],
   enableHostingerSmtp: true,
   circuitBreakerTripped: false,
   createdAt: '2026-10-16T10:00:00.000Z',

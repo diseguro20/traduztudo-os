@@ -233,6 +233,24 @@ export default function ProspeccaoInteligentePage() {
     }
   };
 
+  const handleToggleSource = (sourceKey: 'BUSCA_PUBLICA' | 'DIRETORIO_EMPRESARIAL' | 'BRASIL_API') => {
+    if (!settings) return;
+    const currentSources = settings.allowedSources || ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API'];
+    const updated = currentSources.includes(sourceKey)
+      ? currentSources.filter((s) => s !== sourceKey)
+      : [...currentSources, sourceKey];
+    setSettings({ ...settings, allowedSources: updated });
+  };
+
+  const handleToggleSegment = (segKey: ProspectSegment) => {
+    if (!settings) return;
+    const currentSegs = settings.activeSegments || [];
+    const updated = currentSegs.includes(segKey)
+      ? currentSegs.filter((s) => s !== segKey)
+      : [...currentSegs, segKey];
+    setSettings({ ...settings, activeSegments: updated });
+  };
+
   // Handle send email manually for a company
   const handleSendEmail = async (companyId: string) => {
     try {
@@ -726,6 +744,7 @@ export default function ProspeccaoInteligentePage() {
                     <th className="px-4 py-3 font-semibold">Segmento</th>
                     <th className="px-4 py-3 font-semibold">Fit Score</th>
                     <th className="px-4 py-3 font-semibold">Localização</th>
+                    <th className="px-4 py-3 font-semibold">Fonte</th>
                     <th className="px-4 py-3 font-semibold">Contato Comercial</th>
                     <th className="px-4 py-3 font-semibold">Estágio Comercial</th>
                     <th className="px-4 py-3 font-semibold text-right">Ações</th>
@@ -734,7 +753,7 @@ export default function ProspeccaoInteligentePage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredCompanies.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                      <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                         Nenhuma empresa encontrada com os filtros aplicados.
                       </td>
                     </tr>
@@ -777,6 +796,18 @@ export default function ProspeccaoInteligentePage() {
 
                           <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">
                             {c.city}/{c.state}
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              {c.source === 'BUSCA_PUBLICA'
+                                ? '🌐 Web (.com.br)'
+                                : c.source === 'DIRETORIO_EMPRESARIAL'
+                                ? '🏢 Catálogo B2B'
+                                : c.source === 'BRASIL_API'
+                                ? '🏛️ Brasil API'
+                                : '✍️ Manual'}
+                            </span>
                           </td>
 
                           <td className="px-4 py-3.5">
@@ -1051,6 +1082,160 @@ export default function ProspeccaoInteligentePage() {
             </div>
           </div>
 
+          {/* FONTES DE DADOS CONFIGURÁVEIS */}
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Fontes de Dados do Agente de Prospecção
+              </h4>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Especifique de onde o robô deve extrair e verificar as novas empresas brasileiras:
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={(settings?.allowedSources || ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API']).includes('BUSCA_PUBLICA')}
+                  onChange={() => handleToggleSource('BUSCA_PUBLICA')}
+                  className="w-4 h-4 text-indigo-600 rounded mt-0.5"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white block">
+                    🌐 Varredura Web em Tempo Real (Crawler de Sites .com.br)
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 block mt-0.5">
+                    O robô rastreia a web aberta, acessa os sites institucionais oficiais das empresas, extrai e-mails de contato público e valida MX ativo no Google DoH.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={(settings?.allowedSources || ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API']).includes('DIRETORIO_EMPRESARIAL')}
+                  onChange={() => handleToggleSource('DIRETORIO_EMPRESARIAL')}
+                  className="w-4 h-4 text-indigo-600 rounded mt-0.5"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white block">
+                    🏢 Catálogo Corporativo B2B Verificado (Base com CNPJ e MX Ativo)
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 block mt-0.5">
+                    Base pré-verificada com mais de 147 empresas nacionais registradas na Receita, garantindo preenchimento seguro das metas diárias.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-indigo-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={(settings?.allowedSources || ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API']).includes('BRASIL_API')}
+                  onChange={() => handleToggleSource('BRASIL_API')}
+                  className="w-4 h-4 text-indigo-600 rounded mt-0.5"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white block">
+                    🏛️ Brasil API / Dados Públicos Governamentais
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 block mt-0.5">
+                    Enriquecimento de dados cadastrais abertos, CNAEs de atividade econômica e confirmação de quadro societário.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* SEGMENTOS ALVO ATIVOS */}
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Segmentos Prioritários para Busca Automática
+              </h4>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Marque quais nichos de mercado a automação deve buscar todos os dias:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+              {Object.entries(PROSPECT_SEGMENT_LABELS).map(([k, label]) => {
+                const isChecked = (settings?.activeSegments || []).includes(k as ProspectSegment);
+                return (
+                  <label
+                    key={k}
+                    className={`flex items-center gap-2.5 p-2 rounded-lg text-xs cursor-pointer border transition-colors ${
+                      isChecked
+                        ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 font-semibold text-indigo-900 dark:text-indigo-200'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleSegment(k as ProspectSegment)}
+                      className="w-3.5 h-3.5 text-indigo-600 rounded"
+                    />
+                    <span className="truncate">{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* PALAVRAS-CHAVE E ESTADOS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Palavras-chave de Busca Personalizadas (Separadas por vírgula)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: assessoria visto americano, cidadania portuguesa campinas"
+                value={(settings?.customSearchKeywords || []).join(', ')}
+                onChange={(e) =>
+                  settings &&
+                  setSettings({
+                    ...settings,
+                    customSearchKeywords: e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+                className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Termos específicos adicionais que o robô injeta na pesquisa web para encontrar empresas mais nichadas.
+              </span>
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Estados Alvo (UFs ou 'ALL' para todo o Brasil)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: SP, RJ, MG, PR, SC, RS, DF, BA ou ALL"
+                value={(settings?.targetStates || []).join(', ')}
+                onChange={(e) =>
+                  settings &&
+                  setSettings({
+                    ...settings,
+                    targetStates: e.target.value
+                      .split(',')
+                      .map((s) => s.trim().toUpperCase())
+                      .filter(Boolean),
+                  })
+                }
+                className="w-full text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Filtra as empresas pelas Unidades Federativas de interesse comercial da Traduz Tudo.
+              </span>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button
               size="sm"
@@ -1097,6 +1282,25 @@ export default function ProspeccaoInteligentePage() {
                 <span className="font-bold text-slate-700 dark:text-slate-200 uppercase text-xs">
                   {PROSPECT_STAGE_LABELS[selectedCompany.status]?.label || selectedCompany.status}
                 </span>
+              </div>
+            </div>
+
+            {/* Source & Discovery Info */}
+            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500">Fonte da Empresa:</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  {selectedCompany.source === 'BUSCA_PUBLICA'
+                    ? '🌐 Varredura Web ao Vivo (.com.br)'
+                    : selectedCompany.source === 'DIRETORIO_EMPRESARIAL'
+                    ? '🏢 Catálogo B2B Verificado (MX Google DoH)'
+                    : selectedCompany.source === 'BRASIL_API'
+                    ? '🏛️ Brasil API / Base Pública'
+                    : '✍️ Cadastro Manual'}
+                </span>
+              </div>
+              <div className="text-slate-400">
+                Descoberta em: {new Date(selectedCompany.discoveredAt).toLocaleDateString('pt-BR')}
               </div>
             </div>
 

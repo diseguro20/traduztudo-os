@@ -1839,7 +1839,7 @@ export class DiscoveryEngine {
    * Scrapes DuckDuckGo HTML for active Brazilian business websites in a target segment.
    * Extracts legitimate public contact details and validates domain MX before returning candidates.
    */
-  public async searchWebCompanies(segment: ProspectSegment, limitCount = 5): Promise<SeedProspectCandidate[]> {
+  public async searchWebCompanies(segment: ProspectSegment, limitCount = 5, customKeywords?: string[]): Promise<SeedProspectCandidate[]> {
     const candidates: SeedProspectCandidate[] = [];
     const queryMap: Record<ProspectSegment, string[]> = {
       CIDADANIA_ITALIANA: ['"assessoria cidadania italiana" contato email', '"cidadania italiana" certidoes contato'],
@@ -1856,7 +1856,10 @@ export class DiscoveryEngine {
       MULTINACIONAL: ['"multinacional" subsidiaria brasil contato email', '"empresa multinacional" filial brasil contato'],
     };
 
-    const queries = queryMap[segment] || queryMap.CIDADANIA_ITALIANA;
+    let queries = queryMap[segment] || queryMap.CIDADANIA_ITALIANA;
+    if (customKeywords && customKeywords.length > 0) {
+      queries = [...customKeywords.map(k => `"${k}" contato email`), ...queries];
+    }
     const selectedQuery = queries[Math.floor(Math.random() * queries.length)];
 
     try {
@@ -2083,6 +2086,8 @@ export class DiscoveryEngine {
     const targetCount = options?.targetCount || settings.dailyDiscoveryTarget || 20;
     const allowedSegments = options?.segments || settings.activeSegments || [];
     const allowedStates = options?.targetStates || settings.targetStates || [];
+    const allowedSources = settings.allowedSources || ['BUSCA_PUBLICA', 'DIRETORIO_EMPRESARIAL', 'BRASIL_API'];
+    const customKeywords = settings.customSearchKeywords || [];
 
     const result: DiscoveryJobResult = {
       totalProcessed: 0,
@@ -2093,48 +2098,51 @@ export class DiscoveryEngine {
       errors: [],
     };
 
-    console.log(`[DiscoveryEngine] Iniciando busca automatizada de empresas. Meta: ${targetCount} empresas.`);
+    console.log(`[DiscoveryEngine] Iniciando busca automatizada de empresas. Meta: ${targetCount} empresas. Fontes: ${allowedSources.join(', ')}`);
 
-    // 1. Live Web Discovery across active segments
-    for (const seg of allowedSegments) {
-      if (result.newCompaniesAdded >= targetCount) break;
+    // 1. Live Web Discovery across active segments (if BUSCA_PUBLICA enabled)
+    if (allowedSources.includes('BUSCA_PUBLICA')) {
+      for (const seg of allowedSegments) {
+        if (result.newCompaniesAdded >= targetCount) break;
 
-      try {
-        const liveFound = await this.searchWebCompanies(seg as ProspectSegment, 2);
-        for (const candidate of liveFound) {
-          if (result.newCompaniesAdded >= targetCount) break;
-          result.totalProcessed++;
+        try {
+          const liveFound = await this.searchWebCompanies(seg as ProspectSegment, 2, customKeywords);
+          for (const candidate of liveFound) {
+            if (result.newCompaniesAdded >= targetCount) break;
+            result.totalProcessed++;
 
-          const alreadyExists = await prospectingStorage.hasCompany(candidate.cnpj, candidate.website, candidate.contactEmail);
-          if (alreadyExists) {
-            result.duplicatesSkipped++;
-            continue;
+            const alreadyExists = await prospectingStorage.hasCompany(candidate.cnpj, candidate.website, candidate.contactEmail);
+            if (alreadyExists) {
+              result.duplicatesSkipped++;
+              continue;
+            }
+
+            const isSuppressed = await prospectingStorage.isSuppressed(candidate.contactEmail, candidate.website);
+            if (isSuppressed) {
+              result.invalidSkipped++;
+              continue;
+            }
+
+            const isMxValid = await this.verifyDomainMx(candidate.website);
+            if (!isMxValid) {
+              result.invalidSkipped++;
+              continue;
+            }
+
+            await this.persistCandidate(candidate, 'BUSCA_PUBLICA', result);
           }
-
-          const isSuppressed = await prospectingStorage.isSuppressed(candidate.contactEmail, candidate.website);
-          if (isSuppressed) {
-            result.invalidSkipped++;
-            continue;
-          }
-
-          const isMxValid = await this.verifyDomainMx(candidate.website);
-          if (!isMxValid) {
-            result.invalidSkipped++;
-            continue;
-          }
-
-          await this.persistCandidate(candidate, 'BUSCA_PUBLICA', result);
+        } catch (err: any) {
+          console.warn('[DiscoveryEngine] Erro na varredura ao vivo:', err?.message);
         }
-      } catch (err: any) {
-        console.warn('[DiscoveryEngine] Erro na varredura ao vivo:', err?.message);
       }
     }
 
-    // 2. Process expanded verified candidate registry to guarantee filling up to targetCount
-    for (const candidate of VERIFIED_BRAZILIAN_PROSPECTS) {
-      if (result.newCompaniesAdded >= targetCount) {
-        break;
-      }
+    // 2. Process expanded verified candidate registry (if DIRETORIO_EMPRESARIAL enabled)
+    if (allowedSources.includes('DIRETORIO_EMPRESARIAL')) {
+      for (const candidate of VERIFIED_BRAZILIAN_PROSPECTS) {
+        if (result.newCompaniesAdded >= targetCount) {
+          break;
+        }
 
       result.totalProcessed++;
 
@@ -2172,6 +2180,7 @@ export class DiscoveryEngine {
 
       await this.persistCandidate(candidate, 'DIRETORIO_EMPRESARIAL', result);
     }
+  }
 
     // Update settings with last run metrics
     await prospectingStorage.updateSettings({
