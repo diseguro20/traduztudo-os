@@ -49,7 +49,7 @@ function getDefaultCampaigns(): OutreachCampaign[] {
       segment: 'CIDADANIA_ITALIANA',
       targetStates: ['ALL'],
       status: 'ACTIVE',
-      subjectTemplate: 'Parceria em Traduções Juramentadas e Apostilamento — {{company_name}} & Traduz Tudo',
+      subjectTemplate: 'Tradução Juramentada, técnica e simultânea — {{company_name}} & Traduz Tudo',
       bodyTemplate:
         'Olá equipe da {{company_name}},\n\n' +
         'Notamos o excelente trabalho de assessoria que vocês realizam com processos de cidadania.\n\n' +
@@ -75,7 +75,7 @@ function getDefaultCampaigns(): OutreachCampaign[] {
       segment: 'COMERCIO_EXTERIOR',
       targetStates: ['ALL'],
       status: 'ACTIVE',
-      subjectTemplate: 'Agilidade em Traduções Técnicas e Jurídicas para {{company_name}}',
+      subjectTemplate: 'Tradução Juramentada, técnica e simultânea — {{company_name}} & Traduz Tudo',
       bodyTemplate:
         'Prezados da {{company_name}},\n\n' +
         'A Traduz Tudo apoia empresas de Comércio Exterior e escritórios internacionais na tradução juramentada e técnica de contratos, faturas, certidões e relatórios com total rigor terminológico e validade internacional.\n\n' +

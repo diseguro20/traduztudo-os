@@ -167,7 +167,7 @@ export class ProspectingAIAgent {
     const appUrl = options?.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://traduztudo-os.vercel.app';
     const unsubUrl = `${appUrl}/api/prospecting/unsubscribe?token=${encodeURIComponent(company.contactEmail)}`;
 
-    const subject = `Tradução juramentada.`;
+    const subject = `Tradução Juramentada, técnica e simultânea`;
 
     const bodyText =
 `Olá, tudo bem?
