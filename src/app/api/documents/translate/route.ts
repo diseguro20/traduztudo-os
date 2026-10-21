@@ -1,37 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateSha256, calculateWordMetrics } from '@/lib/documents/documentProcessor';
+import {
+  calculateSha256,
+  calculateWordMetrics,
+  translateDocumentText,
+  generateDocxFromText,
+  detectLanguageFromText,
+} from '@/lib/documents/documentProcessor';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { documentId, fileName, fileDataUrl, targetLanguage = 'it', textContent = '' } = body;
+    const {
+      documentId,
+      fileName = 'documento_traduzido.docx',
+      fileDataUrl,
+      targetLanguage = 'it',
+      sourceLanguage = 'por',
+      textContent = '',
+    } = body;
 
-    if (!fileName || !fileDataUrl) {
-      return NextResponse.json({ error: 'Arquivo DOCX traduzido é obrigatório' }, { status: 400 });
+    let translated = textContent;
+
+    // If textContent is provided, translate it dynamically to the requested target language
+    if (textContent && textContent.trim().length > 0) {
+      const srcLang = sourceLanguage || detectLanguageFromText(textContent, fileName);
+      translated = await translateDocumentText(textContent, srcLang, targetLanguage);
     }
 
-    const sha256 = await calculateSha256(fileDataUrl);
+    if (!translated) {
+      translated = '[Texto para tradução não fornecido]';
+    }
 
-    // If textContent provided or sample translated text
-    const translatedText =
-      textContent ||
-      `REPUBBLICA FEDERATIVA DEL BRASILE\nREGISTRO CIVILE DELLE PERSONE NATURALI\nCERTIFICATO DI NASCITA TRADOTTO\n\nSi certifica che ai sensi dell'atto n. 123456 del Libro A-42, foglio 88, risulta la nascita di:\nNOME: GABRIEL SILVA DE SOUZA\nDATA DI NASCITA: 15 Ottobre 1994\nLuogo: San Paolo - SP\nPaternità: Marcos de Souza e Helena da Silva\n\nTraduzione asseverata conforme all'originale.\nTraduttrice Ufficiale: Carla Strambio`;
-
-    const metrics = calculateWordMetrics([translatedText], {
+    const translatedPages = translated.split('\n\n--- QUEBRA DE PÁGINA ---\n\n');
+    const metrics = calculateWordMetrics(translatedPages, {
       ignoreRepeatedHeaders: true,
       detectedLanguage: targetLanguage,
     });
+
+    let docxDataUrl = fileDataUrl;
+    let sha256 = '';
+
+    if (!docxDataUrl || !docxDataUrl.startsWith('data:')) {
+      docxDataUrl = await generateDocxFromText(
+        `${fileName.replace(/\.[^/.]+$/, '')}_TRADUZIDO_${targetLanguage.toUpperCase()}`,
+        translatedPages,
+        {
+          language: targetLanguage,
+          wordCount: metrics.billableWords,
+          sourceDocument: fileName,
+        }
+      );
+    }
+
+    sha256 = await calculateSha256(docxDataUrl);
 
     return NextResponse.json({
       success: true,
       sha256,
       translatedWordCount: metrics,
-      translatedText,
+      translatedText: translated,
+      docxDataUrl,
       targetLanguage,
       status: 'TRANSLATED_DOCX_UPLOADED',
     });
   } catch (error: any) {
-    console.error('Error uploading translated docx:', error);
-    return NextResponse.json({ error: error.message || 'Erro ao processar DOCX traduzido' }, { status: 500 });
+    console.error('Error in translate API:', error);
+    return NextResponse.json({ error: error.message || 'Erro ao processar tradução' }, { status: 500 });
   }
 }

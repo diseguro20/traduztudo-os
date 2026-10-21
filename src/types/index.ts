@@ -362,6 +362,13 @@ export interface WordCountMetrics {
   detectedLanguage?: string;
   pagesBreakdown?: PageWordCount[];
   ignoreRepeatedHeaders?: boolean;
+  // Métricas de Laudas (Padrão Oficial de Tradução Juramentada JUCESP / Sintra)
+  laudasJuramentadas?: number; // Inteiras tarifáveis: Math.max(1, Math.ceil(charactersWithoutSpaces / 1000))
+  laudasFracionadas?: number; // Exatas: (charactersWithoutSpaces / 1000)
+  laudasComEspacos?: number; // Base 1.250 caracteres com espaços
+  laudasPalavras?: number; // Base 250 palavras
+  estimatedLaudaPrice?: number;
+  estimatedTotalPrice?: number;
 }
 
 export type OcrState =
@@ -487,6 +494,7 @@ export interface DocumentItem {
   versions?: DocumentVersion[];
   extractedText?: string;
   cleanExtractedText?: string;
+  translatedText?: string;
   sourceLanguage?: string;
   targetLanguage?: string;
   signatureRequest?: SignatureRequest;

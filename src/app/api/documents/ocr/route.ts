@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateSha256, calculateWordMetrics, generateDocxFromText, detectLanguageFromText } from '@/lib/documents/documentProcessor';
+import {
+  calculateSha256,
+  calculateWordMetrics,
+  generateDocxFromText,
+  detectLanguageFromText,
+  analyzeDocumentFile,
+  translateDocumentText,
+} from '@/lib/documents/documentProcessor';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,52 +14,93 @@ export async function POST(req: NextRequest) {
     const {
       documentId,
       fileName = '',
+      fileDataUrl,
       languages = ['por'],
       autoDetect = true,
       cleanNoise = true,
       deskew = true,
       rawText = '',
+      targetLanguage = 'it',
     } = body;
 
-    const langStr = Array.isArray(languages) ? languages.join('+') : languages;
-
-    const isVen = /venezuela|venezol|caracas|partida|acta.*nac|cedula|saime|saren/i.test(fileName || '');
-    const isSpanish = isVen || languages.includes('spa') || /español|espanhol|spanish|apostilla/i.test(fileName || '');
-    const isItalian = languages.includes('ita') || /italia|italian|comune|nascita/i.test(fileName || '');
-    const isEnglish = languages.includes('eng') || /english|united|birth|diploma/i.test(fileName || '');
-
-    // High fidelity OCR processing pipeline
     let processedText = rawText;
-    if (!processedText) {
-      if (isSpanish) {
-        processedText = `[DOCUMENTO RECONHECIDO VIA OCR (${langStr.toUpperCase()})]\nREPÚBLICA BOLIVARIANA DE VENEZUELA\nMINISTERIO DEL PODER POPULAR PARA RELACIONES INTERIORES, JUSTICIA Y PAZ\nSERVICIO AUTÓNOMO DE REGISTROS Y NOTARÍAS (SAREN)\nREGISTRO PRINCIPAL DEL DISTRITO CAPITAL / ESTADO MIRANDA\n\nACTA DE NACIMIENTO / PARTIDA DE REGISTRO CIVIL\nNÚMERO DE ACTA: 1420 / TOMO: IV / FOLIO: 82\n\nEl Registrador Civil que suscribe certifica que en la fecha indicada fue presentado para su inscripción de nacimiento:\nNOMBRE DEL PRESENTADO: JOSÉ ALEJANDRO GONZÁLEZ MENDOZA\nFECHA DE NACIMIENTO: 12 de Mayo de 1998\nLUGAR DE NACIMIENTO: Caracas, Municipio Libertador\nNACIONALIDAD: Venezolana\nDOCUMENTO DE IDENTIDAD: Cédula de Identidad V-26.890.114\nPADRE: CARLOS ALBERTO GONZÁLEZ (Venezolano, Mayor de Edad)\nMADRE: MARÍA ELENA MENDOZA DE GONZÁLEZ (Venezolana, Mayor de Edad)\n\nCONVENIO DE LA HAYA DE 5 DE OCTUBRE DE 1961\nAPOSTILLA (CONVENTION DE LA HAYE DU 5 OCTOBRE 1961)\n1. País: República Bolivariana de Venezuela\n2. El presente documento público ha sido firmado por: Registrador Principal\n3. Actuando en calidad de: Funcionario Público Acreditado\n4. Lleva el sello / timbre de: Registro Civil y Electoral de Venezuela\n\nTexto procesado con alineación automática (deskew=${deskew}) y filtro de reducción de ruido (clean=${cleanNoise}).\nDocumento indexado y totalmente seleccionable.`;
-      } else if (isItalian) {
-        processedText = `[DOCUMENTO RECONHECIDO VIA OCR (${langStr.toUpperCase()})]\nREPUBBLICA ITALIANA\nCOMUNE DI ROMA - UFFICIO DELLO STATO CIVILE\nESTRATTO DELL'ATTO DI NASCITA\n\nNome: Marco Antonio Rossi\nNascita: Roma, 24 Luglio 1995\nAtto n. 1840/1995 Parte I Serie A\nPadre: Rossi Giovanni\nMadre: Bianchi Francesca\n\nDocumento elaborato con deskew=${deskew} e riduzione rumore=${cleanNoise}.`;
-      } else if (isEnglish) {
-        processedText = `[DOCUMENTO RECONHECIDO VIA OCR (${langStr.toUpperCase()})]\nUNITED STATES OF AMERICA\nDEPARTMENT OF HEALTH - VITAL STATISTICS\nCERTIFICATE OF LIVE BIRTH\n\nChild Name: Alexander James Miller\nDate of Birth: August 14, 1996\nPlace of Birth: New York, NY\n\nApostille Convention de La Haye du 5 Octobre 1961 certified.\nProcessed with deskew=${deskew} and noise cleanup=${cleanNoise}.`;
-      } else {
-        processedText = `[DOCUMENTO RECONHECIDO VIA OCR (${langStr.toUpperCase()})]\nREPÚBLICA FEDERATIVA DO BRASIL\nDOCUMENTO OFICIAL DE IDENTIFICAÇÃO E REGISTRO\n\nNome: CARLOS EDUARDO SILVA\nNacionalidade: Brasileira\nEstado Civil: Solteiro\nProfissão: Engenheiro\nDocumento de Origem: Certidão de Registro Geral nº 48.910.223-X\nÓrgão Emissor: SSP/SP\nData de Emissão: 14 de Fevereiro de 2024\n\nTexto processado com alinhamento deskew=${deskew} e filtro anti-ruído=${cleanNoise}.\nTexto totalmente pesquisável e indexado.`;
-      }
-    }
+    let metrics;
+    let detectedLang = 'por';
+    let translatedText = '';
+    let translatedMetrics;
 
-    const pages = [processedText];
-    const detectedLang = detectLanguageFromText(processedText, fileName);
-    const metrics = calculateWordMetrics(pages, {
-      ignoreRepeatedHeaders: true,
-      detectedLanguage: autoDetect ? detectedLang : languages[0] || detectedLang,
-    });
+    if (fileDataUrl && fileDataUrl.length > 50) {
+      // Full re-execution of real OCR engine on actual binary data
+      const analysis = await analyzeDocumentFile(fileName, fileDataUrl, {
+        ocrLanguages: languages,
+        targetLang: targetLanguage,
+      });
+
+      processedText = analysis.extractedText;
+      metrics = analysis.metrics;
+      detectedLang = analysis.detectedLanguage;
+      translatedText = analysis.translatedText || '';
+      translatedMetrics = analysis.translatedMetrics;
+    } else if (rawText && rawText.trim().length > 0) {
+      // Re-evaluate existing extracted text
+      const pages = processedText.split('\n\n--- QUEBRA DE PÁGINA ---\n\n');
+      detectedLang = autoDetect
+        ? detectLanguageFromText(processedText, fileName)
+        : languages[0] || detectLanguageFromText(processedText, fileName);
+
+      metrics = calculateWordMetrics(pages, {
+        ignoreRepeatedHeaders: true,
+        detectedLanguage: detectedLang,
+      });
+
+      try {
+        translatedText = await translateDocumentText(processedText, detectedLang, targetLanguage);
+        const translatedPages = translatedText.split('\n\n--- QUEBRA DE PÁGINA ---\n\n');
+        translatedMetrics = calculateWordMetrics(translatedPages, {
+          ignoreRepeatedHeaders: true,
+          detectedLanguage: targetLanguage,
+        });
+      } catch (transErr) {
+        console.warn('OCR translation fallback:', transErr);
+      }
+    } else {
+      processedText = '[Texto não fornecido para reconhecimento OCR]';
+      metrics = calculateWordMetrics([processedText], {
+        ignoreRepeatedHeaders: true,
+        detectedLanguage: 'por',
+      });
+    }
 
     const docxDataUrl = await generateDocxFromText(
       (fileName || 'documento_ocr').replace(/\.[^/.]+$/, ''),
-      pages,
+      [processedText],
       {
-        language: metrics.detectedLanguage,
+        language: metrics.detectedLanguage || detectedLang,
         wordCount: metrics.billableWords,
         sourceDocument: fileName,
       }
     );
-
     const docxSha256 = await calculateSha256(docxDataUrl);
+
+    let translatedDocxDataUrl: string | undefined;
+    let translatedDocxSha256: string | undefined;
+
+    if (translatedText) {
+      try {
+        translatedDocxDataUrl = await generateDocxFromText(
+          `${(fileName || 'documento').replace(/\.[^/.]+$/, '')}_TRADUZIDO_${targetLanguage.toUpperCase()}`,
+          [translatedText],
+          {
+            language: targetLanguage,
+            wordCount: translatedMetrics?.billableWords || metrics.billableWords,
+            sourceDocument: fileName,
+          }
+        );
+        translatedDocxSha256 = await calculateSha256(translatedDocxDataUrl);
+      } catch (err) {
+        console.warn('Translated docx error:', err);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -60,8 +108,13 @@ export async function POST(req: NextRequest) {
       languages: Array.isArray(languages) ? languages : [languages],
       metrics,
       extractedText: processedText,
+      translatedText,
+      translatedMetrics,
+      targetLanguage,
       docxDataUrl,
       docxSha256,
+      translatedDocxDataUrl,
+      translatedDocxSha256,
       formatRevisionRecommended: false,
       deskewApplied: deskew,
       cleanNoiseApplied: cleanNoise,

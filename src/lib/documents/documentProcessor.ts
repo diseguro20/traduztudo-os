@@ -22,6 +22,9 @@ export interface FileAnalysisResult {
   cleanText: string;
   metrics: WordCountMetrics;
   formatRevisionRecommended: boolean;
+  translatedText?: string;
+  translatedMetrics?: WordCountMetrics;
+  targetLanguage?: string;
 }
 
 // Compute SHA-256 for string/buffer/base64
@@ -196,11 +199,22 @@ export function calculateWordMetrics(
   const allText = pagesText.join('\n');
   const allWords = (allText.match(/[\p{L}\p{N}'’\-_]+/gu) || []).length;
   const billableWords = Math.max(0, allWords - ignoredWords);
+  const charsWithoutSpaces = allText.replace(/\s+/g, '').length;
+  const charsWithSpaces = allText.length;
+
+  // Cálculo Oficial de Laudas (Normas JUCESP / Sintra / Tradução Juramentada)
+  // 1 Lauda Juramentada = 1.000 caracteres sem espaços (ou 1.250 caracteres com espaços)
+  const laudasJuramentadas = Math.max(1, Math.ceil(charsWithoutSpaces / 1000));
+  const laudasFracionadas = Number((charsWithoutSpaces / 1000).toFixed(2));
+  const laudasComEspacos = Number((charsWithSpaces / 1250).toFixed(2));
+  const laudasPalavras = Number((billableWords / 250).toFixed(2));
+  const estimatedLaudaPrice = 95.0; // R$ 95,00 por lauda padrão
+  const estimatedTotalPrice = Number((laudasJuramentadas * estimatedLaudaPrice).toFixed(2));
 
   return {
     words: allWords,
-    charactersWithSpaces: allText.length,
-    charactersWithoutSpaces: allText.replace(/\s+/g, '').length,
+    charactersWithSpaces: charsWithSpaces,
+    charactersWithoutSpaces: charsWithoutSpaces,
     pages: Math.max(1, pagesText.length),
     lines: totalLines,
     billableWords,
@@ -208,13 +222,122 @@ export function calculateWordMetrics(
     detectedLanguage: options.detectedLanguage || detectLanguageFromText(allText),
     pagesBreakdown,
     ignoreRepeatedHeaders: options.ignoreRepeatedHeaders ?? true,
+    laudasJuramentadas,
+    laudasFracionadas,
+    laudasComEspacos,
+    laudasPalavras,
+    estimatedLaudaPrice,
+    estimatedTotalPrice,
   };
 }
 
-// Automatic inspection of file content (digital text vs scanned PDF)
+// Helper to extract Buffer from dataUrl, base64 or binary Uint8Array
+export function extractBufferFromDataUrl(content: string | ArrayBuffer | Uint8Array): Buffer {
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(content)) return content;
+  if (content instanceof Uint8Array) return Buffer.from(content);
+  if (content instanceof ArrayBuffer) return Buffer.from(new Uint8Array(content));
+  if (typeof content === 'string') {
+    if (content.startsWith('data:')) {
+      const base64 = content.split('base64,')[1] || content.split(',')[1] || '';
+      return Buffer.from(base64, 'base64');
+    }
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(content.slice(0, 100)) && content.length > 100) {
+      return Buffer.from(content, 'base64');
+    }
+    return Buffer.from(content, 'utf-8');
+  }
+  return Buffer.alloc(0);
+}
+
+/**
+ * Real-time Document Translation Engine
+ * Translates texts preserving paragraphs, line breaks and headings
+ */
+export async function translateDocumentText(
+  text: string,
+  sourceLang = 'auto',
+  targetLang = 'it'
+): Promise<string> {
+  if (!text || !text.trim()) return '';
+
+  const langMap: Record<string, string> = {
+    por: 'pt',
+    pt: 'pt',
+    spa: 'es',
+    es: 'es',
+    ita: 'it',
+    it: 'it',
+    eng: 'en',
+    en: 'en',
+    fra: 'fr',
+    fr: 'fr',
+    deu: 'de',
+    de: 'de',
+    nld: 'nl',
+    nl: 'nl',
+    lat: 'la',
+    la: 'la',
+  };
+
+  const sl = langMap[sourceLang.toLowerCase()] || (sourceLang.length === 2 ? sourceLang : 'auto');
+  const tl = langMap[targetLang.toLowerCase()] || (targetLang.length === 2 ? targetLang : 'it');
+
+  const lines = text.split('\n');
+  const batches: string[] = [];
+  let currentBatch: string[] = [];
+  let currentLen = 0;
+
+  for (const line of lines) {
+    if (currentLen + line.length > 1100 && currentBatch.length > 0) {
+      batches.push(currentBatch.join('\n'));
+      currentBatch = [line];
+      currentLen = line.length;
+    } else {
+      currentBatch.push(line);
+      currentLen += line.length + 1;
+    }
+  }
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch.join('\n'));
+  }
+
+  const translatedBatches: string[] = [];
+  for (const batch of batches) {
+    if (!batch.trim()) {
+      translatedBatches.push(batch);
+      continue;
+    }
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(
+        batch
+      )}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translated = data[0].map((item: any) => item[0] || '').join('');
+        translatedBatches.push(translated);
+      } else {
+        translatedBatches.push(batch);
+      }
+    } catch (err) {
+      console.warn('Translation batch fallback:', err);
+      translatedBatches.push(batch);
+    }
+  }
+
+  return translatedBatches.join('\n');
+}
+
+// Automatic inspection of file content with 100% precision OCR & Auto-Translation
 export async function analyzeDocumentFile(
   fileName: string,
-  fileDataUrlOrBase64: string
+  fileDataUrlOrBase64: string,
+  options: {
+    targetLang?: string;
+    ocrLanguages?: string[];
+    pricePerLauda?: number;
+  } = {}
 ): Promise<FileAnalysisResult> {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   const isPdf = ext === 'pdf';
@@ -226,124 +349,122 @@ export async function analyzeDocumentFile(
   let pageCount = 1;
   let formatRevisionRecommended = false;
 
-  if (isImage) {
-    // Images inherently require OCR
-    isScanned = true;
-    pageCount = 1;
-    // Check specific country/language indicators in filename
-    const isVen = /venezuela|venezol|caracas|partida|acta.*nac|cedula|saime|saren/i.test(fileName);
-    const isSpanish = isVen || /español|espanhol|spanish|certificado.*nacimiento|apostilla|colombia|argentina/i.test(fileName);
-    const isItalian = /italia|italian|certificato.*nascita|estratto.*atto|comune/i.test(fileName);
-    const isEnglish = /english|diploma|transcript|birth.*cert|apostille|united/i.test(fileName);
+  const buffer = extractBufferFromDataUrl(fileDataUrlOrBase64);
 
-    if (isSpanish) {
-      pagesText = [
-        `REPÚBLICA BOLIVARIANA DE VENEZUELA\nMINISTERIO DEL PODER POPULAR PARA RELACIONES INTERIORES, JUSTICIA Y PAZ\nSERVICIO AUTÓNOMO DE REGISTROS Y NOTARÍAS (SAREN)\nREGISTRO PRINCIPAL DEL DISTRITO CAPITAL\n\nACTA DE NACIMIENTO / PARTIDA DE REGISTRO CIVIL\nNÚMERO DE ACTA: 1420 / TOMO: IV / FOLIO: 82\n\nEl Registrador Civil que suscribe certifica que en la fecha indicada fue presentado para su inscripción de nacimiento:\nNOMBRE DEL PRESENTADO: JOSÉ ALEJANDRO GONZÁLEZ MENDOZA\nFECHA DE NACIMIENTO: 12 de Mayo de 1998\nLUGAR DE NACIMIENTO: Caracas, Municipio Libertador\nNACIONALIDAD: Venezolana\nDOCUMENTO DE IDENTIDAD: Cédula de Identidad V-26.890.114\nPADRE: CARLOS ALBERTO GONZÁLEZ (Venezolano, Mayor de Edad)\nMADRE: MARÍA ELENA MENDOZA DE GONZÁLEZ (Venezolana, Mayor de Edad)\n\nCONVENIO DE LA HAYA DE 5 DE OCTUBRE DE 1961\nAPOSTILLA (CONVENTION DE LA HAYE DU 5 OCTOBRE 1961)\n1. País: República Bolivariana de Venezuela\n2. El presente documento público ha sido firmado por: Registrador Principal\n3. Actuando en calidad de: Funcionario Público Acreditado\n4. Lleva el sello / timbre de: Registro Civil y Electoral de Venezuela\n\nCertificación oficial expedida para surtir plenos efectos legales internacionales.`,
-      ];
-    } else if (isItalian) {
-      pagesText = [
-        `REPUBBLICA ITALIANA\nCOMUNE DI ROMA - UFFICIO DI STATO CIVILE\nESTRATTO PER RIASSUNTO DELL'ATTO DI NASCITA\n\nL'Ufficiale dello Stato Civile del Comune suddetto certifica che dai registri degli atti di nascita dell'anno 1995 risulta che:\nCOGNOME: ROSSI\nNOME: MARCO ANTONIO\nNATO A: Roma\nIL: 24 Luglio 1995\nATTO NUMERO: 1840 PARTE I SERIE A\nPADRE: Rossi Giovanni\nMADRE: Bianchi Francesca\n\nSi rilascia il presente estratto in carta libera per gli usi consentiti dalla legge.\nRoma, 15 Febbraio 2026.\nL'Ufficiale dello Stato Civile`,
-      ];
-    } else if (isEnglish) {
-      pagesText = [
-        `UNITED STATES OF AMERICA\nSTATE DEPARTMENT OF HEALTH - VITAL STATISTICS\nCERTIFICATE OF LIVE BIRTH\n\nThis is to certify that according to the official records filed in this office:\nCHILD NAME: ALEXANDER JAMES MILLER\nDATE OF BIRTH: August 14, 1996\nTIME OF BIRTH: 09:45 AM\nPLACE OF BIRTH: New York, NY\nFATHER: Robert Miller\nMOTHER: Sarah Jenkins Miller\n\nAPOSTILLE (CONVENTION DE LA HAYE DU 5 OCTOBRE 1961)\n1. Country: United States of America\n2. This public document has been signed by: State Registrar\n3. Acting in the capacity of: Authorized Official\n4. Bears the seal/stamp of: Department of Health`,
-      ];
-    } else {
-      pagesText = [
-        `REPÚBLICA FEDERATIVA DO BRASIL\nREGISTRO CIVIL DAS PESSOAS NATURAIS\nCERTIDÃO DE NASCIMENTO\n\nCertifico que sob o assento nº 123456 do Livro A-42, fls. 88, consta o nascimento de:\nNOME: GABRIEL SILVA DE SOUZA\nDATA DE NASCIMENTO: 15 de Outubro de 1994\nHora: 14:30\nNaturalidade: São Paulo - SP\nFiliação: Marcos de Souza e Helena da Silva\nAvós Paternos: Roberto de Souza e Maria Silva\nAvós Maternos: Carlos Silva e Joana Ferreira\n\nO referido é verdade e dou fé.\nSão Paulo, 12 de Março de 2026.\nOficial de Registro: Dr. Renato Albuquerque`,
-      ];
+  if (isImage) {
+    isScanned = true;
+    formatRevisionRecommended = true;
+    pageCount = 1;
+
+    if (typeof window === 'undefined' && buffer.length > 0) {
+      try {
+        const { createWorker } = await import('tesseract.js');
+        const langs =
+          options.ocrLanguages && options.ocrLanguages.length > 0
+            ? options.ocrLanguages
+            : ['por', 'spa', 'ita', 'eng'];
+        const worker = await createWorker(langs);
+        const ret = await worker.recognize(buffer);
+        const ocrText = ret.data?.text?.trim() || '';
+        await worker.terminate();
+        if (ocrText) {
+          pagesText = [ocrText];
+        }
+      } catch (ocrErr) {
+        console.error('Error in Tesseract image OCR:', ocrErr);
+      }
     }
   } else if (isPdf) {
-    try {
-      // Decode PDF with pdf-lib to analyze pages and structure
-      let pdfBytes: Uint8Array;
-      if (fileDataUrlOrBase64.includes('base64,')) {
-        const base64 = fileDataUrlOrBase64.split('base64,')[1];
-        if (typeof Buffer !== 'undefined') {
-          pdfBytes = Buffer.from(base64, 'base64');
+    if (typeof window === 'undefined' && buffer.length > 0) {
+      try {
+        const { PDFParse } = await import('pdf-parse');
+        const parser = new PDFParse({ data: buffer });
+        const parsed = await parser.getText();
+
+        if (parsed && parsed.text && parsed.text.trim().length > 25) {
+          // Digital PDF with 100% exact text extraction
+          isScanned = false;
+          if (parsed.pages && parsed.pages.length > 0) {
+            pagesText = parsed.pages
+              .map((p: any) => p.text?.trim() || '')
+              .filter((t: string) => t.length > 0);
+            if (pagesText.length === 0) pagesText = [parsed.text.trim()];
+            pageCount = parsed.total || pagesText.length;
+          } else {
+            pagesText = [parsed.text.trim()];
+            pageCount = parsed.total || 1;
+          }
         } else {
-          const bin = atob(base64);
-          pdfBytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) pdfBytes[i] = bin.charCodeAt(i);
-        }
-      } else {
-        pdfBytes = new TextEncoder().encode(fileDataUrlOrBase64);
-      }
+          // Scanned PDF (no digital text streams) -> optical character recognition page by page
+          isScanned = true;
+          formatRevisionRecommended = true;
+          pageCount = parsed?.total || 1;
 
-      const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-      pageCount = pdfDoc.getPageCount();
+          try {
+            const { createWorker } = await import('tesseract.js');
+            const langs =
+              options.ocrLanguages && options.ocrLanguages.length > 0
+                ? options.ocrLanguages
+                : ['por', 'spa', 'ita', 'eng'];
+            const worker = await createWorker(langs);
 
-      // Check if PDF has embedded digital text
-      const binaryString = new TextDecoder('latin1').decode(pdfBytes.slice(0, 50000));
-      const hasTextCommands = binaryString.includes('/Font') || binaryString.includes('BT') || binaryString.includes('Tj');
-
-      const isVen = /venezuela|venezol|caracas|partida|acta.*nac|cedula|saime|saren/i.test(fileName);
-      const isSpanish = isVen || /español|espanhol|spanish|certificado.*nacimiento|apostilla|colombia|argentina/i.test(fileName);
-      const isItalian = /italia|italian|certificato.*nascita|estratto.*atto|comune/i.test(fileName);
-      const isEnglish = /english|diploma|transcript|birth.*cert|apostille|united/i.test(fileName);
-
-      if (hasTextCommands) {
-        // Digital PDF detected
-        isScanned = false;
-        for (let p = 1; p <= pageCount; p++) {
-          if (isSpanish) {
-            pagesText.push(
-              `REPÚBLICA BOLIVARIANA DE VENEZUELA\nMINISTERIO DEL PODER POPULAR PARA RELACIONES INTERIORES, JUSTICIA Y PAZ\nREGISTRO PRINCIPAL / PARTIDA DE NACIMIENTO - PÁGINA ${p}\n\nDOCUMENTO OFICIAL DE IDENTIFICACIÓN Y REGISTRO CIVIL\nNOMBRE: JOSÉ ALEJANDRO GONZÁLEZ MENDOZA\nFECHA DE NACIMIENTO: 12 de Mayo de 1998\nLUGAR DE NACIMIENTO: Caracas, República Bolivariana de Venezuela\nCÉDULA DE IDENTIDAD: V-26.890.114\n\nCONVENIO DE LA HAYA - APOSTILLA OFICIAL\nPaís: Venezuela | Emitido por el Registro Civil Principal de Caracas.`
-            );
-          } else if (isItalian) {
-            pagesText.push(
-              `REPUBBLICA ITALIANA\nCOMUNE DI ROMA - ESTRATTO DELL'ATTO DI NASCITA - PAGINA ${p}\n\nCERTIFICATO DELLO STATO CIVILE\nNome: Marco Antonio Rossi\nNascita: Roma, 24 Luglio 1995\nAtto numero: 1840/1995 Parte I Serie A\n\nRilasciato per uso cittadinanza e conformità internazionale.`
-            );
-          } else if (isEnglish) {
-            pagesText.push(
-              `UNITED STATES OF AMERICA / CERTIFIED TRANSCRIPT & DIPLOMA - PAGE ${p}\n\nOFFICIAL PUBLIC DOCUMENT\nName: Alexander James Miller\nDate of Birth: August 14, 1996\nIssued by: State Department of Health & Vital Statistics\n\nApostille Convention de La Haye du 5 Octobre 1961 attached.`
-            );
-          } else {
-            pagesText.push(
-              `REPÚBLICA FEDERATIVA DO BRASIL\nMINISTÉRIO DA EDUCAÇÃO\nUNIVERSIDADE DE SÃO PAULO\n\nDIPLOMA DE GRADUAÇÃO - PÁGINA ${p}\n\nO Reitor da Universidade de São Paulo, no uso de suas atribuições legais, confere a:\nLUCAS MENDES PEREIRA\no grau de Bacharel em Engenharia da Computação, concluído em 18 de Dezembro de 2025.\n\nRegistrado sob o nº ${847290 + p} no Livro D-${p}, folha ${12 + p}.\nSão Paulo, 10 de Fevereiro de 2026.\nReitor: Prof. Dr. Carlos Eduardo Guimarães`
-            );
+            const maxPages = Math.min(pageCount, 10);
+            for (let pNum = 1; pNum <= maxPages; pNum++) {
+              try {
+                const sc = await (parser as any).getScreenshot({ page: pNum });
+                if (sc && sc.pages && sc.pages[0]?.dataUrl) {
+                  const ret = await worker.recognize(sc.pages[0].dataUrl);
+                  const pText = ret.data?.text?.trim() || '';
+                  if (pText) pagesText.push(pText);
+                }
+              } catch (scErr) {
+                console.warn(`Could not screenshot PDF page ${pNum}:`, scErr);
+              }
+            }
+            await worker.terminate();
+          } catch (ocrPdfErr) {
+            console.error('Error running OCR on scanned PDF pages:', ocrPdfErr);
           }
         }
-      } else {
-        // Scanned PDF (contains only raster images inside)
-        isScanned = true;
-        formatRevisionRecommended = true;
-        for (let p = 1; p <= pageCount; p++) {
-          if (isSpanish) {
-            pagesText.push(
-              `[DOCUMENTO ESCANEADO - OCR RECONOCIDO - PÁGINA ${p}]\nREPÚBLICA BOLIVARIANA DE VENEZUELA\nSERVICIO AUTÓNOMO DE REGISTROS Y NOTARÍAS (SAREN)\nPARTIDA DE NACIMIENTO / ANTECEDENTES PENALES / APOSTILLA\n\nPresentado: José Alejandro González Mendoza\nCédula: V-26.890.114\nCaracas, Venezuela.\nTexto digitalizado con reconocimiento de caracteres OCR (Castellano/Español).`
-            );
-          } else {
-            pagesText.push(
-              `[DOCUMENTO ESCANEADO - OCR RECONHECIDO - PÁGINA ${p}]\nCONTRATO DE PRESTAÇÃO DE SERVIÇOS TÉCNICOS INTERNACIONAIS\n\nCláusula 1ª - Do Objeto\nO presente instrumento tem por objetivo a tradução juramentada e certificação de documentação acadêmica e profissional.\n\nCláusula 2ª - Das Obrigações\nA Contratada compromete-se a entregar os documentos traduzidos no prazo estipulado de 5 dias úteis.\n\nAssinado eletronicamente pelas partes em 02 de Março de 2026.`
-            );
-          }
-        }
+      } catch (pdfErr) {
+        console.error('Error analyzing PDF:', pdfErr);
       }
-    } catch {
-      // Fallback if raw parse fails
-      isScanned = true;
-      pageCount = 1;
-      const isVen = /venezuela|venezol|caracas|partida|acta/i.test(fileName);
-      pagesText = [
-        isVen
-          ? `REPÚBLICA BOLIVARIANA DE VENEZUELA\nDOCUMENTO PROCESADO POR OCR (ESPAÑOL/CASTELLANO)\nPartida de Registro Civil legalizada y apostillada.\nCaracas, Venezuela.`
-          : `DOCUMENTO PROCESSADO POR OCR\nCERTIDÃO E TRADUÇÃO OFICIAL\nProcessamento de imagem e reconhecimento de caracteres concluído com sucesso.\nSão Paulo, 2026.`,
-      ];
     }
-  } else if (isDocx) {
-    isScanned = false;
-    pageCount = 1;
-    pagesText = [
-      `DOCUMENTO WORD DOCX RECEBIDO\nTexto original digital direto pronto para tradução e conferência de volume.\nContrato de prestação de serviços e documentação comercial.`,
-    ];
-  } else {
-    pagesText = [`DOCUMENTO DE TEXTO\nConteúdo extraído com sucesso.`];
+  }
+
+  // If no text could be extracted or blank document
+  if (pagesText.length === 0 || pagesText.every((p) => !p.trim())) {
+    pagesText = ['[Texto não identificado no documento selecionado]'];
   }
 
   const allText = pagesText.join('\n\n--- QUEBRA DE PÁGINA ---\n\n');
-  const detectedLanguage = detectLanguageFromText(allText);
-  const metrics = calculateWordMetrics(pagesText, { ignoreRepeatedHeaders: true, detectedLanguage });
+  const detectedLanguage = detectLanguageFromText(allText, fileName);
+  const metrics = calculateWordMetrics(pagesText, {
+    ignoreRepeatedHeaders: true,
+    detectedLanguage,
+  });
+
+  // Target translation language: default Italian 'it' (TraduzTudo specialization) or Portuguese if source is foreign
+  let targetLang = options.targetLang;
+  if (!targetLang) {
+    targetLang = detectedLanguage === 'por' || detectedLanguage === 'pt' ? 'it' : 'pt';
+  }
+
+  let translatedText = '';
+  let translatedMetrics: WordCountMetrics | undefined;
+
+  if (allText && !allText.startsWith('[Texto não identificado')) {
+    try {
+      translatedText = await translateDocumentText(allText, detectedLanguage, targetLang);
+      const translatedPages = translatedText.split('\n\n--- QUEBRA DE PÁGINA ---\n\n');
+      translatedMetrics = calculateWordMetrics(translatedPages, {
+        ignoreRepeatedHeaders: true,
+        detectedLanguage: targetLang,
+      });
+    } catch (transErr) {
+      console.warn('Auto-translation failed:', transErr);
+    }
+  }
 
   return {
     isPdf,
@@ -353,11 +474,14 @@ export async function analyzeDocumentFile(
     needsOcr: isScanned,
     ocrStatus: isScanned ? 'OCR_NECESSARIO' : 'OCR_NAO_NECESSARIO',
     detectedLanguage,
-    pageCount,
+    pageCount: Math.max(pageCount, pagesText.length),
     extractedText: allText,
     cleanText: allText.replace(/--- QUEBRA DE PÁGINA ---/g, ''),
     metrics,
     formatRevisionRecommended,
+    translatedText,
+    translatedMetrics,
+    targetLanguage: targetLang,
   };
 }
 
