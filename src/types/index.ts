@@ -499,6 +499,7 @@ export interface DocumentItem {
   targetLanguage?: string;
   signatureRequest?: SignatureRequest;
   formatWarning?: string;
+  deletedAt?: string | null;
 }
 
 export type TaskStatus = 'a_fazer' | 'em_andamento' | 'concluida' | 'cancelada';

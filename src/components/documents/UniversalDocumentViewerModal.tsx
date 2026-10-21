@@ -23,6 +23,7 @@ import {
   Calculator,
   Sparkles,
   CheckCircle2,
+  Trash2,
   RotateCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -467,6 +468,22 @@ export function UniversalDocumentViewerModal({
                 </Button>
               </>
             )}
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (confirm(`Tem certeza que deseja excluir permanentemente o documento "${doc.name}"?\nEsta ação removerá o arquivo, suas versões e cálculos.`)) {
+                  databaseStore.deleteDocument(doc.id);
+                  onClose();
+                }
+              }}
+              className="bg-red-950/40 border-red-800 text-red-300 hover:bg-red-900/60 hover:text-white text-xs gap-1.5 h-8 font-semibold shadow-2xs"
+              title="Excluir documento permanentemente"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Excluir</span>
+            </Button>
 
             <button
               onClick={onClose}

@@ -33,6 +33,7 @@ import {
   Link as LinkIcon,
   Cloud,
   Globe,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -581,6 +582,19 @@ export function DocumentProcessingSection({
       originalWordCount: updatedMetrics,
     });
     setRefresh((r) => r + 1);
+  };
+
+  // Delete document permanently
+  const handleDeleteDocument = async (doc: DocumentItem) => {
+    if (
+      confirm(
+        `Tem certeza que deseja excluir permanentemente o documento "${doc.name}"?\nEsta ação removerá o arquivo original, versões traduzidas e cálculos associados.`
+      )
+    ) {
+      databaseStore.deleteDocument(doc.id);
+      await databaseStore.pushLocalToFirestore();
+      setRefresh((r) => r + 1);
+    }
   };
 
   // Upload Translated DOCX
@@ -1432,17 +1446,27 @@ export function DocumentProcessingSection({
                     </div>
                   </div>
 
-                  {/* Top Right Action: Apply to quote */}
-                  {metrics && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleApplyToQuote(doc)}
-                      className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white self-start sm:self-auto shrink-0 shadow-2xs"
+                  {/* Top Right Action: Apply to quote & Delete */}
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    {metrics && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleApplyToQuote(doc)}
+                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                      >
+                        <Calculator className="w-3.5 h-3.5" />
+                        Usar no Orçamento ({metrics.billableWords} pal.)
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDocument(doc)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200 hover:border-red-300 transition-colors"
+                      title="Excluir documento permanentemente"
                     >
-                      <Calculator className="w-3.5 h-3.5" />
-                      Usar Contagem no Orçamento ({metrics.billableWords} pal.)
-                    </Button>
-                  )}
+                      <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quality Warning Alert */}
@@ -1695,6 +1719,17 @@ export function DocumentProcessingSection({
                     className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-2xs"
                   >
                     <PenTool className="w-3.5 h-3.5" /> Assinar Digitalmente
+                  </Button>
+
+                  {/* Excluir Documento */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteDocument(doc)}
+                    className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shadow-2xs"
+                    title="Excluir documento e todas as suas versões permanentemente"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" /> Excluir
                   </Button>
 
                   {/* Enviar ao Cliente (WhatsApp / E-mail) */}

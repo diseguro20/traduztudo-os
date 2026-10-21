@@ -18,6 +18,7 @@ import {
   FileText,
   Paperclip,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -291,19 +292,35 @@ export default function LeadsPage() {
                                 </div>
                                 <div className="space-y-1">
                                   {leadDocs.slice(0, 2).map((d) => (
-                                    <div key={d.id} className="flex items-center justify-between text-[11px] text-slate-700 bg-white/80 px-2 py-1 rounded border border-blue-100">
-                                      <span className="truncate max-w-[140px] font-medium" title={d.name}>
+                                    <div key={d.id} className="flex items-center justify-between text-[11px] text-slate-700 bg-white/80 px-2 py-1 rounded border border-blue-100 gap-1">
+                                      <span className="truncate max-w-[125px] font-medium" title={d.name}>
                                         {d.name}
                                       </span>
-                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                                        d.status === 'SIGNED'
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : d.status === 'DOCX_READY'
-                                          ? 'bg-blue-100 text-blue-800'
-                                          : 'bg-amber-100 text-amber-800'
-                                      }`}>
-                                        {d.status === 'SIGNED' ? '✓ Assinado' : d.status === 'DOCX_READY' ? 'Word' : 'Aberto'}
-                                      </span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                                          d.status === 'SIGNED'
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : d.status === 'DOCX_READY'
+                                            ? 'bg-blue-100 text-blue-800'
+                                            : 'bg-amber-100 text-amber-800'
+                                        }`}>
+                                          {d.status === 'SIGNED' ? '✓ Assinado' : d.status === 'DOCX_READY' ? 'Word' : 'Aberto'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm(`Excluir permanentemente o documento "${d.name}"?`)) {
+                                              databaseStore.deleteDocument(d.id);
+                                              setRefreshKey((k) => k + 1);
+                                            }
+                                          }}
+                                          className="p-0.5 text-slate-400 hover:text-red-600 rounded transition-colors"
+                                          title="Excluir documento permanentemente"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />
+                                        </button>
+                                      </div>
                                     </div>
                                   ))}
                                   {leadDocs.length > 2 && (

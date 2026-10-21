@@ -84,6 +84,7 @@ class DatabaseStore {
   private quotes: Quote[] = [];
   private workOrders: WorkOrder[] = [];
   private documents: DocumentItem[] = [];
+  private deletedDocIds: Set<string> = new Set<string>();
   private tasks: OrderTask[] = [];
   private translators: Translator[] = [];
   private reviewers: Reviewer[] = [];
@@ -236,7 +237,18 @@ class DatabaseStore {
         if (Array.isArray(parsed.requests)) this.requests = parsed.requests;
         if (Array.isArray(parsed.quotes)) this.quotes = parsed.quotes;
         if (Array.isArray(parsed.workOrders)) this.workOrders = parsed.workOrders;
-        if (Array.isArray(parsed.documents)) this.documents = parsed.documents;
+        try {
+          const savedDeletedIds = localStorage.getItem('traduztudo_deleted_doc_ids');
+          if (savedDeletedIds) {
+            const arr = JSON.parse(savedDeletedIds);
+            if (Array.isArray(arr)) {
+              this.deletedDocIds = new Set(arr);
+            }
+          }
+        } catch {}
+        if (Array.isArray(parsed.documents)) {
+          this.documents = parsed.documents.filter((d: any) => !d.deletedAt && !this.deletedDocIds.has(d.id));
+        }
         if (Array.isArray(parsed.tasks)) this.tasks = parsed.tasks;
         if (Array.isArray(parsed.translators)) this.translators = parsed.translators;
         if (Array.isArray(parsed.reviewers)) this.reviewers = parsed.reviewers;
@@ -521,12 +533,26 @@ class DatabaseStore {
           (snapshot) => {
             const remoteItems: T[] = snapshot.docs
               .map((d) => d.data() as T)
-              .filter((item) => item && item.id);
+              .filter((item: any) => {
+                if (!item || !item.id) return false;
+                if (item.deletedAt) return false;
+                if (name === 'documents' && this.deletedDocIds.has(item.id)) return false;
+                return true;
+              });
 
             // Merge with local items: never discard local items that aren't yet in Firestore
-            const currentItems = getList();
+            const currentItems = getList().filter((item: any) => {
+              if (!item || !item.id) return false;
+              if (item.deletedAt) return false;
+              if (name === 'documents' && this.deletedDocIds.has(item.id)) return false;
+              return true;
+            });
             const remoteIds = new Set(remoteItems.map((r) => r.id));
-            const localOnly = currentItems.filter((local) => !remoteIds.has(local.id));
+            const localOnly = currentItems.filter((local: any) => {
+              if (local.deletedAt) return false;
+              if (name === 'documents' && this.deletedDocIds.has(local.id)) return false;
+              return !remoteIds.has(local.id);
+            });
 
             const mergedRemote = remoteItems.map((remote: any) => {
               const local: any = currentItems.find((l) => l.id === remote.id);
@@ -624,7 +650,7 @@ class DatabaseStore {
     let quotesSynced = 0;
     try {
       for (const d of this.documents) {
-        if (d && d.id) {
+        if (d && d.id && !d.deletedAt && !this.deletedDocIds.has(d.id)) {
           await this.syncFirestore('documents', d.id, d);
           documentsSynced++;
         }
@@ -1797,18 +1823,20 @@ class DatabaseStore {
 
   // --- DOCUMENTS ---
   getDocument(id: string): DocumentItem | undefined {
-    return this.documents.find((d) => d.id === id);
+    if (this.deletedDocIds.has(id)) return undefined;
+    return this.documents.find((d) => d.id === id && !d.deletedAt);
   }
 
   getDocuments(filter?: { workOrderId?: string; quoteId?: string; leadId?: string; customerId?: string } | string): DocumentItem[] {
+    const activeDocs = this.documents.filter((d) => !d.deletedAt && !this.deletedDocIds.has(d.id));
     if (typeof filter === 'string') {
-      return this.documents.filter((d) => d.workOrderId === filter || d.quoteId === filter || d.leadId === filter);
+      return activeDocs.filter((d) => d.workOrderId === filter || d.quoteId === filter || d.leadId === filter);
     }
     if (filter) {
       if (!filter.workOrderId && !filter.quoteId && !filter.leadId && !filter.customerId) {
-        return this.documents;
+        return activeDocs;
       }
-      return this.documents.filter((d) => {
+      return activeDocs.filter((d) => {
         if (filter.workOrderId && d.workOrderId !== filter.workOrderId) return false;
         if (filter.quoteId && d.quoteId !== filter.quoteId) return false;
         if (filter.leadId && d.leadId !== filter.leadId) return false;
@@ -1816,7 +1844,7 @@ class DatabaseStore {
         return true;
       });
     }
-    return this.documents;
+    return activeDocs;
   }
 
   createDocument(data: Omit<DocumentItem, 'id' | 'createdAt' | 'downloadCount' | 'version'>): DocumentItem {
@@ -1995,10 +2023,35 @@ class DatabaseStore {
 
   deleteDocument(id: string): boolean {
     const idx = this.documents.findIndex((d) => d.id === id);
-    if (idx === -1) return false;
-    this.documents.splice(idx, 1);
-    this.deleteFirestore('documents', id);
+    const docToDelete = idx >= 0 ? this.documents[idx] : undefined;
+
+    // 1. Record ID in deleted set & localStorage so it is NEVER revived by sync
+    this.deletedDocIds.add(id);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          'traduztudo_deleted_doc_ids',
+          JSON.stringify([...this.deletedDocIds])
+        );
+      } catch {}
+    }
+
+    // 2. Remove blobs for document and all associated versions
     deleteDocumentBlob(id).catch(() => {});
+    if (docToDelete && Array.isArray(docToDelete.versions)) {
+      docToDelete.versions.forEach((v) => {
+        if (v && v.id) deleteDocumentBlob(v.id).catch(() => {});
+      });
+    }
+
+    // 3. Delete from Firestore permanently
+    this.deleteFirestore('documents', id);
+
+    // 4. Remove from in-memory array
+    if (idx >= 0) {
+      this.documents.splice(idx, 1);
+    }
+
     this.persistAndNotify();
     return true;
   }
