@@ -187,15 +187,26 @@ export async function getDocumentBlob(
     }
   }
 
-  // 3. Fallback to provided dataUrl if valid (not truncated)
+  // 3. Fallback to provided dataUrl or remote URL if valid
   if (fallbackDataUrl && typeof fallbackDataUrl === 'string') {
-    // Check if it's not a truncated placeholder
     if (fallbackDataUrl.startsWith('data:') && fallbackDataUrl.length > 500) {
       const blob = base64ToBlob(fallbackDataUrl, mimeType || 'application/pdf');
       inMemoryBlobs.set(id, blob);
       // Persist in background
       saveDocumentBlob(id, blob, id, mimeType).catch(() => {});
       return blob;
+    } else if (fallbackDataUrl.startsWith('http://') || fallbackDataUrl.startsWith('https://')) {
+      try {
+        const res = await fetch(fallbackDataUrl);
+        if (res.ok) {
+          const blob = await res.blob();
+          inMemoryBlobs.set(id, blob);
+          saveDocumentBlob(id, blob, id, mimeType || blob.type).catch(() => {});
+          return blob;
+        }
+      } catch (e) {
+        console.warn('Could not fetch remote document file:', e);
+      }
     }
   }
 

@@ -279,10 +279,11 @@ class DatabaseStore {
         for (const key of Object.keys(node)) {
           const val = node[key];
           if (typeof val === 'string') {
-            if (val.startsWith('data:') && val.length > 500) {
+            // Keep dataUrls under 700KB so documents sync across terminals without exceeding Firestore's 1MB limit
+            if (val.startsWith('data:') && val.length > 700000) {
               node[key] = '';
-            } else if (val.length > 25000) {
-              node[key] = val.substring(0, 25000);
+            } else if (val.length > 200000 && !val.startsWith('data:')) {
+              node[key] = val.substring(0, 200000);
             }
           } else if (typeof val === 'object' && val !== null) {
             cleanNode(val);
@@ -296,14 +297,14 @@ class DatabaseStore {
         clone.versions = clone.versions.map((v: any) => {
           if (!v || typeof v !== 'object') return v;
           const vCopy = { ...v };
-          if (vCopy.dataUrl) vCopy.dataUrl = '';
-          if (vCopy.fileUrl && vCopy.fileUrl.startsWith('data:')) vCopy.fileUrl = '';
+          if (vCopy.dataUrl && vCopy.dataUrl.length > 700000) vCopy.dataUrl = '';
+          if (vCopy.fileUrl && vCopy.fileUrl.startsWith('data:') && vCopy.fileUrl.length > 700000) vCopy.fileUrl = '';
           return vCopy;
         });
       }
 
-      if (clone.dataUrl) clone.dataUrl = '';
-      if (clone.fileUrl && clone.fileUrl.startsWith('data:')) clone.fileUrl = '';
+      if (clone.dataUrl && clone.dataUrl.length > 700000) clone.dataUrl = '';
+      if (clone.fileUrl && clone.fileUrl.startsWith('data:') && clone.fileUrl.length > 700000) clone.fileUrl = '';
 
       return clone;
     } catch {
@@ -583,6 +584,23 @@ class DatabaseStore {
             });
 
             setList(combinedList as T[]);
+
+            // Cache remote document blobs locally in IndexedDB for instant cross-device opening
+            if (name === 'documents') {
+              remoteItems.forEach((docItem: any) => {
+                if (docItem.id && docItem.dataUrl && typeof docItem.dataUrl === 'string' && docItem.dataUrl.startsWith('data:')) {
+                  saveDocumentBlob(docItem.id, docItem.dataUrl, docItem.name, docItem.fileType).catch(() => {});
+                }
+                if (Array.isArray(docItem.versions)) {
+                  docItem.versions.forEach((v: any) => {
+                    if (v.id && v.dataUrl && typeof v.dataUrl === 'string' && v.dataUrl.startsWith('data:')) {
+                      saveDocumentBlob(v.id, v.dataUrl, v.fileName, v.fileType).catch(() => {});
+                    }
+                  });
+                }
+              });
+            }
+
             if (postProcess) postProcess();
             this.isSyncingFromRemote = true;
             this.persistAndNotify();

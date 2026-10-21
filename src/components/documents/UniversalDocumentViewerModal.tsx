@@ -145,11 +145,9 @@ export function UniversalDocumentViewerModal({
         // Check if blob is a valid PDF
         let isPdfOk = await isValidPdfBlob(blob);
 
-        // If it's supposed to be a signed PDF but blob is missing or corrupt, generate on the fly
-        if (
-          (!blob || !isPdfOk) &&
-          (doc.status === 'SIGNED' || initialVersionType === 'SIGNED_PDF')
-        ) {
+        // Reconstruct high-fidelity PDF preview on the fly if binary is missing (e.g. uploaded on another terminal)
+        // or if it's a signed document requiring certification stamp
+        if ((!blob || (isTargetPdf && !isPdfOk)) && doc.extractedText && doc.extractedText.trim().length > 0) {
           try {
             let existingBlob = await getDocumentBlob(doc.id);
             let existingBytes: Uint8Array | undefined;
@@ -157,14 +155,21 @@ export function UniversalDocumentViewerModal({
               existingBytes = new Uint8Array(await existingBlob.arrayBuffer());
             }
 
+            const isSignedStatus = doc.status === 'SIGNED' || initialVersionType === 'SIGNED_PDF';
             const { pdfBytes, pdfDataUrl } = await generateCertifiedSignedPdf(
               doc,
-              doc.signatureRequest?.signer || { name: 'Carla Strambio' },
+              isSignedStatus
+                ? (doc.signatureRequest?.signer || { name: 'Carla Strambio' })
+                : {
+                    name: doc.uploaderName || 'Diego',
+                    policy: 'Visualização Técnica Reconstruída a partir do OCR Cloud',
+                    signatureType: 'DIGITAL',
+                  },
               existingBytes
             );
 
             blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
-            await saveDocumentBlob(targetId, blob, `${doc.name}_ASSINADO.pdf`, 'application/pdf');
+            await saveDocumentBlob(targetId, blob, `${doc.name}_PREVIEW.pdf`, 'application/pdf');
             await saveDocumentBlob(doc.id, blob, doc.name, 'application/pdf');
             isPdfOk = true;
 
@@ -172,7 +177,7 @@ export function UniversalDocumentViewerModal({
               dataUrl: pdfDataUrl,
             });
           } catch (genErr) {
-            console.error('Failed to reconstruct signed PDF:', genErr);
+            console.error('Failed to reconstruct PDF preview from OCR data:', genErr);
           }
         }
 
@@ -645,6 +650,16 @@ export function UniversalDocumentViewerModal({
                         className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 text-xs gap-1.5"
                       >
                         <FileText className="w-3.5 h-3.5 text-purple-400" /> Ver Texto Extraído OCR
+                      </Button>
+                    )}
+
+                    {doc.translatedText && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab('translated')}
+                        className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 text-xs gap-1.5"
+                      >
+                        <Languages className="w-3.5 h-3.5 text-emerald-400" /> Ver Tradução
                       </Button>
                     )}
                   </div>
