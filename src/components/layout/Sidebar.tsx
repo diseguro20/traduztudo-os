@@ -32,6 +32,7 @@ import {
   Sparkles,
   X,
   Target,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -167,6 +168,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           label: 'Relatórios & BI',
           href: '/relatorios',
           icon: BarChart3,
+        },
+        {
+          label: 'Desempenho Web & SEO',
+          href: '/relatorios/seo',
+          icon: Globe,
+          badge: 'Google',
+          badgeVariant: 'success' as const,
         },
       ],
     },
