@@ -111,13 +111,25 @@ export class GeminiCompanyFinder {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-        },
-      });
+      // Use gemini-flash-lite-latest or gemini-flash-latest for high-speed structured generation
+      let model;
+      try {
+        model = genAI.getGenerativeModel({
+          model: 'gemini-flash-lite-latest',
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        });
+      } catch {
+        model = genAI.getGenerativeModel({
+          model: 'gemini-flash-latest',
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        });
+      }
 
       const prompt = `Você é um Agente Especialista em Pesquisa e Inteligência de Mercado B2B no Brasil.
 Sua missão é identificar EMPRESAS REAIS e ATIVAS no Brasil no seguinte nicho para serviços de tradução juramentada e soluções corporativas:
@@ -511,9 +523,9 @@ Formato de retorno (JSON Array de objetos):
 
     // 1. Try Gemini Generative AI first (if API Key is available)
     if (request.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
-      request.onProgress?.('Consultando Google Gemini 1.5 Flash para busca e estruturação no nicho...');
+      request.onProgress?.('Consultando Google Gemini Flash para busca e estruturação no nicho...');
       const geminiFound = await this.searchWithGemini(
-        { query, segment: effectiveSegment, targetState, targetCount: targetCount * 2 },
+        { query, segment: effectiveSegment, targetState, targetCount: Math.min(targetCount, 15) },
         request.apiKey
       );
       allCandidates.push(...geminiFound);
