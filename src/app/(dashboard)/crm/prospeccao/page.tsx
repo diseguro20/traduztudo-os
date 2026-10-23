@@ -45,6 +45,7 @@ import {
   InboundProspectReply,
   ProspectingSettings,
 } from '@/types/prospecting';
+import { AISearchModal } from '@/components/prospecting/AISearchModal';
 
 type ActiveTab = 'VISAO_GERAL' | 'EMPRESAS' | 'CONTATOS' | 'CAMPANHAS' | 'RESPOSTAS' | 'OPORTUNIDADES' | 'CONFIGURACOES';
 
@@ -86,8 +87,15 @@ export default function ProspeccaoInteligentePage() {
   const [selectedCompany, setSelectedCompany] = useState<ProspectCompany | null>(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isNewCompanyModalOpen, setIsNewCompanyModalOpen] = useState(false);
+  const [isAISearchModalOpen, setIsAISearchModalOpen] = useState(false);
+  const [aiSearchInitialQuery, setAiSearchInitialQuery] = useState('');
   const [newNote, setNewNote] = useState('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const handleOpenAISearchWithTerm = (term = '') => {
+    setAiSearchInitialQuery(term);
+    setIsAISearchModalOpen(true);
+  };
 
   // Discovery & Dispatch loading states
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -419,6 +427,15 @@ export default function ProspeccaoInteligentePage() {
 
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => handleOpenAISearchWithTerm(searchTerm)}
+            className="text-xs gap-1.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shadow-md shadow-indigo-600/25 border-0"
+            title="Buscar e validar empresas reais com Agente IA Gemini"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Buscar Empresas com Agente IA
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -753,8 +770,30 @@ export default function ProspeccaoInteligentePage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredCompanies.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
-                        Nenhuma empresa encontrada com os filtros aplicados.
+                      <td colSpan={8} className="px-4 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-sm">
+                            <Sparkles className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                              {searchTerm
+                                ? `Nenhuma empresa cadastrada para "${searchTerm}"`
+                                : 'Nenhuma empresa encontrada com os filtros selecionados'}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              O Agente IA (Gemini) pode realizar varredura na internet e encontrar empresas ativas com e-mails corporativos válidos via MX agora.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenAISearchWithTerm(searchTerm)}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs gap-1.5 shadow-md shadow-indigo-600/20"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            {searchTerm ? `Buscar "${searchTerm}" com Agente IA` : 'Buscar Novas Empresas com Agente IA'}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -1535,6 +1574,17 @@ export default function ProspeccaoInteligentePage() {
           </form>
         </Modal>
       )}
+
+      {/* AI Company Search Modal */}
+      <AISearchModal
+        isOpen={isAISearchModalOpen}
+        onClose={() => setIsAISearchModalOpen(false)}
+        initialQuery={aiSearchInitialQuery}
+        initialSegment={segmentFilter}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
     </div>
   );
 }

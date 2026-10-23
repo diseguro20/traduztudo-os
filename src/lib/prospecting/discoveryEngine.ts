@@ -1,6 +1,7 @@
 import { ProspectCompany, ProspectSegment, ProspectStage } from '@/types/prospecting';
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
+import { geminiCompanyFinder } from '@/lib/ai/geminiCompanyFinder';
 
 export interface DiscoveryJobOptions {
   targetCount?: number; // e.g. 10 to 50
@@ -2100,39 +2101,32 @@ export class DiscoveryEngine {
 
     console.log(`[DiscoveryEngine] Iniciando busca automatizada de empresas. Meta: ${targetCount} empresas. Fontes: ${allowedSources.join(', ')}`);
 
-    // 1. Live Web Discovery across active segments (if BUSCA_PUBLICA enabled)
-    if (allowedSources.includes('BUSCA_PUBLICA')) {
+    // 1. AI Intelligent Discovery (Gemini + Public Registries + Nominatim)
+    if (allowedSources.includes('BUSCA_PUBLICA') || allowedSources.includes('BRASIL_API')) {
       for (const seg of allowedSegments) {
         if (result.newCompaniesAdded >= targetCount) break;
 
         try {
-          const liveFound = await this.searchWebCompanies(seg as ProspectSegment, 2, customKeywords);
-          for (const candidate of liveFound) {
-            if (result.newCompaniesAdded >= targetCount) break;
+          const aiRes = await geminiCompanyFinder.searchAndIngest({
+            segment: seg as ProspectSegment,
+            targetState: allowedStates[0] || 'ALL',
+            targetCount: Math.min(5, targetCount - result.newCompaniesAdded),
+          });
+
+          for (const c of aiRes.added) {
+            result.newCompaniesAdded++;
             result.totalProcessed++;
-
-            const alreadyExists = await prospectingStorage.hasCompany(candidate.cnpj, candidate.website, candidate.contactEmail);
-            if (alreadyExists) {
-              result.duplicatesSkipped++;
-              continue;
-            }
-
-            const isSuppressed = await prospectingStorage.isSuppressed(candidate.contactEmail, candidate.website);
-            if (isSuppressed) {
-              result.invalidSkipped++;
-              continue;
-            }
-
-            const isMxValid = await this.verifyDomainMx(candidate.website);
-            if (!isMxValid) {
-              result.invalidSkipped++;
-              continue;
-            }
-
-            await this.persistCandidate(candidate, 'BUSCA_PUBLICA', result);
+            result.addedCompanies.push({
+              id: c.id,
+              name: c.tradeName || c.name,
+              segment: c.segment,
+              city: c.city,
+              state: c.state,
+              email: c.contactEmail,
+            });
           }
         } catch (err: any) {
-          console.warn('[DiscoveryEngine] Erro na varredura ao vivo:', err?.message);
+          console.warn('[DiscoveryEngine] Erro na busca com Agente IA Gemini:', err?.message);
         }
       }
     }
