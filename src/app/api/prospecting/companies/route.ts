@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const status = (searchParams.get('status') as ProspectStage | 'ALL') || 'ALL';
     const state = searchParams.get('state') || 'ALL';
     const search = searchParams.get('search') || '';
-    const limit = Number(searchParams.get('limit')) || 100;
+    const limit = Number(searchParams.get('limit')) || 500;
     const offset = Number(searchParams.get('offset')) || 0;
 
     const data = await prospectingStorage.listCompanies({

@@ -18,7 +18,7 @@ export interface DiscoveryJobResult {
   errors: string[];
 }
 
-interface SeedProspectCandidate {
+export interface SeedProspectCandidate {
   name: string;
   tradeName: string;
   cnpj?: string;
@@ -35,7 +35,7 @@ interface SeedProspectCandidate {
  * Extensive verified registry of real Brazilian legal entities across all 12 priority sectors.
  * Each entry maps to an active corporate domain with valid MX email infrastructure.
  */
-const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
+export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
   {
     "name": "Doc Italy Assessoria de Cidadania Italiana Ltda",
     "tradeName": "Doc Italy Cidadania",
