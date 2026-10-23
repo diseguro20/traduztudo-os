@@ -212,7 +212,7 @@ Nosso compromisso é oferecer qualidade, agilidade, organização e preços alta
 
 Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela de parceiro com demandas recorrentes.
 
-📌 Segue em anexo nossa apresentação e tabela de valores para tradução juramentada.
+📌 Segue em anexo nosso Portfólio Corporativo e Apresentação B2B em PDF.
 
 Será um prazer entender as necessidades da ${targetName} e apresentar uma proposta personalizada, com excelentes condições comerciais.
 
@@ -244,7 +244,7 @@ ${unsubUrl}`;
 `<div>- Prazos ágeis e atendimento dedicado via WhatsApp e e-mail.</div><div><br></div>` +
 `<div>Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes corporativos.</div><div><br></div>` +
 `<div>Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela exclusiva para parceiros com demandas recorrentes.</div><div><br></div>` +
-`<div>📌 Segue em anexo nossa apresentação e tabela de valores para tradução juramentada.<br></div><div><br></div>` +
+`<div>📌 Segue em anexo nosso Portfólio Corporativo e Apresentação B2B em PDF.<br></div><div><br></div>` +
 `<div>Será um prazer entender as necessidades da <strong>${targetName}</strong> e apresentar uma proposta personalizada, com excelentes condições comerciais.</div><div><br></div>` +
 `<div>Fico à disposição para conversarmos!</div><div><br></div>` +
 `<div>Atenciosamente,</div><div><br></div>` +

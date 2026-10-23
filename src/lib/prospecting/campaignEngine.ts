@@ -57,10 +57,13 @@ export class CampaignEngine {
     }> = [];
 
     try {
-      const pdfPath = path.join(process.cwd(), 'public', 'attachments', 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf');
+      const primaryPdfPath = path.join(process.cwd(), 'public', 'attachments', 'Apresentacao_Corporativa_Traduz_Tudo_B2B.pdf');
+      const fallbackPdfPath = path.join(process.cwd(), 'public', 'attachments', 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf');
+      const pdfPath = fs.existsSync(primaryPdfPath) ? primaryPdfPath : fallbackPdfPath;
+
       if (fs.existsSync(pdfPath)) {
         list.push({
-          filename: 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf',
+          filename: 'Apresentacao_Corporativa_Traduz_Tudo_B2B.pdf',
           content: fs.readFileSync(pdfPath),
           contentType: 'application/pdf',
         });
