@@ -437,7 +437,28 @@ export class ProspectingStorage {
 
   // --- Campaign Eligible Prospects Query ---
   public async getEligibleProspectsForCampaign(campaignSegment?: ProspectSegment | 'ALL', limitCount = 30): Promise<ProspectCompany[]> {
-    await this.ensureCompaniesHydrated(limitCount * 4);
+    if (db) {
+      try {
+        const q = query(
+          collection(db, COLLECTIONS.COMPANIES),
+          where('status', 'in', ['DESCOBERTA', 'CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA']),
+          limit(limitCount * 3)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          snap.forEach((d) => {
+            const item = d.data() as ProspectCompany;
+            companiesStore.set(item.id, item);
+          });
+        }
+      } catch (e) {
+        console.warn('[ProspectingStorage] Firestore eligible query fallback:', e);
+        await this.ensureCompaniesHydrated(500);
+      }
+    } else {
+      await this.ensureCompaniesHydrated(500);
+    }
+
     const list = Array.from(companiesStore.values());
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 

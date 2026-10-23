@@ -2102,15 +2102,20 @@ export class DiscoveryEngine {
     console.log(`[DiscoveryEngine] Iniciando busca automatizada de empresas. Meta: ${targetCount} empresas. Fontes: ${allowedSources.join(', ')}`);
 
     // 1. AI Intelligent Discovery (Gemini + Public Registries + Nominatim)
+    // Runs 2 prioritized segments per batch to guarantee execution finishes in ~15s within Vercel's 60s limit
     if (allowedSources.includes('BUSCA_PUBLICA') || allowedSources.includes('BRASIL_API')) {
-      for (const seg of allowedSegments) {
+      const segmentsToRun = (options?.segments && options.segments.length > 0)
+        ? options.segments
+        : allowedSegments.slice().sort(() => 0.5 - Math.random()).slice(0, 2);
+
+      for (const seg of segmentsToRun) {
         if (result.newCompaniesAdded >= targetCount) break;
 
         try {
           const aiRes = await geminiCompanyFinder.searchAndIngest({
             segment: seg as ProspectSegment,
             targetState: allowedStates[0] || 'ALL',
-            targetCount: Math.min(20, targetCount - result.newCompaniesAdded),
+            targetCount: Math.min(15, targetCount - result.newCompaniesAdded),
           });
 
           for (const c of aiRes.added) {
