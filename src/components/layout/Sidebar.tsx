@@ -33,6 +33,7 @@ import {
   X,
   Target,
   Globe,
+  Video,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -181,6 +182,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       title: 'Comunicação',
       items: [
+        {
+          label: 'Agente IA (Vídeo & Voz)',
+          href: '/comunicacao/agente-video',
+          icon: Video,
+          badge: 'Live IA',
+          badgeVariant: 'purple' as const,
+        },
         {
           label: 'Central de E-mails (IA)',
           href: '/comunicacao/emails',
