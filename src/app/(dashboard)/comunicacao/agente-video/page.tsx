@@ -1,885 +1,940 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Video,
-  VideoOff,
   Mic,
-  MicOff,
-  PhoneOff,
+  PhoneCall,
   Sparkles,
   Bot,
-  User,
-  Volume2,
-  VolumeX,
-  Share2,
+  Settings2,
+  Sliders,
+  Wrench,
+  PhoneForwarded,
+  History,
+  Save,
   Copy,
   Check,
-  Zap,
-  FileSpreadsheet,
-  CheckCircle2,
-  PhoneCall,
-  Clock,
+  Play,
+  Volume2,
   ShieldCheck,
-  Calendar,
+  Clock,
   Layers,
   ArrowRight,
-  RefreshCw,
+  ExternalLink,
   Plus,
-  Play,
-  Languages,
+  Trash2,
+  FileSpreadsheet,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { databaseStore } from '@/lib/db';
+import {
+  AIAgentConfig,
+  AICallConversation,
+  AgentType,
+} from '@/types/ai-voice';
+import {
+  getStoredAgentConfig,
+  saveStoredAgentConfig,
+  getStoredConversations,
+  saveStoredConversation,
+} from '@/lib/ai-voice/agentService';
+import { getVoiceById } from '@/lib/ai-voice/voices';
+import { VoiceSelectorDialog } from '@/components/ai-voice/VoiceSelectorDialog';
+import { LiveMeetingModal } from '@/components/ai-voice/LiveMeetingModal';
 
-interface MessageLine {
-  id: string;
-  sender: 'ai' | 'user';
-  text: string;
-  time: string;
-}
-
-export default function AgenteVideoPage() {
-  const [isInCall, setIsInCall] = useState(false);
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isAiMuted, setIsAiMuted] = useState(false);
-  const [callMode, setCallMode] = useState<'orcamento' | 'parcerias' | 'suporte'>('orcamento');
-  const [aiState, setAiState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
-  const [callDuration, setCallDuration] = useState(0);
+export default function AgenteVideoKloelPage() {
+  const [agent, setAgent] = useState<AIAgentConfig>(getStoredAgentConfig());
+  const [activeTab, setActiveTab] = useState<'geral' | 'regras' | 'tecnico' | 'ferramentas' | 'telefonia' | 'historico'>('geral');
+  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [conversations, setConversations] = useState<AICallConversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<AICallConversation | null>(null);
 
-  // Transcrição em tempo real
-  const [transcription, setTranscription] = useState<MessageLine[]>([]);
-  const [currentSpeech, setCurrentSpeech] = useState<string>('');
-
-  // Dados coletados pela IA durante a reunião para orçamento
-  const [extractedData, setExtractedData] = useState({
-    customerName: 'Cliente em Atendimento',
-    phone: '',
-    documentType: 'Certidão de Nascimento / Casamento',
-    sourceLang: 'Português',
-    targetLang: 'Italiano',
-    estimatedLaudas: 3,
-    estimatedValue: 285.0,
-    quoteCreated: false,
-  });
-
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-
-  // Histórico de chamadas salvas
-  const [callHistory, setCallHistory] = useState([
-    {
-      id: 'call-101',
-      client: 'Dr. Leonardo Vasconcelos (Advocacia Internacional)',
-      date: 'Hoje, 09:15',
-      duration: '4m 32s',
-      type: 'Parceria B2B',
-      status: 'Proposta Comercial Enviada',
-      laudas: 18,
-      value: 'R$ 1.530,00',
-    },
-    {
-      id: 'call-102',
-      client: 'Mariana Guimarães',
-      date: 'Ontem, 16:40',
-      duration: '3m 12s',
-      type: 'Cidadania Italiana',
-      status: 'Orçamento Fechado no CRM',
-      laudas: 4,
-      value: 'R$ 380,00',
-    },
-  ]);
-
-  // Cronômetro da chamada
+  // Load conversations on mount
   useEffect(() => {
-    let timer: any;
-    if (isInCall) {
-      timer = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setCallDuration(0);
-    }
-    return () => clearInterval(timer);
-  }, [isInCall]);
+    setAgent(getStoredAgentConfig());
+    setConversations(getStoredConversations());
+  }, []);
 
-  // Formatar tempo MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const handleSaveConfig = () => {
+    saveStoredAgentConfig(agent);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  // Falar texto com síntese de voz (TTS)
-  const speakAiText = (text: string) => {
-    if (typeof window === 'undefined' || isAiMuted) return;
-
-    if (!synthRef.current) {
-      synthRef.current = window.speechSynthesis;
-    }
-
-    synthRef.current.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
-
-    const voices = synthRef.current.getVoices();
-    const brVoice = voices.find((v) => v.lang === 'pt-BR' || v.lang.includes('pt'));
-    if (brVoice) utterance.voice = brVoice;
-
-    utterance.onstart = () => {
-      setAiState('speaking');
-    };
-
-    utterance.onend = () => {
-      setAiState('listening');
-    };
-
-    synthRef.current.speak(utterance);
-  };
-
-  // Iniciar reconhecimento de voz (STT)
-  const startSpeechRecognition = () => {
-    if (typeof window === 'undefined') return;
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      console.warn('SpeechRecognition não suportado neste navegador.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'pt-BR';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            handleUserSpeechFinished(transcript.trim());
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-        setCurrentSpeech(interimTranscript);
-      };
-
-      recognition.onerror = (err: any) => {
-        console.warn('Speech recognition notice:', err);
-      };
-
-      recognition.start();
-      recognitionRef.current = recognition;
-    } catch (err) {
-      console.warn('Could not start speech recognition:', err);
-    }
-  };
-
-  // Quando o usuário termina de falar uma frase
-  const handleUserSpeechFinished = (userText: string) => {
-    if (!userText) return;
-
-    setCurrentSpeech('');
-
-    // Adiciona fala do usuário na transcrição
-    const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    setTranscription((prev) => [
-      ...prev,
-      { id: `user-${Date.now()}`, sender: 'user', text: userText, time: now },
-    ]);
-
-    setAiState('thinking');
-
-    // Resposta inteligente da Consultora IA com base no contexto
-    setTimeout(() => {
-      let aiResponse = '';
-      const lower = userText.toLowerCase();
-
-      if (callMode === 'parcerias') {
-        if (lower.includes('preço') || lower.includes('desconto') || lower.includes('tabela')) {
-          aiResponse =
-            'Excelente! Para parceiros corporativos e escritórios de advocacia, oferecemos tabela diferenciada a partir de R$ 75 por lauda e faturamento mensal via boleto ou PIX.';
-        } else if (lower.includes('prazo') || lower.includes('urgente')) {
-          aiResponse =
-            'Com certeza! Nosso SLA prioritário entrega documentos em até 24 a 48 horas úteis com assinatura digital ICP-Brasil aceita em todos os consulados e tribunais.';
-        } else {
-          aiResponse =
-            'Perfeito! Nossa plataforma integra diretamente a gestão dos seus clientes com emissão instantânea de orçamentos e apostilamento de Haia. Qual o volume médio mensal de processos do seu escritório?';
-        }
-      } else {
-        // Modo Orçamento
-        if (lower.includes('italiana') || lower.includes('cidadania') || lower.includes('itália')) {
-          aiResponse =
-            'Perfeito! A tradução juramentada para cidadania italiana é nossa especialidade. Ela segue rigorosamente as normas da JUCESP e das comunas italianas, com cálculo oficial de R$ 95 por lauda. Você já possui as certidões em inteiro teor emitidas?';
-          setExtractedData((prev) => ({
-            ...prev,
-            targetLang: 'Italiano',
-            documentType: 'Certidões em Inteiro Teor (Cidadania Italiana)',
-            estimatedValue: 380.0,
-            estimatedLaudas: 4,
-          }));
-        } else if (lower.includes('apostilamento') || lower.includes('haia')) {
-          aiResponse =
-            'Fazemos o Apostilamento de Haia diretamente com cartórios autorizados pelo CNJ. O prazo médio é de 1 a 2 dias úteis, garantindo validade jurídica imediata no exterior.';
-        } else if (lower.includes('quanto') || lower.includes('valor') || lower.includes('custo')) {
-          aiResponse =
-            'Nosso cálculo é 100% transparente: a lauda oficial de tradução juramentada com 1.000 caracteres custa R$ 95. Para seu conjunto de documentos, estimamos aproximadamente 3 a 4 laudas. Gostaria que eu registrasse a proposta formal no sistema agora?';
-        } else {
-          aiResponse =
-            'Entendido! Conte comigo para cuidar de cada detalhe da sua tradução juramentada. Já identifiquei os requisitos dos seus documentos e posso gerar sua ordem de serviço imediatamente.';
-        }
-      }
-
-      setTranscription((prev) => [
-        ...prev,
-        { id: `ai-${Date.now()}`, sender: 'ai', text: aiResponse, time: now },
-      ]);
-
-      speakAiText(aiResponse);
-    }, 900);
-  };
-
-  // Iniciar chamada de vídeo
-  const startVideoCall = async () => {
-    setIsInCall(true);
-    setTranscription([]);
-
-    // 1. Abrir câmera do usuário
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (camErr) {
-      console.warn('Webcam não autorizada ou indisponível:', camErr);
-    }
-
-    // 2. Iniciar Reconhecimento de Fala
-    startSpeechRecognition();
-
-    // 3. Fala de Abertura da Consultora IA
-    setTimeout(() => {
-      let welcomeMsg = '';
-      if (callMode === 'parcerias') {
-        welcomeMsg =
-          'Olá! Seja muito bem-vindo à TraduzTudo. Sou a Sofia, consultora comercial com IA. É um prazer conversar com você. Estou aqui para apresentar nossas soluções corporativas e fechar uma parceria sob medida para sua empresa. Como posso te ajudar hoje?';
-      } else {
-        welcomeMsg =
-          'Olá! Bem-vindo ao atendimento em vídeo da TraduzTudo. Sou a Sofia, sua consultora de tradução juramentada. Estou conectada ao vivo para tirar suas dúvidas, conferir seus documentos e gerar seu orçamento na hora. Em que posso te ajudar hoje?';
-      }
-
-      const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      setTranscription([{ id: `ai-${Date.now()}`, sender: 'ai', text: welcomeMsg, time: now }]);
-      speakAiText(welcomeMsg);
-    }, 600);
-  };
-
-  // Encerrar chamada
-  const endCall = () => {
-    setIsInCall(false);
-    setAiState('idle');
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-      recognitionRef.current = null;
-    }
-
-    if (synthRef.current) {
-      synthRef.current.cancel();
-    }
-
-    // Adiciona ao histórico se durou mais de 5s
-    if (callDuration > 5) {
-      setCallHistory((prev) => [
-        {
-          id: `call-${Date.now()}`,
-          client: extractedData.customerName,
-          date: 'Agora mesmo',
-          duration: formatTime(callDuration),
-          type: callMode === 'parcerias' ? 'Reunião de Parceria B2B' : 'Orçamento em Vídeo',
-          status: 'Atendimento Concluído com Sucesso',
-          laudas: extractedData.estimatedLaudas,
-          value: `R$ ${extractedData.estimatedValue.toFixed(2).replace('.', ',')}`,
-        },
-        ...prev,
-      ]);
-    }
-  };
-
-  // Alternar microfone
-  const toggleMic = () => {
-    if (mediaStreamRef.current) {
-      const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMicOn(audioTrack.enabled);
-      }
-    } else {
-      setIsMicOn(!isMicOn);
-    }
-  };
-
-  // Alternar câmera
-  const toggleCamera = () => {
-    if (mediaStreamRef.current) {
-      const videoTrack = mediaStreamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCameraOn(videoTrack.enabled);
-      }
-    } else {
-      setIsCameraOn(!isCameraOn);
-    }
-  };
-
-  // Criar orçamento oficial no CRM diretamente da chamada
-  const handleCreateQuoteFromCall = async () => {
-    try {
-      const newReq = await databaseStore.createRequestAsync({
-        tenantId: databaseStore.getTenant().id,
-        customerName: extractedData.customerName,
-        email: 'atendimento.video@traduztudo.com',
-        phone: '(11) 94748-5091',
-        serviceName: `Tradução Juramentada (${extractedData.sourceLang} para ${extractedData.targetLang})`,
-        sourceLanguage: extractedData.sourceLang,
-        targetLanguage: extractedData.targetLang,
-        estimatedVolume: `${extractedData.estimatedLaudas} laudas (R$ ${extractedData.estimatedValue.toFixed(2)})`,
-        notes: `Orçamento gerado ao vivo pelo Agente IA em Vídeo Chamada (Duração: ${formatTime(callDuration)}). Documentos: ${extractedData.documentType}`,
-        origin: 'Video Call IA',
-        status: 'nova',
-      });
-
-      setExtractedData((prev) => ({ ...prev, quoteCreated: true }));
-      alert(`Orçamento criado com sucesso no CRM!\nSolicitação ID: ${newReq.id}`);
-    } catch (e) {
-      alert('Orçamento registrado localmente com sucesso!');
-      setExtractedData((prev) => ({ ...prev, quoteCreated: true }));
-    }
-  };
-
-  // Copiar link da reunião para enviar por WhatsApp
-  const copyMeetingLink = () => {
-    const url = 'https://traduztudo.com/reuniao-ia?sala=traduztudo-live-call';
-    navigator.clipboard.writeText(url);
+  const handleCopyMeetingLink = () => {
+    const link = `https://traduztudo.com/reuniao-ia/${agent.id}`;
+    navigator.clipboard.writeText(link);
     setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    setTimeout(() => setCopiedLink(false), 2500);
   };
+
+  const handleCallEnded = (conv: AICallConversation) => {
+    saveStoredConversation(conv);
+    setConversations(getStoredConversations());
+  };
+
+  const selectedVoice = getVoiceById(agent.voiceId);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Video className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              Agente IA de Atendimento em Vídeo & Voz
-            </h1>
-            <Badge variant="purple" className="gap-1 text-[11px] font-semibold">
-              <Sparkles className="w-3 h-3 text-purple-400" />
-              Kloel Style / LiveKit WebRTC
-            </Badge>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Top Banner / Master Agent Status */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-zinc-900 via-indigo-950 to-zinc-900 border border-zinc-800 shadow-xl text-white">
+        <div className="flex items-center gap-4">
+          <div className="relative w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg border border-indigo-400/30">
+            <Bot className="w-8 h-8 text-white" />
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-zinc-900" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Assistente conversacional com IA para videochamadas automáticas, orçamentos instantâneos ao vivo e fechamento de parcerias B2B.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">{agent.name}</h1>
+              <Badge variant="outline" className="border-emerald-500/50 text-emerald-400 bg-emerald-500/10 text-xs">
+                No Ar · LiveKit WebRTC & Twilio SIP
+              </Badge>
+            </div>
+            <p className="text-xs text-zinc-400 mt-1">
+              Atendimento automatizado por voz e vídeo para orçamentos instantâneos e parcerias B2B.
+            </p>
+          </div>
         </div>
 
-        {/* Top Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
-            size="sm"
             variant="outline"
-            onClick={copyMeetingLink}
-            className="text-xs gap-1.5 h-8 bg-white dark:bg-slate-800"
+            size="sm"
+            onClick={handleCopyMeetingLink}
+            className="bg-zinc-800/80 border-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-700 text-xs flex items-center gap-1.5"
           >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            {copiedLink ? 'Link Copiado!' : 'Copiar Link para WhatsApp'}
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedLink ? 'Link Copiado!' : 'Copiar Link da Reunião'}
           </Button>
 
-          {!isInCall ? (
-            <Button
-              size="sm"
-              onClick={startVideoCall}
-              className="bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5 h-8 font-semibold shadow-xs"
-            >
-              <Play className="w-3.5 h-3.5" />
-              Iniciar Reunião com IA
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={endCall}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs gap-1.5 h-8 font-semibold shadow-xs"
-            >
-              <PhoneOff className="w-3.5 h-3.5" />
-              Encerrar Chamada ({formatTime(callDuration)})
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => setIsMeetingModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/30"
+          >
+            <Video className="w-4 h-4" />
+            Testar Reunião de Vídeo / Voz
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleSaveConfig}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
+          >
+            {saveSuccess ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+            {saveSuccess ? 'Salvo!' : 'Salvar Alterações'}
+          </Button>
         </div>
       </div>
 
-      {/* Main Video Call Experience */}
-      {isInCall ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Main Video Screen (AI Avatar + User PiP) */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="relative w-full h-[450px] sm:h-[500px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col justify-between p-4 sm:p-6">
-              {/* Top Call Bar */}
-              <div className="flex items-center justify-between z-10">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-800 text-xs text-white">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-semibold">Ao Vivo: {formatTime(callDuration)}</span>
-                  <span className="text-slate-400">|</span>
-                  <span className="text-slate-300">
-                    {callMode === 'parcerias' ? 'Reunião de Parceria B2B' : 'Orçamento em Vídeo'}
-                  </span>
-                </div>
+      {/* Tabs Navigation (Kloel AI Architecture) */}
+      <div className="flex items-center border-b border-gray-200 overflow-x-auto gap-2 bg-white px-2 rounded-xl shadow-sm">
+        {[
+          { id: 'geral', label: 'Geral', icon: Settings2 },
+          { id: 'regras', label: 'Comportamento & Regras', icon: ShieldCheck },
+          { id: 'tecnico', label: 'Técnico & Chamadas', icon: Sliders },
+          { id: 'ferramentas', label: 'Ferramentas & Ações', icon: Wrench },
+          { id: 'telefonia', label: 'Telefonia Twilio SIP', icon: PhoneForwarded },
+          { id: 'historico', label: 'Histórico de Conversas', icon: History, count: conversations.length },
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
+                isActive
+                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/30'
+                  : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              {typeof tab.count === 'number' && tab.count > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 text-[10px]">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-                <div className="flex items-center gap-2">
-                  <Badge variant="purple" className="text-xs font-semibold">
-                    Sofia IA (Consultora Oficial)
-                  </Badge>
-                </div>
-              </div>
+      {/* TAB 1: GERAL */}
+      {activeTab === 'geral' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-5">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                Identidade do Assistente
+              </h3>
 
-              {/* Central AI Avatar / Visual Presence */}
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-5 z-10">
-                <div className="relative">
-                  {/* Glowing Pulse based on state */}
-                  <div
-                    className={`absolute -inset-4 rounded-full opacity-60 blur-xl transition-all duration-500 ${
-                      aiState === 'speaking'
-                        ? 'bg-purple-500 animate-pulse scale-125'
-                        : aiState === 'listening'
-                        ? 'bg-blue-500 animate-pulse scale-110'
-                        : aiState === 'thinking'
-                        ? 'bg-amber-500 animate-spin'
-                        : 'bg-slate-700'
-                    }`}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Nome de Apresentação
+                  </label>
+                  <input
+                    type="text"
+                    value={agent.name}
+                    onChange={e => setAgent({ ...agent, name: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
-
-                  {/* AI Face / Avatar Circle */}
-                  <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-linear-to-tr from-purple-700 via-indigo-600 to-blue-500 p-1 shadow-2xl">
-                    <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center overflow-hidden border-2 border-white/20">
-                      <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-purple-300 animate-bounce" />
-                    </div>
-                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-bold text-white tracking-wide">
-                    Sofia — Consultora de IA TraduzTudo
-                  </h3>
-                  <div className="flex items-center justify-center gap-2">
-                    <span
-                      className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                        aiState === 'speaking'
-                          ? 'bg-purple-950 text-purple-300 border border-purple-800'
-                          : aiState === 'listening'
-                          ? 'bg-blue-950 text-blue-300 border border-blue-800'
-                          : aiState === 'thinking'
-                          ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {aiState === 'speaking' && '🔊 Falando agora...'}
-                      {aiState === 'listening' && '🎙️ Ouvindo você... Pode falar livremente'}
-                      {aiState === 'thinking' && '⚙️ Processando resposta com IA...'}
-                      {aiState === 'idle' && 'Pronta para conversar'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Animated Waveform Visualizer */}
-                <div className="flex items-center justify-center gap-1.5 h-8">
-                  {[40, 70, 95, 60, 85, 100, 75, 45, 90, 65, 80, 50].map((h, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 rounded-full transition-all duration-300 ${
-                        aiState === 'speaking'
-                          ? 'bg-purple-400'
-                          : aiState === 'listening'
-                          ? 'bg-blue-400'
-                          : 'bg-slate-700'
-                      }`}
-                      style={{
-                        height:
-                          aiState === 'speaking' || aiState === 'listening'
-                            ? `${(h * (0.4 + Math.random() * 0.6)).toFixed(0)}%`
-                            : '20%',
-                      }}
-                    />
-                  ))}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Tipo de Assistente
+                  </label>
+                  <select
+                    value={agent.type}
+                    onChange={e => setAgent({ ...agent, type: e.target.value as AgentType })}
+                    className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                  >
+                    <option value="omni">Chat + Ligação de Voz e Vídeo (Omnichannel)</option>
+                    <option value="voice">Apenas Voz e Vídeo</option>
+                    <option value="chat">Apenas Chat Web</option>
+                  </select>
                 </div>
               </div>
 
-              {/* PiP: Câmera do Usuário (Canto Inferior Direito) */}
-              <div className="absolute bottom-20 right-6 w-32 h-24 sm:w-44 sm:h-32 rounded-xl overflow-hidden border-2 border-slate-700 bg-slate-900 shadow-xl z-20">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full h-full object-cover ${!isCameraOn ? 'hidden' : ''}`}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Saudação Inicial (Primeira fala ao atender)
+                </label>
+                <textarea
+                  rows={2}
+                  value={agent.greeting}
+                  onChange={e => setAgent({ ...agent, greeting: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
-                {!isCameraOn && (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                    <User className="w-8 h-8 mb-1" />
-                    <span>Câmera Desligada</span>
-                  </div>
-                )}
-                <div className="absolute bottom-1 left-2 text-[10px] text-white/80 font-semibold bg-black/60 px-1.5 py-0.5 rounded">
-                  Você (Cliente)
-                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  A fala emitida assim que a ligação WebRTC ou SIP é atendida pelo cliente.
+                </p>
               </div>
 
-              {/* Closed Captions Live Banner (Subtitles) */}
-              <div className="w-full min-h-[46px] p-2.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 text-center text-xs text-slate-200 z-10 flex items-center justify-center">
-                {currentSpeech ? (
-                  <span className="text-blue-300 font-medium italic animate-pulse">
-                    Você: "{currentSpeech}"
-                  </span>
-                ) : transcription.length > 0 ? (
-                  <span className="text-slate-300">
-                    <strong className="text-purple-400">
-                      {transcription[transcription.length - 1].sender === 'ai' ? 'Sofia (IA): ' : 'Você: '}
-                    </strong>
-                    "{transcription[transcription.length - 1].text}"
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    A transcrição ao vivo aparecerá aqui conforme você e a IA conversam...
-                  </span>
-                )}
-              </div>
-
-              {/* Bottom Call Controls */}
-              <div className="flex items-center justify-center gap-3 pt-3 z-10 border-t border-slate-800/80">
-                <button
-                  onClick={toggleMic}
-                  className={`p-3 rounded-full transition-colors ${
-                    isMicOn ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-red-600 text-white'
-                  }`}
-                  title={isMicOn ? 'Desativar Microfone' : 'Ativar Microfone'}
-                >
-                  {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-                </button>
-
-                <button
-                  onClick={toggleCamera}
-                  className={`p-3 rounded-full transition-colors ${
-                    isCameraOn ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-red-600 text-white'
-                  }`}
-                  title={isCameraOn ? 'Desativar Câmera' : 'Ativar Câmera'}
-                >
-                  {isCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-                </button>
-
-                <button
-                  onClick={() => setIsAiMuted(!isAiMuted)}
-                  className={`p-3 rounded-full transition-colors ${
-                    !isAiMuted ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-amber-600 text-white'
-                  }`}
-                  title={isAiMuted ? 'Desmutar IA' : 'Mutar Voz da IA'}
-                >
-                  {!isAiMuted ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                </button>
-
-                <button
-                  onClick={endCall}
-                  className="px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-colors ml-4"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  Encerrar Reunião
-                </button>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Prompt do Sistema (Persona, Diretrizes e Regras Comerciais)
+                </label>
+                <textarea
+                  rows={10}
+                  value={agent.prompt}
+                  onChange={e => setAgent({ ...agent, prompt: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed"
+                />
               </div>
             </div>
           </div>
 
-          {/* Right Panel: Live Transcription & Deal Closer */}
-          <div className="space-y-4">
-            {/* Live Data Extracted by AI */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-amber-500" />
-                  Orçamento Capturado ao Vivo
-                </h4>
-                <Badge variant="success">IA Detectando</Badge>
-              </div>
+          {/* Voice Card & Summary */}
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                Voz Neural Ativa
+              </h3>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Serviço:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">Tradução Juramentada</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Par de Idiomas:</span>
-                  <span className="font-semibold text-blue-600 dark:text-blue-400">
-                    {extractedData.sourceLang} ➔ {extractedData.targetLang}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Documento:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
-                    {extractedData.documentType}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Laudas Estimadas:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    {extractedData.estimatedLaudas} laudas (JUCESP)
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-sm">
-                  <span className="font-bold text-slate-900 dark:text-white">Valor Estimado:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    R$ {extractedData.estimatedValue.toFixed(2).replace('.', ',')}
-                  </span>
+              <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm ${selectedVoice.color}`}
+                  >
+                    {selectedVoice.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900 text-sm">{selectedVoice.name}</span>
+                      <Badge variant="outline" className="border-indigo-400 text-indigo-700 text-[10px] py-0">
+                        {selectedVoice.accent}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{selectedVoice.detail}</p>
+                  </div>
                 </div>
               </div>
 
               <Button
-                onClick={handleCreateQuoteFromCall}
-                disabled={extractedData.quoteCreated}
-                className="w-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 mt-2"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsVoiceDialogOpen(true)}
+                className="w-full text-xs font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
               >
-                {extractedData.quoteCreated ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Orçamento Registrado no CRM
-                  </>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="w-3.5 h-3.5" /> Criar Orçamento no CRM Agora
-                  </>
-                )}
+                Trocar Voz ou Clonar Voz Própria
               </Button>
             </div>
 
-            {/* Transcription History */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span>Transcrição da Conversa</span>
-                <span className="text-[10px] text-slate-400 font-mono">{transcription.length} falas</span>
-              </h4>
-
-              <div className="max-h-[220px] overflow-y-auto space-y-2.5 pr-1 text-xs">
-                {transcription.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`p-2 rounded-lg ${
-                      item.sender === 'ai'
-                        ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-900/50'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[10px] font-semibold mb-0.5">
-                      <span>{item.sender === 'ai' ? 'Sofia (IA)' : 'Você'}</span>
-                      <span className="text-slate-400">{item.time}</span>
-                    </div>
-                    <p className="leading-relaxed">{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Standby / Control Panel when not in call */
-        <div className="space-y-6">
-          {/* Quick Scenario Selector */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div
-              onClick={() => setCallMode('orcamento')}
-              className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                callMode === 'orcamento'
-                  ? 'border-purple-500 bg-purple-50/50 dark:bg-purple-950/30 shadow-md ring-2 ring-purple-500/20'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300">
-                  <FileSpreadsheet className="w-5 h-5" />
-                </div>
-                {callMode === 'orcamento' && <Badge variant="purple">Selecionado</Badge>}
-              </div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                Orçamento de Tradução ao Vivo
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                Links & Compartilhamento
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                A IA atende o cliente, explica laudas JUCESP, calcula prazos, tira dúvidas e cadastra o orçamento automaticamente no CRM.
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Envie o link direto para o cliente entrar na reunião de vídeo com a IA pelo navegador sem instalar nada:
               </p>
-            </div>
-
-            <div
-              onClick={() => setCallMode('parcerias')}
-              className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                callMode === 'parcerias'
-                  ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-500/20'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                {callMode === 'parcerias' && <Badge variant="info">Selecionado</Badge>}
+              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs font-mono text-gray-700 truncate">
+                https://traduztudo.com/reuniao-ia/{agent.id}
               </div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                Fechamento de Parcerias B2B
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Apresentação executiva para escritórios de advocacia, agências de intercâmbio e empresas. Negocia tabela corporativa e envia proposta.
-              </p>
-            </div>
-
-            <div
-              onClick={() => setCallMode('suporte')}
-              className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                callMode === 'suporte'
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-md ring-2 ring-emerald-500/20'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                {callMode === 'suporte' && <Badge variant="success">Selecionado</Badge>}
-              </div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                Cidadanias & Apostilamento
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Especialista em processos de cidadania italiana, portuguesa e vistos para os EUA (USCIS) e validação de Haia em cartórios.
-              </p>
-            </div>
-          </div>
-
-          {/* Launch Call Hero Banner */}
-          <div className="p-6 sm:p-8 rounded-2xl bg-linear-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-purple-500/20 to-transparent pointer-events-none" />
-
-            <div className="max-w-2xl space-y-4 relative z-10">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 backdrop-blur-md border border-white/20 inline-flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                Tecnologia de Vídeo Inteligente TraduzTudo
-              </span>
-
-              <h2 className="text-xl sm:text-2xl font-bold leading-tight">
-                Pronto para iniciar uma reunião ao vivo com o Agente IA?
-              </h2>
-
-              <p className="text-xs sm:text-sm text-purple-200 leading-relaxed">
-                A consultora de inteligência artificial atende pelo microfone e câmera do seu navegador, entende documentos na hora e já registra o cliente com orçamento formalizado dentro do seu CRM.
-              </p>
-
-              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-                <Button
-                  onClick={startVideoCall}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white text-slate-950 hover:bg-slate-100 font-bold text-xs gap-2 shadow-lg"
-                >
-                  <Play className="w-4 h-4 fill-slate-950" />
-                  Iniciar Reunião Agora com IA
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={copyMeetingLink}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-purple-950/60 border-purple-700 text-purple-200 hover:bg-purple-900/60 text-xs gap-2"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  {copiedLink ? 'Link Copiado!' : 'Copiar Link da Sala para Enviar por WhatsApp'}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* History of Past AI Video Meetings */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-purple-500" />
-                  Histórico de Reuniões em Vídeo Realizadas com IA
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Atendimentos finalizados, transcrições e orçamentos integrados.
-                </p>
-              </div>
-              <Badge variant="purple">{callHistory.length} reuniões</Badge>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="py-3 px-4">Cliente / Contato</th>
-                    <th className="py-3 px-4">Finalidade</th>
-                    <th className="py-3 px-4">Data & Duração</th>
-                    <th className="py-3 px-4 text-center">Laudas Detectadas</th>
-                    <th className="py-3 px-4 text-right">Valor Negociado</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {callHistory.map((call) => (
-                    <tr key={call.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
-                          {call.client.charAt(0)}
-                        </div>
-                        {call.client}
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-300">
-                        {call.type}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-500">
-                        {call.date} ({call.duration})
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-bold">
-                        {call.laudas} laudas
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {call.value}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          {call.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyMeetingLink}
+                className="w-full text-xs font-semibold"
+              >
+                {copiedLink ? 'Link Copiado!' : 'Copiar Link'}
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* TAB 2: COMPORTAMENTO & REGRAS */}
+      {activeTab === 'regras' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Regras de Comportamento em Ligação</h3>
+            <p className="text-xs text-gray-500">
+              Controle como o assistente reage a perguntas fora de contexto, clientes nervosos ou concorrentes.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            {/* AI Disclosure */}
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Aviso de Inteligência Artificial
+              </label>
+              <select
+                value={agent.rules.aiDisclosure}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    rules: { ...agent.rules, aiDisclosure: e.target.value as any },
+                  })
+                }
+                className="w-full p-2.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+              >
+                <option value="if_asked">Apenas se o cliente perguntar se é uma IA</option>
+                <option value="always">Sempre avisar no início da ligação</option>
+                <option value="never">Nunca mencionar ativamente</option>
+              </select>
+              <p className="text-[11px] text-gray-500">
+                Se o cliente perguntar: &quot;Você é um robô?&quot;, responde com transparência e naturalidade.
+              </p>
+            </div>
+
+            {/* Conversation Style */}
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Estilo de Conversação
+              </label>
+              <select
+                value={agent.rules.style}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    rules: { ...agent.rules, style: e.target.value as any },
+                  })
+                }
+                className="w-full p-2.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+              >
+                <option value="professional">Profissional & Jurídico (Ideal para Tradução Juramentada)</option>
+                <option value="friendly">Amigável & Empático (Comercial)</option>
+                <option value="direct">Direto ao Ponto & Objetivo</option>
+              </select>
+            </div>
+
+            {/* Angry callers */}
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Clientes Nervosos ou com Reclamações
+              </label>
+              <select
+                value={agent.rules.angry.behavior}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    rules: {
+                      ...agent.rules,
+                      angry: { ...agent.rules.angry, behavior: e.target.value as any },
+                    },
+                  })
+                }
+                className="w-full p-2.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+              >
+                <option value="STAY_CALM_AND_LISTEN">Manter a calma, escutar com empatia e oferecer transbordo</option>
+                <option value="OFFER_MANAGER">Transferir imediatamente para um gerente humano</option>
+                <option value="APOLOGIZE">Pedir desculpas formais e registrar protocolo urgente</option>
+              </select>
+            </div>
+
+            {/* Competitors & Sales */}
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Tratamento de Concorrentes
+              </label>
+              <select
+                value={agent.rules.sales.competitorBehavior}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    rules: {
+                      ...agent.rules,
+                      sales: { ...agent.rules.sales, competitorBehavior: e.target.value as any },
+                    },
+                  })
+                }
+                className="w-full p-2.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+              >
+                <option value="STAY_NEUTRAL">Manter neutralidade e destacar diferenciais da TraduzTudo</option>
+                <option value="EMPHASIZE_STRENGTHS">Enfatizar agilidade, certificação ICP-Brasil e preço por lauda</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Pronunciation Dictionary */}
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+              Dicionário Fonético de Termos Específicos
+            </h4>
+            <div className="space-y-2">
+              {agent.rules.pronunciation.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={item.word}
+                    placeholder="Palavra escrita"
+                    onChange={e => {
+                      const updated = [...agent.rules.pronunciation];
+                      updated[idx].word = e.target.value;
+                      setAgent({ ...agent, rules: { ...agent.rules, pronunciation: updated } });
+                    }}
+                    className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-lg"
+                  />
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={item.phonetic}
+                    placeholder="Como deve soar"
+                    onChange={e => {
+                      const updated = [...agent.rules.pronunciation];
+                      updated[idx].phonetic = e.target.value;
+                      setAgent({ ...agent, rules: { ...agent.rules, pronunciation: updated } });
+                    }}
+                    className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-lg"
+                  />
+                  <button
+                    onClick={() => {
+                      const updated = agent.rules.pronunciation.filter((_, i) => i !== idx);
+                      setAgent({ ...agent, rules: { ...agent.rules, pronunciation: updated } });
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-rose-600 rounded"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setAgent({
+                  ...agent,
+                  rules: {
+                    ...agent.rules,
+                    pronunciation: [...agent.rules.pronunciation, { word: '', phonetic: '' }],
+                  },
+                });
+              }}
+              className="text-xs flex items-center gap-1.5 mt-2"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar Palavra ao Dicionário
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: TÉCNICO & LIGAÇÕES */}
+      {activeTab === 'tecnico' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Parâmetros Técnicos do Motor de Voz</h3>
+            <p className="text-xs text-gray-500">
+              Ajustes de tempo de resposta, sensibilidade VAD (Voice Activity Detection) e som ambiente.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Duração Máxima da Chamada
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={agent.technical.maxCallDuration}
+                  onChange={e =>
+                    setAgent({
+                      ...agent,
+                      technical: {
+                        ...agent.technical,
+                        maxCallDuration: parseInt(e.target.value, 10) || 20,
+                      },
+                    })
+                  }
+                  className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                />
+                <span className="text-xs text-gray-500">minutos</span>
+              </div>
+              <p className="text-[11px] text-gray-400">Encerra automaticamente após esse tempo.</p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Tempo de Espera por Silêncio
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={5}
+                  max={120}
+                  value={agent.technical.silenceTimeout}
+                  onChange={e =>
+                    setAgent({
+                      ...agent,
+                      technical: {
+                        ...agent.technical,
+                        silenceTimeout: parseInt(e.target.value, 10) || 10,
+                      },
+                    })
+                  }
+                  className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                />
+                <span className="text-xs text-gray-500">segundos</span>
+              </div>
+              <p className="text-[11px] text-gray-400">Tempo sem fala do cliente para retomar contato.</p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <label className="block text-xs font-bold text-gray-800">
+                Som Ambiente de Fundo (Humano)
+              </label>
+              <select
+                value={agent.technical.ambientSound}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    technical: { ...agent.technical, ambientSound: e.target.value as any },
+                  })
+                }
+                className="w-full p-2.5 text-xs border border-gray-300 rounded-lg bg-white"
+              >
+                <option value="office">Escritório Suave (Sensação humana)</option>
+                <option value="callcenter">Call Center Suave</option>
+                <option value="coffee">Cafeteria / Dinâmico</option>
+                <option value="silent">Silencioso (Zero ruído de estúdio)</option>
+              </select>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800">
+                  Sensibilidade a Interrupção (VAD)
+                </label>
+                <span className="text-xs font-mono font-bold text-indigo-600">
+                  {Math.round(agent.technical.sensitivity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={agent.technical.sensitivity}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    technical: {
+                      ...agent.technical,
+                      sensitivity: parseFloat(e.target.value),
+                    },
+                  })
+                }
+                className="w-full accent-indigo-600"
+              />
+              <p className="text-[11px] text-gray-400">
+                Permite ao cliente interromper o assistente naturalmente quando falar por cima.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800">Velocidade da Voz</label>
+                <span className="text-xs font-mono font-bold text-indigo-600">
+                  {agent.technical.speechSpeed}x
+                </span>
+              </div>
+              <input
+                type="range"
+                min="1.0"
+                max="1.5"
+                step="0.05"
+                value={agent.technical.speechSpeed}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    technical: {
+                      ...agent.technical,
+                      speechSpeed: parseFloat(e.target.value),
+                    },
+                  })
+                }
+                className="w-full accent-indigo-600"
+              />
+              <p className="text-[11px] text-gray-400">
+                1.25x a 1.35x remove hesitações e soa como um atendente ágil de alta performance.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-2 flex flex-col justify-between">
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1">
+                  Gravação de Áudio
+                </label>
+                <p className="text-[11px] text-gray-500">
+                  Grava o áudio completo de todas as reuniões e ligações para auditoria e histórico.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input
+                  type="checkbox"
+                  checked={agent.technical.recordAudio}
+                  onChange={e =>
+                    setAgent({
+                      ...agent,
+                      technical: { ...agent.technical, recordAudio: e.target.checked },
+                    })
+                  }
+                  className="w-4 h-4 text-indigo-600 rounded border-gray-300"
+                />
+                <span className="text-xs font-semibold text-gray-800">
+                  Gravação Habilitada (LGPD compliant)
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: FERRAMENTAS & AÇÕES */}
+      {activeTab === 'ferramentas' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Ferramentas & Integrações em Chamada</h3>
+            <p className="text-xs text-gray-500">
+              Ações executadas em tempo real pela IA durante a conversa falada.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              {
+                id: 'create_quote',
+                name: 'Criação Automática de Orçamentos no CRM',
+                desc: 'Calcula o número de laudas e valores e gera o orçamento oficial com número de pedido no banco de dados.',
+                enabled: agent.tools.includes('create_quote'),
+              },
+              {
+                id: 'search_knowledge',
+                name: 'Consulta à Base de Conhecimento e Prazos',
+                desc: 'Acessa regras de laudas juramentadas, apostilamento de Haia e prazos padrão de entrega.',
+                enabled: agent.tools.includes('search_knowledge'),
+              },
+              {
+                id: 'lookup_contact',
+                name: 'Identificação de Clientes Existentes',
+                desc: 'Busca pedidos anteriores e histórico de orçamentos pelo telefone ou e-mail do chamador.',
+                enabled: agent.tools.includes('lookup_contact'),
+              },
+              {
+                id: 'schedule_booking',
+                name: 'Agendamento de Reuniões com Tradutores',
+                desc: 'Marca consultas de alinhamento com tradutores juramentados diretamente na agenda da empresa.',
+                enabled: agent.tools.includes('schedule_booking'),
+              },
+              {
+                id: 'transfer_call',
+                name: 'Transbordo Telefônico para Equipe Humana',
+                desc: 'Transfere a ligação instantaneamente para o telefone ou ramal da gerência.',
+                enabled: agent.tools.includes('transfer_call'),
+              },
+              {
+                id: 'send_whatsapp',
+                name: 'Disparo de Link via WhatsApp',
+                desc: 'Envia o resumo do orçamento ou link de upload de documentos para o WhatsApp do cliente.',
+                enabled: agent.tools.includes('send_whatsapp'),
+              },
+            ].map(tool => (
+              <div
+                key={tool.id}
+                className="p-4 rounded-xl border border-gray-200 flex items-start justify-between gap-4"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-900">{tool.name}</span>
+                    <Badge variant="outline" className="text-[10px] text-gray-500">
+                      {tool.id}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{tool.desc}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={tool.enabled}
+                  onChange={e => {
+                    const next = e.target.checked
+                      ? [...agent.tools, tool.id]
+                      : agent.tools.filter(t => t !== tool.id);
+                    setAgent({ ...agent, tools: next });
+                  }}
+                  className="w-4 h-4 text-indigo-600 rounded border-gray-300 mt-1"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: TELEFONIA TWILIO SIP */}
+      {activeTab === 'telefonia' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Integração de Telefonia Twilio SIP Trunking</h3>
+            <p className="text-xs text-gray-500">
+              Permite receber ligações de qualquer telefone fixo ou celular diretamente no motor de IA LiveKit.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30 space-y-3">
+              <span className="text-xs font-bold text-indigo-900 block">Número Twilio Conectado</span>
+              <input
+                type="text"
+                value={agent.telephony.phoneNumber || ''}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    telephony: { ...agent.telephony, phoneNumber: e.target.value },
+                  })
+                }
+                placeholder="+55 11 4003-8822"
+                className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl bg-white outline-none font-mono"
+              />
+              <p className="text-[11px] text-gray-500">
+                Número cadastrado na Twilio configurado com o webhook abaixo.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 space-y-3">
+              <span className="text-xs font-bold text-gray-800 block">Domínio LiveKit SIP Trunk</span>
+              <input
+                type="text"
+                value={agent.telephony.sipDomain || ''}
+                onChange={e =>
+                  setAgent({
+                    ...agent,
+                    telephony: { ...agent.telephony, sipDomain: e.target.value },
+                  })
+                }
+                placeholder="traduztudo.sip.livekit.cloud"
+                className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl bg-white outline-none font-mono"
+              />
+              <p className="text-[11px] text-gray-500">
+                Domínio SIP para onde as ligações PSTN são roteadas em tempo real.
+              </p>
+            </div>
+
+            <div className="md:col-span-2 p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-2">
+              <span className="text-xs font-bold text-gray-800 block">Webhook Inbound Twilio (TwiML)</span>
+              <div className="p-3 bg-white rounded-lg border border-gray-200 text-xs font-mono text-gray-700 flex items-center justify-between">
+                <span>https://traduztudo.com/api/ai/telephony/webhook</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    navigator.clipboard.writeText('https://traduztudo.com/api/ai/telephony/webhook');
+                    alert('Webhook copiado com sucesso!');
+                  }}
+                >
+                  Copiar
+                </Button>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Cole esta URL na configuração do seu número de telefone na Twilio Console.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: HISTÓRICO REAL DE CONVERSAS */}
+      {activeTab === 'historico' && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Histórico de Chamadas e Reuniões</h3>
+              <p className="text-xs text-gray-500">
+                Registro real das conversas realizadas, durações, transcrições e orçamentos gerados.
+              </p>
+            </div>
+          </div>
+
+          {conversations.length === 0 ? (
+            <div className="p-12 text-center rounded-xl border border-dashed border-gray-200 text-gray-500 space-y-3">
+              <History className="w-10 h-10 text-gray-300 mx-auto" />
+              <p className="text-sm font-semibold text-gray-700">Nenhuma chamada gravada ainda</p>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                Assim que você ou um cliente iniciar uma reunião de vídeo ou ligação telefônica, o registro completo com transcrição aparecerá aqui.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="mt-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white"
+              >
+                Fazer Primeira Chamada de Teste
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {conversations.map(conv => (
+                <div
+                  key={conv.id}
+                  onClick={() => setSelectedConversation(conv)}
+                  className="p-4 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                      <Video className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-gray-900">
+                          {conv.callerName || 'Cliente Visitante'}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-300 bg-emerald-50">
+                          {conv.status === 'completed' ? 'Finalizada' : conv.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {conv.extractedData.summary || 'Atendimento por vídeo'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span className="flex items-center gap-1 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      {Math.floor(conv.durationSeconds / 60)}m {conv.durationSeconds % 60}s
+                    </span>
+
+                    {conv.createdQuoteId && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                        Orçamento #{conv.createdQuoteId}
+                      </span>
+                    )}
+
+                    <Button variant="ghost" size="sm" className="text-xs text-indigo-600 font-semibold">
+                      Ver Transcrição
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Selected Conversation Drawer Modal */}
+      {selectedConversation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-base text-gray-900">Detalhes da Chamada</h4>
+                <p className="text-xs text-gray-500">
+                  Duração: {selectedConversation.durationSeconds}s · Data:{' '}
+                  {new Date(selectedConversation.startedAt).toLocaleString('pt-BR')}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedConversation(null)}
+                className="text-gray-400 hover:text-gray-700 p-1 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Transcrição Completa da Conversa
+              </h5>
+              <div className="space-y-2 text-xs">
+                {selectedConversation.transcripts.map(t => (
+                  <div
+                    key={t.id}
+                    className={`p-3 rounded-xl ${
+                      t.speaker === 'caller'
+                        ? 'bg-gray-100 text-gray-900 ml-8'
+                        : 'bg-indigo-50 text-indigo-950 mr-8 border border-indigo-100'
+                    }`}
+                  >
+                    <span className="font-bold block text-[10px] text-gray-500 mb-1">
+                      {t.speaker === 'caller' ? 'Cliente' : agent.name}
+                    </span>
+                    {t.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <Button size="sm" onClick={() => setSelectedConversation(null)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Selector Dialog */}
+      <VoiceSelectorDialog
+        isOpen={isVoiceDialogOpen}
+        onClose={() => setIsVoiceDialogOpen(false)}
+        selectedVoiceId={agent.voiceId}
+        onSelectVoice={voiceId => {
+          setAgent({ ...agent, voiceId });
+          saveStoredAgentConfig({ ...agent, voiceId });
+        }}
+      />
+
+      {/* Live Video Meeting Modal (LiveKit WebRTC) */}
+      <LiveMeetingModal
+        isOpen={isMeetingModalOpen}
+        onClose={() => setIsMeetingModalOpen(false)}
+        agent={agent}
+        onCallEnded={handleCallEnded}
+      />
     </div>
   );
 }
