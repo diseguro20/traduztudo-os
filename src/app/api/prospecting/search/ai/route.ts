@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       query: typeof query === 'string' ? query.trim() : '',
       segment: segment as ProspectSegment,
       targetState: targetState || 'ALL',
-      targetCount: Math.min(Math.max(Number(targetCount) || 10, 1), 50),
+      targetCount: Math.min(Math.max(Number(targetCount) || 10, 1), 100),
       apiKey: typeof apiKey === 'string' && apiKey.trim() ? apiKey.trim() : undefined,
     });
 

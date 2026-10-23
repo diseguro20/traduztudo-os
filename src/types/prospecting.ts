@@ -199,10 +199,12 @@ export interface SuppressionRecord {
 export interface ProspectingSettings {
   id: string;
   tenantId: string;
-  dailyDiscoveryTarget: number; // default 50
-  dailySendLimit: number; // default 30
+  dailyDiscoveryTarget: number; // default 100
+  dailySendLimit: number; // default 200
   intervalMinutes: number; // default 5
-  autoSendEligible: boolean; // default false
+  autoSendEligible: boolean; // default true
+  warmupMode?: boolean; // Gradual volume ramp-up to protect domain reputation
+  warmupDay?: number; // Current day in the warm-up cycle (1 to 14)
   senderName: string;
   senderEmail: string; // contato@traduztudo.com
   replyToEmail: string;

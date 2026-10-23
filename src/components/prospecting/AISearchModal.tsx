@@ -273,17 +273,17 @@ export function AISearchModal({
                 </div>
                 <input
                   type="range"
-                  min="5"
-                  max="30"
-                  step="5"
+                  min="10"
+                  max="100"
+                  step="10"
                   value={targetCount}
                   onChange={e => setTargetCount(Number(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-indigo-600 cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400">
-                  <span>5 empresas</span>
-                  <span>15 empresas</span>
-                  <span>30 empresas</span>
+                  <span>10 empresas</span>
+                  <span>50 empresas</span>
+                  <span>100 empresas (Ampla Busca)</span>
                 </div>
               </div>
 

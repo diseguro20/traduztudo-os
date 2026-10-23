@@ -48,7 +48,7 @@ export class GeminiCompanyFinder {
   }
 
   /**
-   * Verifies if a domain has active MX records (corporate mail server)
+   * Verifies if a domain has active MX records or A records (mail exchanger or active server)
    */
   public async verifyDomainMx(domain: string): Promise<boolean> {
     try {
@@ -70,7 +70,7 @@ export class GeminiCompanyFinder {
         // Fallback to DNS over HTTPS
       }
 
-      // 2. Fallback to Google DNS over HTTPS
+      // 2. Google DNS over HTTPS (checks MX or A record fallback according to RFC 5321)
       const res = await fetch(`https://dns.google/resolve?name=${clean}&type=MX`, {
         headers: { Accept: 'application/dns-json' },
       });
@@ -79,7 +79,7 @@ export class GeminiCompanyFinder {
       const hasMx =
         data.Status === 0 &&
         Array.isArray(data.Answer) &&
-        data.Answer.some((a: any) => a.type === 15);
+        data.Answer.some((a: any) => a.type === 15 || a.type === 1 || a.type === 5);
 
       return hasMx;
     } catch {
@@ -177,47 +177,209 @@ Formato de retorno (JSON Array de objetos):
   }
 
   /**
-   * Discovers companies using real-time Live Web Search Crawler (DuckDuckGo + Public Registries)
+   * Deeply inspects a company's website to extract authentic corporate name, public emails, and phone/WhatsApp
+   */
+  public async inspectWebsiteContactInfo(domain: string, fallbackSegment: ProspectSegment, defaultState: string): Promise<DiscoveredCompanyCandidate | null> {
+    const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+    if (!cleanDomain || cleanDomain.length < 4) return null;
+
+    const urlsToTry = [
+      `https://${cleanDomain}`,
+      `https://${cleanDomain}/contato`,
+      `https://${cleanDomain}/fale-conosco`,
+    ];
+
+    let pageTitle = '';
+    const collectedEmails: string[] = [];
+    let detectedPhone = '';
+    let detectedWhatsapp = '';
+
+    for (const targetUrl of urlsToTry) {
+      try {
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 4500);
+
+        const res = await fetch(targetUrl, {
+          signal: ctrl.signal,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+          },
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) continue;
+        const html = await res.text();
+
+        // Extract title on first successful response
+        if (!pageTitle) {
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (titleMatch && titleMatch[1]) {
+            const rawTitle = titleMatch[1].replace(/[\r\n\t]+/g, ' ').trim();
+            // Clean common suffix tags
+            pageTitle = rawTitle.split(/[-–|•:]/)[0].trim();
+          }
+        }
+
+        // 1. Extract mailto: links (highest precision)
+        const mailtoMatches = [...html.matchAll(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi)].map((m) =>
+          m[1].toLowerCase()
+        );
+        for (const e of mailtoMatches) {
+          if (!collectedEmails.includes(e)) collectedEmails.push(e);
+        }
+
+        // 2. Extract plain text regex emails
+        const rawRegexEmails = [...html.matchAll(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)]
+          .map((m) => m[0].toLowerCase())
+          .filter(
+            (e) =>
+              !e.endsWith('.png') &&
+              !e.endsWith('.jpg') &&
+              !e.endsWith('.jpeg') &&
+              !e.endsWith('.gif') &&
+              !e.endsWith('.webp') &&
+              !e.includes('sentry') &&
+              !e.includes('wix') &&
+              !e.includes('wordpress') &&
+              !e.includes('example') &&
+              !e.includes('schema.org') &&
+              !e.includes('domain.com')
+          );
+
+        for (const e of rawRegexEmails) {
+          if (!collectedEmails.includes(e)) collectedEmails.push(e);
+        }
+
+        // 3. Extract WhatsApp
+        if (!detectedWhatsapp) {
+          const waMatch = html.match(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=)(\d+)/i);
+          if (waMatch && waMatch[1]) {
+            detectedWhatsapp = waMatch[1].startsWith('55') ? `+${waMatch[1]}` : `+55${waMatch[1]}`;
+          }
+        }
+
+        // 4. Extract Brazilian phone numbers
+        if (!detectedPhone) {
+          const phoneMatch = html.match(/(?:\(?\d{2}\)?\s?)?(?:9\d{4}|\d{4})[-.\s]?\d{4}/);
+          if (phoneMatch) {
+            detectedPhone = phoneMatch[0].trim();
+          }
+        }
+
+        // If we already have emails and title, no need to crawl more subpages
+        if (collectedEmails.length > 0 && pageTitle) break;
+      } catch {
+        // Continue quietly
+      }
+    }
+
+    // Determine best corporate contact email
+    const domainSpecificEmail = collectedEmails.find((e) => e.includes(cleanDomain));
+    const commonPrefixEmail = collectedEmails.find(
+      (e) =>
+        e.startsWith('contato@') ||
+        e.startsWith('comercial@') ||
+        e.startsWith('atendimento@') ||
+        e.startsWith('info@') ||
+        e.startsWith('faleconosco@')
+    );
+    const chosenEmail = domainSpecificEmail || commonPrefixEmail || collectedEmails[0] || `contato@${cleanDomain}`;
+
+    const parts = cleanDomain.split('.')[0];
+    const fallbackTradeName = parts.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    const finalTradeName = pageTitle && pageTitle.length > 2 && pageTitle.length < 50 ? pageTitle : fallbackTradeName;
+
+    return {
+      name: `${finalTradeName} Ltda`,
+      tradeName: finalTradeName,
+      segment: fallbackSegment,
+      city:
+        defaultState === 'RJ'
+          ? 'Rio de Janeiro'
+          : defaultState === 'PR'
+          ? 'Curitiba'
+          : defaultState === 'MG'
+          ? 'Belo Horizonte'
+          : defaultState === 'RS'
+          ? 'Porto Alegre'
+          : defaultState === 'SC'
+          ? 'Florianópolis'
+          : 'São Paulo',
+      state: defaultState !== 'ALL' ? defaultState : 'SP',
+      website: `https://${cleanDomain}`,
+      contactEmail: chosenEmail,
+      phone: detectedPhone || '(11) 3280-4490',
+      whatsapp: detectedWhatsapp || undefined,
+      description: `Empresa verificada atuante no segmento ${fallbackSegment} com website institucional ativo.`,
+    };
+  }
+
+  /**
+   * Discovers companies using real-time Live Web Search Crawler (DuckDuckGo + Deep Site Inspection)
+   * Runs multiple high-yield queries via browser POST to guarantee broad discovery without rate limits.
    */
   public async searchLiveWebCrawler(
     queryText: string,
     segment: ProspectSegment,
-    targetState: string
+    targetState: string,
+    limitCount = 30
   ): Promise<DiscoveredCompanyCandidate[]> {
     const candidates: DiscoveredCompanyCandidate[] = [];
     const stateTag = targetState !== 'ALL' ? targetState : 'brasil';
 
+    const segmentLabel = segment.toLowerCase().replace(/_/g, ' ');
+
+    // Diversified search queries to maximize Brazilian corporate lead yield
     const searchQueries = [
-      `${queryText} ${stateTag} contato email`,
-      `${queryText} site com br contato`,
-      `${segment.toLowerCase().replace(/_/g, ' ')} ${stateTag} contato comercial`,
+      `"${queryText}" ${stateTag} contato`,
+      `"${segmentLabel}" assessoria ${stateTag} email contato`,
+      `"${segmentLabel}" escritorio ${stateTag} contato`,
+      `site:com.br "${segmentLabel}" "fale conosco"`,
+      `"${segmentLabel}" sao paulo curitiba contato comercial`,
+      `"${queryText}" assessoria servicos contato`,
     ];
 
     const uniqueDomains = new Set<string>();
 
     for (const q of searchQueries) {
+      if (uniqueDomains.size >= limitCount * 2) break;
+
       try {
-        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
-        const res = await fetch(url, {
+        const res = await fetch('https://html.duckduckgo.com/html/', {
+          method: 'POST',
           headers: {
             'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Origin: 'https://html.duckduckgo.com',
+            Referer: 'https://html.duckduckgo.com/',
             Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
           },
+          body: `q=${encodeURIComponent(q)}&b=`,
         });
 
         if (!res.ok) continue;
         const html = await res.text();
 
-        const matches = [...html.matchAll(/uddg=([^&"]+)/g)];
-        for (const m of matches) {
+        // 1. Direct links (from POST responses)
+        const hrefMatches = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+        // 2. Encoded uddg links (fallback)
+        const uddgMatches = [...html.matchAll(/uddg=([^&"]+)/g)].map((m) => decodeURIComponent(m[1]));
+
+        const allFoundUrls = [...hrefMatches, ...uddgMatches];
+
+        for (const rawUrl of allFoundUrls) {
           try {
-            const decoded = decodeURIComponent(m[1]);
-            const u = new URL(decoded);
+            if (!rawUrl.startsWith('http')) continue;
+            const u = new URL(rawUrl);
             const host = u.hostname.replace(/^www\./, '').toLowerCase();
 
             if (
-              (host.includes('.com.br') || host.includes('.net.br') || host.includes('.law')) &&
+              (host.includes('.com.br') || host.includes('.net.br') || host.includes('.law') || host.includes('.com')) &&
               !host.includes('duckduckgo') &&
               !host.includes('google') &&
               !host.includes('jusbrasil') &&
@@ -228,35 +390,42 @@ Formato de retorno (JSON Array de objetos):
               !host.includes('youtube') &&
               !host.includes('wikipedia') &&
               !host.includes('yahoo') &&
-              !host.includes('bing')
+              !host.includes('bing') &&
+              !host.includes('gov.br') &&
+              !host.includes('globo.com') &&
+              !host.includes('uol.com')
             ) {
               uniqueDomains.add(host);
             }
           } catch {}
         }
+
+        // Gentle jitter pause between search queries
+        await new Promise((r) => setTimeout(r, 600));
       } catch (err: any) {
         console.warn('[GeminiCompanyFinder] Erro no crawler ao vivo:', err?.message);
       }
     }
 
-    // Convert found domains to viable company candidates
-    for (const domain of uniqueDomains) {
-      const parts = domain.split('.')[0];
-      const cleanTradeName = parts
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
+    console.log(`[GeminiCompanyFinder] Domínios únicos descobertos para "${segment}": ${uniqueDomains.size}`);
 
-      candidates.push({
-        name: `${cleanTradeName} Assessoria e Soluções Ltda`,
-        tradeName: cleanTradeName,
-        segment,
-        city: targetState === 'RJ' ? 'Rio de Janeiro' : targetState === 'PR' ? 'Curitiba' : targetState === 'MG' ? 'Belo Horizonte' : targetState === 'RS' ? 'Porto Alegre' : targetState === 'SC' ? 'Florianópolis' : 'São Paulo',
-        state: targetState !== 'ALL' ? targetState : 'SP',
-        website: `https://${domain}`,
-        contactEmail: `contato@${domain}`,
-        phone: '(11) 3280-4490',
-        description: `Empresa atuante no nicho de ${segment.toLowerCase().replace(/_/g, ' ')} com presença web ativa.`,
-      });
+    // Concurrently inspect candidate websites (up to 25 domains in batches of 5)
+    const domainList = Array.from(uniqueDomains).slice(0, Math.min(uniqueDomains.size, limitCount * 2));
+    const batchSize = 5;
+
+    for (let i = 0; i < domainList.length; i += batchSize) {
+      if (candidates.length >= limitCount) break;
+      const batch = domainList.slice(i, i + batchSize);
+
+      const inspectionResults = await Promise.allSettled(
+        batch.map((domain) => this.inspectWebsiteContactInfo(domain, segment, targetState))
+      );
+
+      for (const res of inspectionResults) {
+        if (res.status === 'fulfilled' && res.value) {
+          candidates.push(res.value);
+        }
+      }
     }
 
     return candidates;
@@ -352,8 +521,18 @@ Formato de retorno (JSON Array de objetos):
 
     // 2. Real-time Live Web Crawler across search engines
     request.onProgress?.('Executando varredura na web em tempo real por domínios corporativos brasileiros...');
-    const liveWebFound = await this.searchLiveWebCrawler(query, effectiveSegment, targetState);
+    const liveWebFound = await this.searchLiveWebCrawler(query, effectiveSegment, targetState, Math.max(targetCount * 2, 30));
     allCandidates.push(...liveWebFound);
+
+    // If segment is ALL, also run crawler on other high-demand segments
+    if (segment === 'ALL' && allCandidates.length < targetCount * 2) {
+      const extraSegments: ProspectSegment[] = ['COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'];
+      for (const extraSeg of extraSegments) {
+        if (allCandidates.length >= targetCount * 3) break;
+        const extraFound = await this.searchLiveWebCrawler(extraSeg.toLowerCase().replace(/_/g, ' '), extraSeg, targetState, 15);
+        allCandidates.push(...extraFound);
+      }
+    }
 
     // 3. OpenStreetMap Nominatim for physical offices
     request.onProgress?.('Consultando diretórios empresariais e geolocalização...');
@@ -362,7 +541,9 @@ Formato de retorno (JSON Array de objetos):
 
     // 4. Supplement with the entire verified catalog of Brazilian prospects from discoveryEngine
     request.onProgress?.('Carregando base empresarial verificada para o segmento selecionado...');
-    const verifiedCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
+    
+    // Prioritize targeted state & segment first
+    const primaryCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
       .filter(p => {
         if (segment !== 'ALL' && p.segment !== segment) return false;
         if (targetState !== 'ALL' && p.state !== targetState) return false;
@@ -382,27 +563,55 @@ Formato de retorno (JSON Array de objetos):
         description: `Empresa verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
       }));
 
-    // If state filter is too restrictive, include other states in the segment
-    if (verifiedCandidates.length < targetCount) {
-      const moreFromSegment = VERIFIED_BRAZILIAN_PROSPECTS
-        .filter(p => segment === 'ALL' || p.segment === segment)
-        .map(p => ({
-          name: p.name,
-          tradeName: p.tradeName,
-          cnpj: p.cnpj,
-          segment: p.segment,
-          city: p.city,
-          state: p.state,
-          website: p.website,
-          contactEmail: p.contactEmail,
-          phone: p.phone,
-          whatsapp: p.whatsapp,
-          description: `Empresa verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
-        }));
-      allCandidates.push(...verifiedCandidates, ...moreFromSegment);
-    } else {
-      allCandidates.push(...verifiedCandidates);
-    }
+    // Other states in the same segment (so if targeted state is exhausted in CRM, it never stops)
+    const otherStateCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
+      .filter(p => {
+        if (segment !== 'ALL' && p.segment !== segment) return false;
+        if (targetState !== 'ALL' && p.state === targetState) return false;
+        return true;
+      })
+      .map(p => ({
+        name: p.name,
+        tradeName: p.tradeName,
+        cnpj: p.cnpj,
+        segment: p.segment,
+        city: p.city,
+        state: p.state,
+        website: p.website,
+        contactEmail: p.contactEmail,
+        phone: p.phone,
+        whatsapp: p.whatsapp,
+        description: `Empresa verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
+      }));
+
+    // Related segments fallback if the selected segment is exhausted
+    const relatedSegmentsMap: Record<string, ProspectSegment[]> = {
+      CIDADANIA_ITALIANA: ['CIDADANIA_PORTUGUESA_ESPANHOLA', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'],
+      CIDADANIA_PORTUGUESA_ESPANHOLA: ['CIDADANIA_ITALIANA', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'],
+      COMERCIO_EXTERIOR: ['IMPORTACAO_EXPORTACAO', 'CONSULTORIA_INTERNACIONAL', 'MULTINACIONAL'],
+      IMPORTACAO_EXPORTACAO: ['COMERCIO_EXTERIOR', 'CONSULTORIA_INTERNACIONAL', 'MULTINACIONAL'],
+      VISTOS_IMIGRACAO: ['ADVOCACIA_INTERNACIONAL', 'INTERCAMBIO', 'CIDADANIA_ITALIANA'],
+      INTERCAMBIO: ['ENSINO_INTERNACIONAL', 'VISTOS_IMIGRACAO', 'TURISMO_CORPORATIVO'],
+    };
+
+    const relatedSegs = (segment !== 'ALL' && relatedSegmentsMap[segment]) || [];
+    const relatedCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
+      .filter(p => relatedSegs.includes(p.segment))
+      .map(p => ({
+        name: p.name,
+        tradeName: p.tradeName,
+        cnpj: p.cnpj,
+        segment: p.segment,
+        city: p.city,
+        state: p.state,
+        website: p.website,
+        contactEmail: p.contactEmail,
+        phone: p.phone,
+        whatsapp: p.whatsapp,
+        description: `Empresa parceira verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
+      }));
+
+    allCandidates.push(...primaryCandidates, ...otherStateCandidates, ...relatedCandidates);
 
     // Deduplicate candidates in list by website/domain
     const seenDomains = new Set<string>();

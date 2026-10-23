@@ -162,34 +162,59 @@ export class ProspectingAIAgent {
 
   /**
    * Generates a tailored cold email draft for a specific prospect company.
+   * Employs subject line rotation and contextual tailoring to maximize deliverability and avoid spam filters.
    */
   public generateOutreachEmail(company: ProspectCompany, options?: { appUrl?: string }): GeneratedEmailMessage {
     const appUrl = options?.appUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://traduztudo-os.vercel.app';
     const unsubUrl = `${appUrl}/api/prospecting/unsubscribe?token=${encodeURIComponent(company.contactEmail)}`;
+    const targetName = company.tradeName || company.name || 'sua empresa';
 
-    const subject = `Tradução Juramentada, técnica e simultânea`;
+    // Subject Line Rotation (Spintax / Anti-Fingerprinting to prevent bulk spam filters)
+    const subjectTemplates = [
+      `Tradução Juramentada, técnica e simultânea`,
+      `Tradução Juramentada, técnica e simultânea — Parceria ${targetName}`,
+      `Apresentação institucional & Parceria B2B — ${targetName}`,
+      `Condições especiais em Traduções Juramentadas para a ${targetName}`,
+      `Traduções Juramentadas e Apostilamento de Haia | Traduz Tudo`,
+    ];
+
+    // Pick subject deterministically based on email char code sum so the same lead gets a consistent title
+    const hash = company.contactEmail.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const subject = subjectTemplates[hash % subjectTemplates.length];
+
+    // Contextual pitch depending on segment
+    let segmentPitch = 'Trabalhamos com mais de 15 idiomas, oferecendo traduções juramentadas, técnicas, livres e simultâneas com agilidade e preços altamente competitivos.';
+    if (company.segment === 'CIDADANIA_ITALIANA') {
+      segmentPitch = 'Somos especialistas em traduções juramentadas para processos de cidadania italiana (certidões de inteiro teor, certidões negativas e apostilamento de Haia integrado), com aceitação oficial nos consulados e tribunais italianos.';
+    } else if (company.segment === 'COMERCIO_EXTERIOR' || company.segment === 'IMPORTACAO_EXPORTACAO') {
+      segmentPitch = 'Atendemos demandas de comércio exterior e logística internacional com tradução juramentada e técnica de contratos, invoices, laudos e faturamento direto para PJ com emissão de nota fiscal rápida.';
+    } else if (company.segment === 'VISTOS_IMIGRACAO') {
+      segmentPitch = 'Oferecemos traduções juramentadas e certificadas com prazo de urgência para processos consulares e vistos internacionais (EUA, Europa e Canadá), garantindo total conformidade documental.';
+    }
 
     const bodyText =
-`Olá, tudo bem?
+`Olá equipe da ${targetName}, tudo bem?
 
 Meu nome é Iago Peixoto e represento a Traduz Tudo, uma empresa especializada em soluções linguísticas para pessoas físicas e jurídicas.
 
-Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com sua empresa.
+Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com a ${targetName}.
 
-🌐 Trabalhamos com mais de 15 idiomas, oferecendo:
+${segmentPitch}
 
-- Tradução juramentada, com assinatura física ou digital;
+🌐 Nossos principais diferenciais:
+- Tradução juramentada, com assinatura física ou digital (ICP-Brasil);
 - Tradução técnica e especializada;
 - Tradução livre de documentos;
-- Tradução simultânea.
+- Tradução simultânea para reuniões corporativas;
+- Prazos ágeis e atendimento dedicado via WhatsApp e e-mail.
 
-Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes de documentos.
+Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes corporativos.
 
-Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas para empresas com demandas recorrentes.
+Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela de parceiro com demandas recorrentes.
 
-📌 Segue em anexo PDF contendo os valores para tradução juramentada no idioma italiano.
+📌 Segue em anexo nossa apresentação e tabela de valores para tradução juramentada.
 
-Será um prazer entender as necessidades da sua empresa e apresentar uma proposta personalizada, com excelentes condições comerciais.
+Será um prazer entender as necessidades da ${targetName} e apresentar uma proposta personalizada, com excelentes condições comerciais.
 
 Fico à disposição para conversarmos!
 
@@ -207,18 +232,20 @@ Caso sua empresa não deseje mais receber nossas apresentações, você pode sol
 ${unsubUrl}`;
 
     const bodyHtml =
-`<div>Olá, tudo bem?</div><div><br></div>` +
+`<div>Olá equipe da <strong>${targetName}</strong>, tudo bem?</div><div><br></div>` +
 `<div>Meu nome é <strong>Iago Peixoto</strong> e represento a <strong>Traduz Tudo</strong>, uma empresa especializada em soluções linguísticas para pessoas físicas e jurídicas.</div><div><br></div>` +
-`<div>Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com sua empresa.</div><div><br></div>` +
-`<div>🌐 Trabalhamos com mais de 15 idiomas, oferecendo:</div><div><br></div>` +
-`<div>- Tradução juramentada, com assinatura física ou digital;</div>` +
+`<div>Gostaria de apresentar nossos serviços e colocar nossa equipe à disposição para uma possível parceria com a <strong>${targetName}</strong>.</div><div><br></div>` +
+`<div>${segmentPitch}</div><div><br></div>` +
+`<div>🌐 <strong>Nossos principais diferenciais:</strong></div><div><br></div>` +
+`<div>- Tradução juramentada, com assinatura física ou digital (ICP-Brasil);</div>` +
 `<div>- Tradução técnica e especializada;</div>` +
 `<div>- Tradução livre de documentos;</div>` +
-`<div>- Tradução simultânea.</div><div><br></div>` +
-`<div>Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes de documentos.</div><div><br></div>` +
-`<div>Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas para empresas com demandas recorrentes.</div><div><br></div>` +
-`<div>📌 Segue em anexo PDF contendo os valores para tradução juramentada no idioma italiano.<br></div><div><br></div>` +
-`<div>Será um prazer entender as necessidades da sua empresa e apresentar uma proposta personalizada, com excelentes condições comerciais.</div><div><br></div>` +
+`<div>- Tradução simultânea para reuniões corporativas;</div>` +
+`<div>- Prazos ágeis e atendimento dedicado via WhatsApp e e-mail.</div><div><br></div>` +
+`<div>Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes corporativos.</div><div><br></div>` +
+`<div>Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela exclusiva para parceiros com demandas recorrentes.</div><div><br></div>` +
+`<div>📌 Segue em anexo nossa apresentação e tabela de valores para tradução juramentada.<br></div><div><br></div>` +
+`<div>Será um prazer entender as necessidades da <strong>${targetName}</strong> e apresentar uma proposta personalizada, com excelentes condições comerciais.</div><div><br></div>` +
 `<div>Fico à disposição para conversarmos!</div><div><br></div>` +
 `<div>Atenciosamente,</div><div><br></div>` +
 `<div class="hmail-signature-prefix">--</div>` +

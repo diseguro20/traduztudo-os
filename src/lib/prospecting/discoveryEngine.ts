@@ -2110,7 +2110,7 @@ export class DiscoveryEngine {
           const aiRes = await geminiCompanyFinder.searchAndIngest({
             segment: seg as ProspectSegment,
             targetState: allowedStates[0] || 'ALL',
-            targetCount: Math.min(5, targetCount - result.newCompaniesAdded),
+            targetCount: Math.min(20, targetCount - result.newCompaniesAdded),
           });
 
           for (const c of aiRes.added) {
