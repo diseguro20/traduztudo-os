@@ -19,6 +19,15 @@ async function handleDispatch(req: NextRequest) {
     const settings = await prospectingStorage.getSettings();
     const isManualTrigger = req.headers.get('x-manual-trigger') === 'true' || options.force === true;
 
+    // Strict Safety: If circuit breaker tripped, block all sending to protect SMTP account
+    if (settings.circuitBreakerTripped && !options.force) {
+      return NextResponse.json({
+        success: false,
+        skipped: true,
+        message: 'Disparo bloqueado: Disjuntor de segurança ativo (circuitBreakerTripped = true) para proteger a conta Hostinger.',
+      });
+    }
+
     // Check if auto-send is enabled or manual trigger requested
     if (!settings.autoSendEligible && !isManualTrigger) {
       return NextResponse.json({
