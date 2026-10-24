@@ -285,10 +285,19 @@ export class CampaignEngine {
         });
       }
 
-      // Human-like cadence delay (1.2 to 2.0 seconds) between emails to protect SMTP sender reputation while fitting serverless execution window
+      // Human-like cadence delay (2.5 to 4.0 seconds) between emails to protect SMTP sender reputation and avoid burst filters
       if (result.processedCount < eligibleCompanies.length) {
-        const delayMs = 1200 + Math.floor(Math.random() * 800);
+        const delayMs = 2500 + Math.floor(Math.random() * 1500);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    // Automatic Post-Dispatch Hygiene: purge any bounce notifications immediately from Hostinger IMAP
+    if (result.sentCount > 0) {
+      try {
+        await hostingerMailService.purgeBounces();
+      } catch (err: any) {
+        console.warn('[CampaignEngine] Auto-purge bounces note:', err?.message);
       }
     }
 

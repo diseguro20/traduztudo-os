@@ -150,11 +150,12 @@ Sua missão é identificar EMPRESAS REAIS e ATIVAS no Brasil no seguinte nicho p
 
 REQUISITOS OBRIGATÓRIOS:
 1. Retorne APENAS empresas REAIS que existem no Brasil (assessorias de cidadania, escritórios de advocacia internacional, tradings, agências de intercâmbio, consultorias de visto, multinacionais).
-2. Forneça o domínio real do website (ex: "nostrali.com.br", "docitaly.com.br", "ferraracidadania.com.br", "italianismo.com.br").
-3. Forneça um e-mail de contato corporativo plausível baseado no domínio (ex: contato@dominio.com.br, comercial@dominio.com.br, info@dominio.com.br, adm@dominio.com.br).
+2. Forneça o domínio real do website (ex: "nostrali.com.br", "docitaly.com.br", "ferraracidadania.com.br").
+3. O e-mail corporativo DEVE ser o e-mail OFICIAL divulgado pela empresa em seu site ou canais comerciais (priorize "contato@" ou "comercial@"). NUNCA invente prefixos que possam não existir como "adm@", "suporte@", "info@".
 4. Forneça telefone ou WhatsApp comercial com DDD brasileiro.
 5. Cidade e Estado reais da sede ou filial no Brasil.
 6. Diversifique as empresas! Não retorne apenas empresas de São Paulo capital, inclua Curitiba, Belo Horizonte, Porto Alegre, Florianópolis, Santos, Campinas, Brasília, Rio de Janeiro e outras cidades.
+7. REGRA ANTI-BOUNCE: A empresa e o domínio devem ter estrutura ativa e caixa postal institucional receptiva para evitar erros de entrega.
 
 Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
 [
