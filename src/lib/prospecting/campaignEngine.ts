@@ -2,6 +2,7 @@ import { OutboundMessageRecord, OutreachCampaign, ProspectCompany, ProspectSegme
 import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
 import { hostingerMailService } from '@/lib/services/hostingerMailService';
+import { geminiCompanyFinder } from '@/lib/ai/geminiCompanyFinder';
 import fs from 'fs';
 import path from 'path';
 
@@ -123,7 +124,31 @@ export class CampaignEngine {
       return result;
     }
 
-    const eligibleCompanies = await prospectingStorage.getEligibleProspectsForCampaign(campaignSegment, maxLimit);
+    let eligibleCompanies = await prospectingStorage.getEligibleProspectsForCampaign(campaignSegment, maxLimit);
+
+    // AUTO-REPLENISHMENT: If eligible queue is low, automatically discover fresh companies with Gemini on the fly!
+    if (eligibleCompanies.length < maxLimit) {
+      console.log(`[CampaignEngine] Fila baixa (${eligibleCompanies.length}/${maxLimit}). Buscando novas empresas via Agente IA Gemini automaticamente...`);
+      const needed = Math.max(10, maxLimit - eligibleCompanies.length + 5);
+      const activeSegs = settings.activeSegments && settings.activeSegments.length > 0
+        ? settings.activeSegments
+        : ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR'];
+      const segToDiscover = (campaignSegment !== 'ALL'
+        ? campaignSegment
+        : activeSegs[Math.floor(Math.random() * activeSegs.length)]) as ProspectSegment;
+
+      try {
+        await geminiCompanyFinder.searchAndIngest({
+          segment: segToDiscover,
+          targetState: 'ALL',
+          targetCount: needed,
+        });
+        // Re-query eligible after Gemini discovery
+        eligibleCompanies = await prospectingStorage.getEligibleProspectsForCampaign(campaignSegment, maxLimit);
+      } catch (err: any) {
+        console.warn('[CampaignEngine] Auto-reposição Gemini aviso:', err?.message);
+      }
+    }
 
     console.log(
       `[CampaignEngine] Disparando campanha "${options?.campaignId ? targetCampaign?.name : 'Geral'}". Empresas elegíveis encontradas: ${eligibleCompanies.length}`

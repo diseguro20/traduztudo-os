@@ -4,16 +4,14 @@ on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
     # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
-    # 07:00 BRT (10:00 UTC) -> Busca Diária de Novas Empresas (Gemini Flash + Ingestão CRM)
-    - cron: '0 10 * * *'
-    # 09:30 BRT (12:30 UTC) -> Disparo Lote 1 (50 e-mails)
-    - cron: '30 12 * * *'
-    # 11:30 BRT (14:30 UTC) -> Disparo Lote 2 (50 e-mails)
-    - cron: '30 14 * * *'
-    # 14:00 BRT (17:00 UTC) -> Disparo Lote 3 (50 e-mails)
-    - cron: '0 17 * * *'
-    # 16:30 BRT (19:30 UTC) -> Disparo Lote 4 (50 e-mails)
-    - cron: '30 19 * * *'
+    # Ciclos distribuídos para cobrir a meta diária de 200 e-mails com total segurança SMTP:
+    - cron: '0 10 * * *'   # 07:00 BRT
+    - cron: '0 12 * * *'   # 09:00 BRT
+    - cron: '0 14 * * *'   # 11:00 BRT
+    - cron: '30 16 * * *'  # 13:30 BRT
+    - cron: '0 18 * * *'   # 15:00 BRT
+    - cron: '30 19 * * *'  # 16:30 BRT
+    - cron: '0 21 * * *'   # 18:00 BRT
   workflow_dispatch:
     inputs:
       action:
@@ -30,23 +28,26 @@ jobs:
   prospecting:
     runs-on: ubuntu-latest
     steps:
-      - name: Executar Rotina de Descoberta Matinal (Gemini Flash + CRM Ingestion)
-        if: github.event.schedule == '0 10 * * *' || github.event.inputs.action == 'discover' || github.event.inputs.action == 'all'
+      - name: Descoberta Contínua de Novas Empresas (Gemini Flash AI)
+        if: github.event.inputs.action != 'dispatch'
         run: |
-          echo "Iniciando Descoberta Diária de Empresas com Agente IA Gemini..."
-          for seg in "CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR" "VISTOS_IMIGRACAO"; do
-            echo "Buscando segmento: $seg..."
+          echo "Iniciando Descoberta Contínua de Empresas com Gemini AI..."
+          SEGMENTS=("CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR" "VISTOS_IMIGRACAO")
+          # Sorteia 2 segmentos por ciclo para variedade constante
+          SHUFFLED=($(shuf -e "${SEGMENTS[@]}"))
+          for seg in "${SHUFFLED[0]}" "${SHUFFLED[1]}"; do
+            echo "Buscando nicho: $seg..."
             curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/search/ai" \
               -H "Content-Type: application/json" \
-              -d "{\"segment\": \"$seg\", \"targetCount\": 25}"
+              -d "{\"segment\": \"$seg\", \"targetCount\": 15}"
             sleep 3
           done
 
-      - name: Executar Disparo de Campanha (Lote Controlado 50 e-mails com Anexo PDF)
-        if: github.event.schedule != '0 10 * * *' || github.event.inputs.action == 'dispatch' || github.event.inputs.action == 'all'
+      - name: Disparo Controlado de Campanha (Hostinger SMTP + PDF Anexo)
+        if: github.event.inputs.action != 'discover'
         run: |
-          echo "Iniciando Disparo de E-mails via Hostinger SMTP (10 sub-lotes de 5 e-mails para máxima estabilidade)..."
-          for i in $(seq 1 10); do
+          echo "Iniciando Disparo de E-mails via Hostinger SMTP (sub-lotes com anexo PDF)..."
+          for i in $(seq 1 6); do
             echo "Disparando sub-lote $i de 5 e-mails..."
             curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
               -H "Content-Type: application/json" \
