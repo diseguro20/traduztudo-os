@@ -3,17 +3,17 @@ name: Automação Diária de Prospecção & Disparo TraduzTudo OS
 on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
-    # Segunda a Sexta-feira:
-    # 07:00 BRT (10:00 UTC) -> Busca Diária de Novas Empresas
-    - cron: '0 10 * * 1-5'
+    # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
+    # 07:00 BRT (10:00 UTC) -> Busca Diária de Novas Empresas (100 empresas)
+    - cron: '0 10 * * *'
     # 09:30 BRT (12:30 UTC) -> Disparo Lote 1 (50 e-mails)
-    - cron: '30 12 * * 1-5'
+    - cron: '30 12 * * *'
     # 11:30 BRT (14:30 UTC) -> Disparo Lote 2 (50 e-mails)
-    - cron: '30 14 * * 1-5'
+    - cron: '30 14 * * *'
     # 14:00 BRT (17:00 UTC) -> Disparo Lote 3 (50 e-mails)
-    - cron: '0 17 * * 1-5'
+    - cron: '0 17 * * *'
     # 16:30 BRT (19:30 UTC) -> Disparo Lote 4 (50 e-mails)
-    - cron: '30 19 * * 1-5'
+    - cron: '30 19 * * *'
   workflow_dispatch:
     inputs:
       action:
@@ -30,20 +30,27 @@ jobs:
   prospecting:
     runs-on: ubuntu-latest
     steps:
-      - name: Executar Rotina de Descoberta Matinal
-        if: github.event.schedule == '0 10 * * 1-5' || github.event.inputs.action == 'discover' || github.event.inputs.action == 'all'
+      - name: Executar Rotina de Descoberta Matinal (Gemini Flash + CRM Ingestion)
+        if: github.event.schedule == '0 10 * * *' || github.event.inputs.action == 'discover' || github.event.inputs.action == 'all'
         run: |
-          echo "Iniciando Descoberta Diária de Empresas..."
-          curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/discover" \
-            -H "Content-Type: application/json" \
-            -H "x-manual-trigger: true" \
-            -d '{"targetCount": 100}'
+          echo "Iniciando Descoberta Diária de Empresas com Agente IA Gemini..."
+          for seg in "CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR"; do
+            echo "Buscando segmento: $seg..."
+            curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/search/ai" \
+              -H "Content-Type: application/json" \
+              -d "{\"segment\": \"$seg\", \"targetCount\": 25}"
+            sleep 3
+          done
 
-      - name: Executar Disparo de Campanha (Lote Controlado 50 e-mails)
-        if: github.event.schedule != '0 10 * * 1-5' || github.event.inputs.action == 'dispatch' || github.event.inputs.action == 'all'
+      - name: Executar Disparo de Campanha (Lote Controlado 50 e-mails com Anexo PDF)
+        if: github.event.schedule != '0 10 * * *' || github.event.inputs.action == 'dispatch' || github.event.inputs.action == 'all'
         run: |
-          echo "Iniciando Disparo de E-mails via Hostinger SMTP..."
-          curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
-            -H "Content-Type: application/json" \
-            -H "x-manual-trigger: true" \
-            -d '{"limitCount": 50}'
+          echo "Iniciando Disparo de E-mails via Hostinger SMTP (4 sub-lotes para evitar timeout)..."
+          for i in 1 2 3 4; do
+            echo "Disparando sub-lote $i de 12 e-mails..."
+            curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
+              -H "Content-Type: application/json" \
+              -H "x-manual-trigger: true" \
+              -d '{"limitCount": 12}'
+            sleep 4
+          done

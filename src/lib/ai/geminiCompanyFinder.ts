@@ -70,25 +70,55 @@ export class GeminiCompanyFinder {
         // Fallback to DNS over HTTPS
       }
 
-      // 2. Google DNS over HTTPS (checks MX or A record fallback according to RFC 5321)
-      const res = await fetch(`https://dns.google/resolve?name=${clean}&type=MX`, {
-        headers: { Accept: 'application/dns-json' },
-      });
-      if (!res.ok) return true; // Fail-open on DNS network hiccup
-      const data = await res.json();
-      const hasMx =
-        data.Status === 0 &&
-        Array.isArray(data.Answer) &&
-        data.Answer.some((a: any) => a.type === 15 || a.type === 1 || a.type === 5);
+      // 2. Google DNS over HTTPS (checks MX first, then A record fallback according to RFC 5321)
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), 2500);
 
-      return hasMx;
+      try {
+        const res = await fetch(`https://dns.google/resolve?name=${clean}&type=MX`, {
+          signal: ctrl.signal,
+          headers: { Accept: 'application/dns-json' },
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (
+            data.Status === 0 &&
+            Array.isArray(data.Answer) &&
+            data.Answer.some((a: any) => a.type === 15 || a.type === 1 || a.type === 5)
+          ) {
+            return true;
+          }
+        }
+      } catch {
+        // Continue to A record check
+      }
+
+      // 3. Check A record fallback
+      try {
+        const ctrlA = new AbortController();
+        const timeoutA = setTimeout(() => ctrlA.abort(), 2000);
+        const resA = await fetch(`https://dns.google/resolve?name=${clean}&type=A`, {
+          signal: ctrlA.signal,
+          headers: { Accept: 'application/dns-json' },
+        });
+        clearTimeout(timeoutA);
+        if (resA.ok) {
+          const dataA = await resA.json();
+          if (dataA.Status === 0 && Array.isArray(dataA.Answer) && dataA.Answer.length > 0) {
+            return true;
+          }
+        }
+      } catch {}
+
+      return true; // Fail-open to avoid losing valid prospects
     } catch {
-      return true; // Fail-open to avoid dropping legitimate leads
+      return true; // Fail-open
     }
   }
 
   /**
-   * Discovers companies using Gemini Generative AI (1.5 Flash)
+   * Discovers companies using Gemini Generative AI (High-yield Flash Lite)
    */
   public async searchWithGemini(
     params: {
@@ -109,43 +139,24 @@ export class GeminiCompanyFinder {
       return [];
     }
 
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      // Use gemini-flash-lite-latest or gemini-flash-latest for high-speed structured generation
-      let model;
-      try {
-        model = genAI.getGenerativeModel({
-          model: 'gemini-flash-lite-latest',
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-      } catch {
-        model = genAI.getGenerativeModel({
-          model: 'gemini-flash-latest',
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-      }
+    const targetNum = Math.min(Math.max(params.targetCount || 20, 10), 40);
 
-      const prompt = `Você é um Agente Especialista em Pesquisa e Inteligência de Mercado B2B no Brasil.
+    const prompt = `Você é um Agente Especialista em Pesquisa e Inteligência de Mercado B2B no Brasil.
 Sua missão é identificar EMPRESAS REAIS e ATIVAS no Brasil no seguinte nicho para serviços de tradução juramentada e soluções corporativas:
 - Segmento: ${params.segment}
-- Estado de foco: ${params.targetState === 'ALL' ? 'Brasil (qualquer estado, priorizando SP, RJ, PR, MG, RS, SC, DF)' : params.targetState}
-- Palavras-chave / Instrução do usuário: ${params.query || 'Encontrar empresas ativas no nicho com website e e-mail corporativo'}
-- Quantidade desejada: ${params.targetCount} empresas
+- Estado de foco: ${params.targetState === 'ALL' ? 'Brasil amplo (diversifique entre SP, RJ, PR, MG, RS, SC, DF, BA, GO)' : params.targetState}
+- Palavras-chave / Instrução: ${params.query || 'Encontrar empresas ativas no nicho com website institucional e e-mail corporativo'}
+- Quantidade necessária: ${targetNum} empresas distintas e reais
 
 REQUISITOS OBRIGATÓRIOS:
-1. Retorne APENAS empresas REAIS que existem no Brasil (assessorias, escritórios de advocacia, tradings, agências de intercâmbio, etc.).
-2. Forneça o domínio real do website (ex: "nostrali.com.br", "docitaly.com.br", "ferraracidadania.com.br").
-3. Forneça um e-mail de contato corporativo plausível baseado no domínio (ex: contato@dominio.com.br, comercial@dominio.com.br, info@dominio.com.br).
+1. Retorne APENAS empresas REAIS que existem no Brasil (assessorias de cidadania, escritórios de advocacia internacional, tradings, agências de intercâmbio, consultorias de visto, multinacionais).
+2. Forneça o domínio real do website (ex: "nostrali.com.br", "docitaly.com.br", "ferraracidadania.com.br", "italianismo.com.br").
+3. Forneça um e-mail de contato corporativo plausível baseado no domínio (ex: contato@dominio.com.br, comercial@dominio.com.br, info@dominio.com.br, adm@dominio.com.br).
 4. Forneça telefone ou WhatsApp comercial com DDD brasileiro.
 5. Cidade e Estado reais da sede ou filial no Brasil.
+6. Diversifique as empresas! Não retorne apenas empresas de São Paulo capital, inclua Curitiba, Belo Horizonte, Porto Alegre, Florianópolis, Santos, Campinas, Brasília, Rio de Janeiro e outras cidades.
 
-Formato de retorno (JSON Array de objetos):
+Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
 [
   {
     "name": "Razão Social Completa Ltda",
@@ -162,27 +173,41 @@ Formato de retorno (JSON Array de objetos):
   }
 ]`;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      const parsed = JSON.parse(text);
+    const modelNames = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
-      if (Array.isArray(parsed)) {
-        return parsed.map(c => ({
-          name: String(c.name || '').trim(),
-          tradeName: String(c.tradeName || c.name || '').trim(),
-          cnpj: c.cnpj ? String(c.cnpj).trim() : undefined,
-          segment: params.segment,
-          city: String(c.city || 'São Paulo').trim(),
-          state: String(c.state || 'SP').trim().toUpperCase(),
-          website: String(c.website || '').trim(),
-          contactEmail: String(c.contactEmail || '').trim().toLowerCase(),
-          phone: c.phone ? String(c.phone).trim() : undefined,
-          whatsapp: c.whatsapp ? String(c.whatsapp).trim() : undefined,
-          description: c.description ? String(c.description).trim() : undefined,
-        }));
+    for (const modelName of modelNames) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.65,
+            responseMimeType: 'application/json',
+          },
+        });
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const parsed = JSON.parse(text);
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(c => ({
+            name: String(c.name || '').trim(),
+            tradeName: String(c.tradeName || c.name || '').trim(),
+            cnpj: c.cnpj ? String(c.cnpj).trim() : undefined,
+            segment: params.segment,
+            city: String(c.city || 'São Paulo').trim(),
+            state: String(c.state || 'SP').trim().toUpperCase(),
+            website: String(c.website || '').trim(),
+            contactEmail: String(c.contactEmail || '').trim().toLowerCase(),
+            phone: c.phone ? String(c.phone).trim() : undefined,
+            whatsapp: c.whatsapp ? String(c.whatsapp).trim() : undefined,
+            description: c.description ? String(c.description).trim() : undefined,
+          }));
+        }
+      } catch (err: any) {
+        console.warn(`[GeminiCompanyFinder] Tentativa com modelo ${modelName} falhou:`, err?.message);
       }
-    } catch (err: any) {
-      console.warn('[GeminiCompanyFinder] Erro na chamada Gemini API:', err?.message);
     }
 
     return [];
@@ -525,31 +550,35 @@ Formato de retorno (JSON Array de objetos):
     if (request.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
       request.onProgress?.('Consultando Google Gemini Flash para busca e estruturação no nicho...');
       const geminiFound = await this.searchWithGemini(
-        { query, segment: effectiveSegment, targetState, targetCount: Math.min(targetCount, 15) },
+        { query, segment: effectiveSegment, targetState, targetCount: Math.max(targetCount, 25) },
         request.apiKey
       );
       allCandidates.push(...geminiFound);
-    }
 
-    // 2. Real-time Live Web Crawler across search engines
-    request.onProgress?.('Executando varredura na web em tempo real por domínios corporativos brasileiros...');
-    const liveWebFound = await this.searchLiveWebCrawler(query, effectiveSegment, targetState, Math.max(targetCount * 2, 30));
-    allCandidates.push(...liveWebFound);
-
-    // If segment is ALL, also run crawler on other high-demand segments
-    if (segment === 'ALL' && allCandidates.length < targetCount * 2) {
-      const extraSegments: ProspectSegment[] = ['COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'];
-      for (const extraSeg of extraSegments) {
-        if (allCandidates.length >= targetCount * 3) break;
-        const extraFound = await this.searchLiveWebCrawler(extraSeg.toLowerCase().replace(/_/g, ' '), extraSeg, targetState, 15);
-        allCandidates.push(...extraFound);
+      // If segment is ALL or we need more leads, query another key segment with Gemini
+      if ((segment === 'ALL' || allCandidates.length < targetCount) && allCandidates.length < 50) {
+        const secondarySegment: ProspectSegment = effectiveSegment === 'CIDADANIA_ITALIANA' ? 'ADVOCACIA_INTERNACIONAL' : 'CIDADANIA_ITALIANA';
+        const secondBatch = await this.searchWithGemini(
+          { query: '', segment: secondarySegment, targetState, targetCount: 20 },
+          request.apiKey
+        );
+        allCandidates.push(...secondBatch);
       }
     }
 
-    // 3. OpenStreetMap Nominatim for physical offices
-    request.onProgress?.('Consultando diretórios empresariais e geolocalização...');
-    const nominatimFound = await this.searchWithNominatim(query, targetState, effectiveSegment, 15);
-    allCandidates.push(...nominatimFound);
+    // 2. Real-time Live Web Crawler (fallback only if Gemini returned fewer than targetCount)
+    if (allCandidates.length < targetCount) {
+      request.onProgress?.('Executando varredura na web em tempo real por domínios corporativos brasileiros...');
+      const liveWebFound = await this.searchLiveWebCrawler(query, effectiveSegment, targetState, Math.max(targetCount - allCandidates.length, 15));
+      allCandidates.push(...liveWebFound);
+    }
+
+    // 3. OpenStreetMap Nominatim for physical offices (fallback only if still below targetCount)
+    if (allCandidates.length < targetCount) {
+      request.onProgress?.('Consultando diretórios empresariais e geolocalização...');
+      const nominatimFound = await this.searchWithNominatim(query, targetState, effectiveSegment, 10);
+      allCandidates.push(...nominatimFound);
+    }
 
     // 4. Supplement with the entire verified catalog of Brazilian prospects from discoveryEngine
     request.onProgress?.('Carregando base empresarial verificada para o segmento selecionado...');
