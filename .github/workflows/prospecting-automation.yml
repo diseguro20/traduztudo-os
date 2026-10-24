@@ -4,7 +4,7 @@ on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
     # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
-    # 07:00 BRT (10:00 UTC) -> Busca Diária de Novas Empresas (100 empresas)
+    # 07:00 BRT (10:00 UTC) -> Busca Diária de Novas Empresas (Gemini Flash + Ingestão CRM)
     - cron: '0 10 * * *'
     # 09:30 BRT (12:30 UTC) -> Disparo Lote 1 (50 e-mails)
     - cron: '30 12 * * *'
@@ -34,7 +34,7 @@ jobs:
         if: github.event.schedule == '0 10 * * *' || github.event.inputs.action == 'discover' || github.event.inputs.action == 'all'
         run: |
           echo "Iniciando Descoberta Diária de Empresas com Agente IA Gemini..."
-          for seg in "CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR"; do
+          for seg in "CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR" "VISTOS_IMIGRACAO"; do
             echo "Buscando segmento: $seg..."
             curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/search/ai" \
               -H "Content-Type: application/json" \
@@ -45,12 +45,12 @@ jobs:
       - name: Executar Disparo de Campanha (Lote Controlado 50 e-mails com Anexo PDF)
         if: github.event.schedule != '0 10 * * *' || github.event.inputs.action == 'dispatch' || github.event.inputs.action == 'all'
         run: |
-          echo "Iniciando Disparo de E-mails via Hostinger SMTP (4 sub-lotes para evitar timeout)..."
-          for i in 1 2 3 4; do
-            echo "Disparando sub-lote $i de 12 e-mails..."
+          echo "Iniciando Disparo de E-mails via Hostinger SMTP (10 sub-lotes de 5 e-mails para máxima estabilidade)..."
+          for i in $(seq 1 10); do
+            echo "Disparando sub-lote $i de 5 e-mails..."
             curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
               -H "Content-Type: application/json" \
               -H "x-manual-trigger: true" \
-              -d '{"limitCount": 12}'
+              -d '{"limitCount": 5}'
             sleep 4
           done

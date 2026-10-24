@@ -28,10 +28,10 @@ async function handleDispatch(req: NextRequest) {
       });
     }
 
-    // Enforce safe batch size: up to 50 emails max per batch (4 batches/day = 200 emails/day)
-    // Guarantees execution completes within Vercel's maxDuration and stays strictly below Hostinger's 100/hr limit
-    const batchLimit = Math.min(50, Math.max(25, Math.ceil((settings.dailySendLimit || 200) / 4)));
-    const limitCount = options.limitCount || batchLimit;
+    // Enforce safe serverless batch size: 5 to 6 emails per invocation (~15s)
+    // Guarantees execution stays well below Vercel's timeout and prevents SMTP socket drops
+    const batchLimit = Math.min(6, Math.max(3, Math.ceil((settings.dailySendLimit || 200) / 40)));
+    const limitCount = Math.min(8, options.limitCount || batchLimit);
 
     const result = await campaignEngine.executeCampaignDispatch({
       ...options,
