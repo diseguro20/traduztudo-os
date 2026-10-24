@@ -214,6 +214,21 @@ export class EmailStorage {
   }
 
   /**
+   * Completely deletes an email from storage.
+   */
+  public async deleteEmail(id: string): Promise<boolean> {
+    memoryStore.delete(id);
+    try {
+      if (db) {
+        await deleteDoc(doc(db, COLLECTION_NAME, id));
+      }
+    } catch (e) {
+      console.warn('[EmailStorage] Firestore deleteEmail error:', e);
+    }
+    return true;
+  }
+
+  /**
    * LGPD: Deletes or anonymizes an email message.
    */
   public async deleteOrAnonymize(id: string): Promise<boolean> {

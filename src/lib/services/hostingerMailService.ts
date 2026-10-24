@@ -110,6 +110,224 @@ export class HostingerMailService {
   }
 
   /**
+   * Connects to Hostinger IMAP (imap.hostinger.com:993), scans INBOX for Mail Delivery System
+   * bounce / non-delivery notifications, extracts any bounced recipient emails, flags them
+   * as \Deleted, and EXPUNGEs them permanently so they do not clutter the inbox.
+   */
+  public async purgeBounces(): Promise<{
+    success: boolean;
+    bouncesDeleted: number;
+    extractedFailedEmails: string[];
+    error?: string;
+  }> {
+    const smtpPass = process.env.HOSTINGER_SMTP_PASS;
+    const smtpUser = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
+    const imapHost = 'imap.hostinger.com';
+    const imapPort = 993;
+
+    if (!smtpPass) {
+      return {
+        success: false,
+        bouncesDeleted: 0,
+        extractedFailedEmails: [],
+        error: 'HOSTINGER_SMTP_PASS não configurada.',
+      };
+    }
+
+    try {
+      const tls = await import('tls');
+
+      return new Promise((resolve) => {
+        const client = tls.connect({ host: imapHost, port: imapPort });
+        client.setEncoding('utf8');
+
+        let rawBuffer = '';
+        let step = 0;
+        const bounceSeqList: number[] = [];
+        const extractedEmails: string[] = [];
+        let isResolved = false;
+
+        const safeResolve = (result: any) => {
+          if (!isResolved) {
+            isResolved = true;
+            try {
+              client.destroy();
+            } catch {}
+            resolve(result);
+          }
+        };
+
+        const timeoutId = setTimeout(() => {
+          safeResolve({
+            success: bounceSeqList.length > 0,
+            bouncesDeleted: bounceSeqList.length,
+            extractedFailedEmails: extractedEmails,
+            error: 'Timeout ao limpar mensagens de bounce via IMAP.',
+          });
+        }, 25000);
+
+        client.on('error', (err) => {
+          clearTimeout(timeoutId);
+          safeResolve({
+            success: false,
+            bouncesDeleted: 0,
+            extractedFailedEmails: [],
+            error: err.message,
+          });
+        });
+
+        client.on('data', (chunk) => {
+          rawBuffer += chunk;
+
+          // Step 0: Greeting
+          if (step === 0 && rawBuffer.includes('* OK')) {
+            step = 1;
+            rawBuffer = '';
+            client.write(`T1 LOGIN "${smtpUser}" "${smtpPass}"\r\n`);
+            return;
+          }
+
+          // Step 1: Login Response
+          if (step === 1 && rawBuffer.includes('T1 OK')) {
+            step = 2;
+            rawBuffer = '';
+            client.write(`T2 SELECT "INBOX"\r\n`);
+            return;
+          } else if (step === 1 && (rawBuffer.includes('T1 NO') || rawBuffer.includes('T1 BAD'))) {
+            clearTimeout(timeoutId);
+            safeResolve({
+              success: false,
+              bouncesDeleted: 0,
+              extractedFailedEmails: [],
+              error: 'Falha de autenticação IMAP no Hostinger.',
+            });
+            return;
+          }
+
+          // Step 2: Select INBOX Response
+          if (step === 2 && rawBuffer.includes('T2 OK')) {
+            step = 3;
+            rawBuffer = '';
+            client.write(`T3 SEARCH ALL\r\n`);
+            return;
+          }
+
+          // Step 3: Search Response
+          if (step === 3 && rawBuffer.includes('T3 OK')) {
+            const searchMatch = rawBuffer.match(/\*\s+SEARCH\s+(.*)/i);
+            const rawNumbers = searchMatch && searchMatch[1]
+              ? searchMatch[1].trim().split(/\s+/).map((n) => parseInt(n, 10)).filter((n) => !isNaN(n))
+              : [];
+
+            rawBuffer = '';
+
+            if (rawNumbers.length === 0) {
+              clearTimeout(timeoutId);
+              client.write(`T7 LOGOUT\r\n`);
+              safeResolve({
+                success: true,
+                bouncesDeleted: 0,
+                extractedFailedEmails: [],
+              });
+              return;
+            }
+
+            step = 4;
+            const minSeq = Math.max(1, rawNumbers[rawNumbers.length - 1] - 200);
+            const maxSeq = rawNumbers[rawNumbers.length - 1];
+            client.write(`T4 FETCH ${minSeq}:${maxSeq} (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT TO DATE)] BODY.PEEK[TEXT]<0.1200>)\r\n`);
+            return;
+          }
+
+          // Step 4: Fetch Response
+          if (step === 4 && rawBuffer.includes('T4 OK')) {
+            const items = rawBuffer.split(/\*\s+(\d+)\s+FETCH/gi);
+            for (let i = 1; i < items.length; i += 2) {
+              const seq = parseInt(items[i], 10);
+              const content = items[i + 1] || '';
+
+              const isBounce =
+                /from:.*(?:mail delivery system|mailer-daemon|postmaster)/i.test(content) ||
+                /subject:.*(?:undelivered mail|delivery status notification|failure notice|returned to sender)/i.test(content) ||
+                /Action:\s*failed/i.test(content) ||
+                /Status:\s*5\.\d+\.\d+/i.test(content);
+
+              if (isBounce && !isNaN(seq)) {
+                if (!bounceSeqList.includes(seq)) {
+                  bounceSeqList.push(seq);
+                }
+
+                const emailMatches = content.match(/<([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>/g);
+                if (emailMatches) {
+                  for (const em of emailMatches) {
+                    const clean = em.replace(/[<>]/g, '').toLowerCase().trim();
+                    if (
+                      !clean.includes('traduztudo.com') &&
+                      !clean.includes('hostinger') &&
+                      !clean.includes('postmaster') &&
+                      !clean.includes('mailer-daemon') &&
+                      !extractedEmails.includes(clean)
+                    ) {
+                      extractedEmails.push(clean);
+                    }
+                  }
+                }
+              }
+            }
+
+            rawBuffer = '';
+
+            if (bounceSeqList.length === 0) {
+              clearTimeout(timeoutId);
+              client.write(`T7 LOGOUT\r\n`);
+              safeResolve({
+                success: true,
+                bouncesDeleted: 0,
+                extractedFailedEmails: [],
+              });
+              return;
+            }
+
+            step = 5;
+            client.write(`T5 STORE ${bounceSeqList.join(',')} +FLAGS (\\Deleted)\r\n`);
+            return;
+          }
+
+          // Step 5: Store Flags Response
+          if (step === 5 && rawBuffer.includes('T5 OK')) {
+            step = 6;
+            rawBuffer = '';
+            client.write(`T6 EXPUNGE\r\n`);
+            return;
+          }
+
+          // Step 6: Expunge Response
+          if (step === 6 && rawBuffer.includes('T6 OK')) {
+            step = 7;
+            rawBuffer = '';
+            client.write(`T7 LOGOUT\r\n`);
+            clearTimeout(timeoutId);
+            safeResolve({
+              success: true,
+              bouncesDeleted: bounceSeqList.length,
+              extractedFailedEmails: extractedEmails,
+            });
+            return;
+          }
+        });
+      });
+    } catch (err: any) {
+      console.warn('[HostingerMailService] Erro ao limpar bounces:', err?.message);
+      return {
+        success: false,
+        bouncesDeleted: 0,
+        extractedFailedEmails: [],
+        error: err?.message,
+      };
+    }
+  }
+
+  /**
    * Retrieves current configuration status for Hostinger integration.
    */
   public getConfigStatus() {

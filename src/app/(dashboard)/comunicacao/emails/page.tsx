@@ -65,6 +65,29 @@ export default function CentralEmailsPage() {
   // Lead conversion feedback
   const [convertedLeadId, setConvertedLeadId] = useState<string | null>(null);
 
+  // Bounce purge state
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
+
+  const handlePurgeBounces = async () => {
+    try {
+      setIsPurging(true);
+      setPurgeMessage(null);
+      const res = await fetch('/api/email/purge-bounces', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setPurgeMessage(data.message || `${data.bouncesDeleted} e-mails de erro excluídos com sucesso.`);
+        await fetchEmails();
+      } else {
+        alert(data.error || 'Erro ao limpar mensagens de erro.');
+      }
+    } catch (err: any) {
+      alert('Falha ao conectar com o serviço de limpeza.');
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   const fetchEmails = async () => {
     try {
       setIsLoading(true);
@@ -323,6 +346,18 @@ export default function CentralEmailsPage() {
           <Button
             size="sm"
             variant="outline"
+            onClick={handlePurgeBounces}
+            disabled={isPurging || isLoading}
+            className="text-xs gap-1.5 border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            title="Excluir notificações de falha (Undelivered Mail Returned to Sender) da caixa de entrada do Hostinger Webmail"
+          >
+            <Trash2 className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
+            {isPurging ? 'Excluindo erros...' : 'Excluir E-mails com Erro'}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
             onClick={fetchEmails}
             disabled={isLoading}
             className="text-xs gap-1.5"
@@ -332,6 +367,22 @@ export default function CentralEmailsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Purge Message Feedback Banner */}
+      {purgeMessage && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs px-4 py-3 rounded-xl flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{purgeMessage}</span>
+          </div>
+          <button
+            onClick={() => setPurgeMessage(null)}
+            className="text-emerald-600 hover:text-emerald-800 font-bold ml-4"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

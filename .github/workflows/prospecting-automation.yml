@@ -55,3 +55,9 @@ jobs:
               -d '{"limitCount": 5}'
             sleep 4
           done
+
+      - name: Limpar Bounces e Notificações de Erro do Webmail Hostinger
+        run: |
+          echo "Limpando notificações de entrega/erro da caixa de entrada do Hostinger Webmail..."
+          curl -s -X POST "https://traduztudo-os.vercel.app/api/email/purge-bounces" \
+            -H "Content-Type: application/json"
