@@ -37,10 +37,28 @@ async function handleDispatch(req: NextRequest) {
       });
     }
 
-    // Enforce safe serverless batch size: 5 to 6 emails per invocation (~15s)
-    // Guarantees execution stays well below Vercel's timeout and prevents SMTP socket drops
-    const batchLimit = Math.min(6, Math.max(3, Math.ceil((settings.dailySendLimit || 200) / 40)));
-    const limitCount = Math.min(8, options.limitCount || batchLimit);
+    // Strict Anti-Suspension: Daily Limit Protection
+    const stats = await prospectingStorage.getDashboardStats();
+    const dailyLimit = settings.dailySendLimit || 70;
+    if (stats.emailsSentToday >= dailyLimit && !options.force) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        message: `Limite diário de envios atingido (${stats.emailsSentToday}/${dailyLimit} enviados hoje). Envio automático pausado até amanhã para garantir segurança total da conta Hostinger contra bloqueios.`,
+        stats: {
+          emailsSentToday: stats.emailsSentToday,
+          dailySendLimit: dailyLimit,
+        },
+      });
+    }
+
+    // Enforce safe serverless batch size: 3 to 4 emails per invocation
+    // Guarantees execution stays well below Vercel's timeout and protects Hostinger SMTP reputation
+    const remainingToday = Math.max(1, dailyLimit - (stats.emailsSentToday || 0));
+    const batchLimit = Math.min(4, Math.max(2, Math.ceil(dailyLimit / 25)));
+    const limitCount = options.force
+      ? Math.min(4, options.limitCount || batchLimit)
+      : Math.min(remainingToday, options.limitCount || batchLimit);
 
     const result = await campaignEngine.executeCampaignDispatch({
       ...options,

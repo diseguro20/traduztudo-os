@@ -92,7 +92,7 @@ export function ProspectingLiveMonitor({
       setCountdownSeconds((prev) => {
         if (prev <= 1) {
           if (!isRunningCycle) {
-            handleRunFullCycle();
+            handleRunFullCycle(false);
           }
           return cycleIntervalMinutes * 60;
         }
@@ -143,21 +143,20 @@ export function ProspectingLiveMonitor({
     return () => clearInterval(interval);
   }, [autoRefresh, onRefresh]);
 
-  // Execute full cycle (Busca IA + Disparo Hostinger SMTP + Purge Bounces)
-  const handleRunFullCycle = async () => {
+  // Execute full cycle (Busca IA + Disparo Hostinger SMTP + Higienização Inteligente)
+  const handleRunFullCycle = async (isManual: boolean = false) => {
     if (isRunningCycle) return;
     setIsRunningCycle(true);
     setCycleStep(1);
     setCycleResultSummary(null);
     setCycleLogs([
-      `[${new Date().toLocaleTimeString('pt-BR')}] Iniciando Ciclo Integrado Diário...`,
-      `[Passo 1/4] Buscando empresas brasileiras reais via Agente Gemini AI...`,
+      `[${new Date().toLocaleTimeString('pt-BR')}] Iniciando Ciclo Integrado Diário ${isManual ? '(Manual)' : '(Piloto Automático)'}...`,
+      `[Passo 1/3] Buscando empresas brasileiras reais via Agente Gemini AI...`,
     ]);
 
     try {
       // Passo 1: Busca IA (Gemini) -> rota dedicada /api/prospecting/search/ai (~4s)
       setCycleStep(1);
-      setCycleLogs((prev) => [...prev, `[Passo 1/3] Buscando novas empresas reais com IA Gemini...`]);
       let discoveredCount = 0;
       try {
         const segs = ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO'];
@@ -174,42 +173,51 @@ export function ProspectingLiveMonitor({
         setCycleLogs((prev) => [...prev, `[Passo 1/3] Busca IA aviso: ${e?.message || 'Falha na busca'}`]);
       }
 
-      // Passo 2: Disparo SMTP Hostinger com PDF anexo -> rota dedicada /api/prospecting/cron/dispatch (~6s)
+      // Passo 2: Disparo SMTP Hostinger com PDF anexo (892 KB) -> rota dedicada /api/prospecting/cron/dispatch
       setCycleStep(2);
-      setCycleLogs((prev) => [...prev, `[Passo 2/3] Conectando ao SMTP Hostinger e disparando lote com PDF anexo...`]);
+      setCycleLogs((prev) => [...prev, `[Passo 2/3] Conectando ao SMTP Hostinger (cadência anti-bloqueio de 10-18s por envio)...`]);
       let sentCount = 0;
       try {
         const resDispatch = await fetch('/api/prospecting/cron/dispatch', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-manual-trigger': 'true',
+            'x-manual-trigger': isManual ? 'true' : 'false',
           },
-          body: JSON.stringify({ limitCount: 3, force: true }),
+          body: JSON.stringify({ limitCount: 3, force: false }),
         });
         const dataDispatch = await resDispatch.json();
-        sentCount = dataDispatch.result?.sentCount || 0;
-        setCycleLogs((prev) => [...prev, `[Passo 2/3] Sucesso! ${sentCount} e-mails entregues com Apresentação PDF via contato@traduztudo.com.`]);
+        if (dataDispatch.skipped) {
+          setCycleLogs((prev) => [...prev, `[Passo 2/3] 🛡️ Proteção Ativa: ${dataDispatch.message}`]);
+        } else if (dataDispatch.result) {
+          sentCount = dataDispatch.result?.sentCount || 0;
+          setCycleLogs((prev) => [...prev, `[Passo 2/3] Sucesso! ${sentCount} e-mails entregues com Apresentação PDF via contato@traduztudo.com.`]);
+        } else {
+          setCycleLogs((prev) => [...prev, `[Passo 2/3] Aviso: ${dataDispatch.message || 'Sem disparos no lote'}`]);
+        }
       } catch (e: any) {
         setCycleLogs((prev) => [...prev, `[Passo 2/3] Erro no disparo: ${e?.message || 'Falha SMTP'}`]);
       }
 
-      // Passo 3: Higienização IMAP (Webmail Hostinger) -> rota dedicada /api/email/purge-bounces (~3s)
+      // Passo 3: Higienização IMAP (apenas quando manual para proteger conexões no Webmail Hostinger)
       setCycleStep(3);
-      setCycleLogs((prev) => [...prev, `[Passo 3/3] Conectando via IMAP TLS para expurgar avisos de erro da caixa postal...`]);
-      let purgedCount = 0;
-      try {
-        const resPurge = await fetch('/api/email/purge-bounces', { method: 'POST' });
-        const dataPurge = await resPurge.json();
-        purgedCount = dataPurge.purgedCount || 0;
-        setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização concluída! ${purgedCount} e-mails de erro removidos.`]);
-      } catch (e: any) {
-        setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização aviso: ${e?.message || 'IMAP ok'}`]);
+      if (isManual) {
+        setCycleLogs((prev) => [...prev, `[Passo 3/3] Conectando via IMAP TLS para expurgar avisos de erro da caixa postal...`]);
+        try {
+          const resPurge = await fetch('/api/email/purge-bounces', { method: 'POST' });
+          const dataPurge = await resPurge.json();
+          const purgedCount = dataPurge.purgedCount || 0;
+          setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização concluída! ${purgedCount} e-mails de erro removidos.`]);
+        } catch (e: any) {
+          setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização aviso: ${e?.message || 'IMAP ok'}`]);
+        }
+      } else {
+        setCycleLogs((prev) => [...prev, `[Passo 3/3] 🛡️ Conexões IMAP preservadas para evitar alertas de bot no Webmail Hostinger.`]);
       }
 
       setCycleStep(4);
       setCycleResultSummary(
-        `Ciclo concluído com sucesso! +${discoveredCount} novas empresas descobertas e ${sentCount} e-mails entregues via Hostinger SMTP com PDF.`
+        `Ciclo executado! +${discoveredCount} novas empresas descobertas e ${sentCount} e-mails entregues com segurança via Hostinger SMTP.`
       );
       await handleManualRefresh();
     } catch (err: any) {
@@ -393,7 +401,7 @@ export function ProspectingLiveMonitor({
 
             <Button
               size="sm"
-              onClick={handleRunFullCycle}
+              onClick={() => handleRunFullCycle(true)}
               disabled={isRunningCycle}
               className="text-xs gap-1.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shadow-md shadow-indigo-600/20 border-0"
             >
