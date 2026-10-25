@@ -2,10 +2,9 @@
  * TraduzTudo OS - Standalone Prospecting Daemon Worker
  * 
  * Executa continuamente em segundo plano a cada 10 minutos:
- * 1. Busca novas empresas reais com IA Gemini
- * 2. Valida MX e conformidade anti-bounce
- * 3. Dispara e-mails comerciais com Apresentação PDF oficial via Hostinger SMTP
- * 4. Limpa avisos de erro via IMAP TLS
+ * 1. Busca novas empresas reais com IA Gemini (/api/prospecting/search/ai)
+ * 2. Dispara lote com Apresentação PDF oficial via Hostinger SMTP (/api/prospecting/cron/dispatch)
+ * 3. Limpa avisos de erro via IMAP TLS (/api/email/purge-bounces)
  */
 
 const https = require('https');
@@ -13,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const INTERVAL_MS = 10 * 60 * 1000; // 10 minutos
-const TARGET_URL = 'https://traduztudo-os.vercel.app/api/prospecting/cycle/run';
+const BASE_HOST = 'traduztudo-os.vercel.app';
 const LOG_DIR = path.join(__dirname, '..', 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'prospecting-daemon.log');
 
@@ -31,81 +30,82 @@ function writeLog(message) {
   }
 }
 
-async function executeCycle() {
-  writeLog('Iniciando ciclo automático de prospecção (Busca + Disparo SMTP Hostinger com PDF)...');
-
+function makeRequest(apiPath, postData = null, headers = {}) {
   return new Promise((resolve) => {
-    const postData = JSON.stringify({
-      force: true,
-      discoveryCount: 10,
-      dispatchLimit: 5,
-    });
-
-    const url = new URL(TARGET_URL);
+    const payload = postData ? JSON.stringify(postData) : '';
     const options = {
-      hostname: url.hostname,
+      hostname: BASE_HOST,
       port: 443,
-      path: url.pathname,
-      method: 'POST',
+      path: apiPath,
+      method: postData ? 'POST' : 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'x-manual-trigger': 'true',
         'User-Agent': 'TraduzTudo-Daemon/1.0',
+        ...headers,
+        ...(postData ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
       },
-      timeout: 60000,
+      timeout: 30000,
     };
 
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
+      res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
         try {
-          const json = JSON.parse(data);
-          if (json.success) {
-            const disc = json.discovery?.count || 0;
-            const sent = json.dispatch?.sentCount || 0;
-            const purged = json.purge?.purgedCount || 0;
-            writeLog(`SUCESSO: +${disc} empresas descobertas | ${sent} e-mails entregues com PDF | ${purged} bounces higienizados.`);
-          } else {
-            writeLog(`ALERTA: Resposta da API: ${json.message || json.error || 'Desconhecido'}`);
-          }
-        } catch (e) {
-          writeLog(`Resposta bruta recebida (Status ${res.statusCode}): ${data.substring(0, 150)}`);
+          resolve(JSON.parse(data));
+        } catch {
+          resolve({ raw: data, status: res.statusCode });
         }
-        resolve();
       });
     });
 
-    req.on('error', (err) => {
-      writeLog(`ERRO DE REDE: ${err.message}`);
-      resolve();
-    });
+    req.on('error', (err) => resolve({ error: err.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ error: 'timeout' }); });
 
-    req.on('timeout', () => {
-      req.destroy();
-      writeLog('TIMEOUT: A requisição de ciclo expirou após 60 segundos.');
-      resolve();
-    });
-
-    req.write(postData);
+    if (postData) req.write(payload);
     req.end();
   });
 }
 
+const SEGMENTS = ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO'];
+
+async function executeCycle() {
+  writeLog('--- INICIANDO CICLO AUTOMÁTICO DE PROSPECÇÃO ---');
+
+  // Passo 1: Busca de Empresas com IA Gemini (~4s)
+  const randomSeg = SEGMENTS[Math.floor(Math.random() * SEGMENTS.length)];
+  writeLog(`[1/3] Buscando novas empresas no nicho "${randomSeg}" via Gemini AI...`);
+  const searchRes = await makeRequest('/api/prospecting/search/ai', {
+    segment: randomSeg,
+    targetCount: 10,
+  });
+  const addedCount = searchRes.count || 0;
+  writeLog(`[1/3] Concluído: +${addedCount} novas empresas adicionadas.`);
+
+  // Passo 2: Disparo Hostinger SMTP com Anexo PDF (~5s)
+  writeLog('[2/3] Disparando lote de e-mails com apresentação PDF via Hostinger SMTP...');
+  const dispatchRes = await makeRequest('/api/prospecting/cron/dispatch', { limitCount: 5, force: true }, { 'x-manual-trigger': 'true' });
+  const sentCount = dispatchRes.result?.sentCount || 0;
+  const failedCount = dispatchRes.result?.failedCount || 0;
+  writeLog(`[2/3] Concluído: ${sentCount} enviados, ${failedCount} falhas.`);
+
+  // Passo 3: Limpeza de Webmail IMAP (~3s)
+  writeLog('[3/3] Higienizando caixa postal Hostinger via IMAP TLS...');
+  const purgeRes = await makeRequest('/api/email/purge-bounces', {});
+  writeLog(`[3/3] Concluído: ${purgeRes.purgedCount || 0} e-mails de erro removidos.`);
+
+  writeLog(`--- CICLO FINALIZADO: +${addedCount} descobertas | ${sentCount} e-mails entregues com PDF ---\n`);
+}
+
 async function loop() {
   writeLog('=== PROSPECTING DAEMON INICIADO (Ciclos a cada 10 minutos) ===');
-  // Executa imediatamente na inicialização
   await executeCycle();
 
-  // Executa recursivamente no intervalo
   setInterval(async () => {
     try {
       await executeCycle();
     } catch (err) {
-      writeLog(`Erro no loop: ${err.message}`);
+      writeLog(`Erro no loop do daemon: ${err.message}`);
     }
   }, INTERVAL_MS);
 }

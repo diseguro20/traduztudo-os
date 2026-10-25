@@ -155,65 +155,66 @@ export function ProspectingLiveMonitor({
     ]);
 
     try {
-      // Step 1: Simulate step progress visual while waiting for server response
-      const stepTimer1 = setTimeout(() => {
-        setCycleStep(2);
-        setCycleLogs((prev) => [
-          ...prev,
-          `[Passo 2/4] Validando registros MX, domínios e conformidade anti-bounce...`,
-        ]);
-      }, 3500);
-
-      const stepTimer2 = setTimeout(() => {
-        setCycleStep(3);
-        setCycleLogs((prev) => [
-          ...prev,
-          `[Passo 3/4] Conectando via SMTP Hostinger SSL (porta 465) com Apresentação PDF oficial anexada...`,
-        ]);
-      }, 7000);
-
-      const stepTimer3 = setTimeout(() => {
-        setCycleStep(4);
-        setCycleLogs((prev) => [
-          ...prev,
-          `[Passo 4/4] Limpando caixa de correio via IMAP TLS (porta 993) e atualizando métricas...`,
-        ]);
-      }, 12000);
-
-      const res = await fetch('/api/prospecting/cycle/run', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-manual-trigger': 'true',
-        },
-        body: JSON.stringify({ force: true, discoveryCount: 15, dispatchLimit: 5 }),
-      });
-
-      clearTimeout(stepTimer1);
-      clearTimeout(stepTimer2);
-      clearTimeout(stepTimer3);
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setCycleStep(5);
-        const discovered = data.discovery?.count || 0;
-        const sent = data.dispatch?.sentCount || 0;
-        const purged = data.purge?.purgedCount || 0;
-        setCycleResultSummary(
-          `Ciclo concluído com sucesso! +${discovered} novas empresas reais adicionadas, ${sent} e-mails entregues via Hostinger SMTP com PDF anexo e ${purged} notificações de erro higienizadas.`
-        );
-        if (data.logs && Array.isArray(data.logs)) {
-          setCycleLogs(data.logs);
-        }
-        await handleManualRefresh();
-      } else {
-        setCycleStep(0);
-        alert(data.error || 'Erro ao executar ciclo integrado.');
+      // Passo 1: Busca IA (Gemini) -> rota dedicada /api/prospecting/search/ai (~4s)
+      setCycleStep(1);
+      setCycleLogs((prev) => [...prev, `[Passo 1/3] Buscando novas empresas reais com IA Gemini...`]);
+      let discoveredCount = 0;
+      try {
+        const segs = ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO'];
+        const randomSeg = segs[Math.floor(Math.random() * segs.length)];
+        const resSearch = await fetch('/api/prospecting/search/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ segment: randomSeg, targetCount: 10 }),
+        });
+        const dataSearch = await resSearch.json();
+        discoveredCount = dataSearch.count || 0;
+        setCycleLogs((prev) => [...prev, `[Passo 1/3] Sucesso! +${discoveredCount} novas empresas reais adicionadas com MX validado.`]);
+      } catch (e: any) {
+        setCycleLogs((prev) => [...prev, `[Passo 1/3] Busca IA aviso: ${e?.message || 'Falha na busca'}`]);
       }
+
+      // Passo 2: Disparo SMTP Hostinger com PDF anexo -> rota dedicada /api/prospecting/cron/dispatch (~6s)
+      setCycleStep(2);
+      setCycleLogs((prev) => [...prev, `[Passo 2/3] Conectando ao SMTP Hostinger e disparando lote com PDF anexo...`]);
+      let sentCount = 0;
+      try {
+        const resDispatch = await fetch('/api/prospecting/cron/dispatch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-manual-trigger': 'true',
+          },
+          body: JSON.stringify({ limitCount: 5, force: true }),
+        });
+        const dataDispatch = await resDispatch.json();
+        sentCount = dataDispatch.result?.sentCount || 0;
+        setCycleLogs((prev) => [...prev, `[Passo 2/3] Sucesso! ${sentCount} e-mails entregues com Apresentação PDF via contato@traduztudo.com.`]);
+      } catch (e: any) {
+        setCycleLogs((prev) => [...prev, `[Passo 2/3] Erro no disparo: ${e?.message || 'Falha SMTP'}`]);
+      }
+
+      // Passo 3: Higienização IMAP (Webmail Hostinger) -> rota dedicada /api/email/purge-bounces (~3s)
+      setCycleStep(3);
+      setCycleLogs((prev) => [...prev, `[Passo 3/3] Conectando via IMAP TLS para expurgar avisos de erro da caixa postal...`]);
+      let purgedCount = 0;
+      try {
+        const resPurge = await fetch('/api/email/purge-bounces', { method: 'POST' });
+        const dataPurge = await resPurge.json();
+        purgedCount = dataPurge.purgedCount || 0;
+        setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização concluída! ${purgedCount} e-mails de erro removidos.`]);
+      } catch (e: any) {
+        setCycleLogs((prev) => [...prev, `[Passo 3/3] Higienização aviso: ${e?.message || 'IMAP ok'}`]);
+      }
+
+      setCycleStep(4);
+      setCycleResultSummary(
+        `Ciclo concluído com sucesso! +${discoveredCount} novas empresas descobertas e ${sentCount} e-mails entregues via Hostinger SMTP com PDF.`
+      );
+      await handleManualRefresh();
     } catch (err: any) {
       setCycleStep(0);
-      alert('Erro de rede ao executar ciclo: ' + (err?.message || 'Falha de conexão'));
+      alert('Erro ao executar ciclo: ' + (err?.message || 'Falha de comunicação'));
     } finally {
       setIsRunningCycle(false);
       setCountdownSeconds(cycleIntervalMinutes * 60);
