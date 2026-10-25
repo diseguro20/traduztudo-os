@@ -30,6 +30,7 @@ import {
   Eye,
   X,
   MessageCircle,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -46,11 +47,12 @@ import {
   ProspectingSettings,
 } from '@/types/prospecting';
 import { AISearchModal } from '@/components/prospecting/AISearchModal';
+import { ProspectingLiveMonitor } from '@/components/prospecting/ProspectingLiveMonitor';
 
-type ActiveTab = 'VISAO_GERAL' | 'EMPRESAS' | 'CONTATOS' | 'CAMPANHAS' | 'RESPOSTAS' | 'OPORTUNIDADES' | 'CONFIGURACOES';
+type ActiveTab = 'MONITOR' | 'VISAO_GERAL' | 'EMPRESAS' | 'CONTATOS' | 'CAMPANHAS' | 'RESPOSTAS' | 'OPORTUNIDADES' | 'CONFIGURACOES';
 
 export default function ProspeccaoInteligentePage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('VISAO_GERAL');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('MONITOR');
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<ProspectingDashboardStats>({
     totalCompanies: 0,
@@ -429,6 +431,15 @@ export default function ProspeccaoInteligentePage() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             size="sm"
+            onClick={() => setActiveTab('MONITOR')}
+            className="text-xs gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md shadow-emerald-600/20 border-0"
+            title="Acompanhar relatório e status da automação diária em tempo real"
+          >
+            <Activity className="w-3.5 h-3.5 animate-pulse" /> Painel ao Vivo
+          </Button>
+
+          <Button
+            size="sm"
             onClick={() => handleOpenAISearchWithTerm(searchTerm)}
             className="text-xs gap-1.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shadow-md shadow-indigo-600/25 border-0"
             title="Buscar e validar empresas reais com Agente IA Gemini"
@@ -576,6 +587,7 @@ export default function ProspeccaoInteligentePage() {
       {/* Main Tab Navigation */}
       <div className="border-b border-slate-200 dark:border-slate-800 flex gap-2 overflow-x-auto pb-px">
         {[
+          { id: 'MONITOR', label: '⚡ Painel em Tempo Real', isLive: true },
           { id: 'VISAO_GERAL', label: 'Visão Geral' },
           { id: 'EMPRESAS', label: `Empresas (${filteredCompanies.length})` },
           { id: 'CONTATOS', label: 'Contatos Comerciais' },
@@ -587,16 +599,33 @@ export default function ProspeccaoInteligentePage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as ActiveTab)}
-            className={`px-3.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+            className={`px-3.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 ${
               activeTab === tab.id
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400 font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
+            {tab.isLive && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            )}
             {tab.label}
           </button>
         ))}
       </div>
+
+      {/* TAB 0: PAINEL EM TEMPO REAL */}
+      {activeTab === 'MONITOR' && (
+        <ProspectingLiveMonitor
+          stats={stats}
+          settings={settings}
+          companies={companies}
+          onRefresh={fetchData}
+          onSelectCompany={(comp) => {
+            setSelectedCompany(comp);
+            setIsCompanyModalOpen(true);
+          }}
+        />
+      )}
 
       {/* TAB 1: VISÃO GERAL */}
       {activeTab === 'VISAO_GERAL' && (

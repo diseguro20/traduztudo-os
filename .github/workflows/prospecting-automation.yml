@@ -4,14 +4,15 @@ on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
     # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
-    # Ciclos distribuídos para cobrir a meta diária de 200 e-mails com total segurança SMTP:
-    - cron: '0 10 * * *'   # 07:00 BRT
-    - cron: '0 12 * * *'   # 09:00 BRT
-    - cron: '0 14 * * *'   # 11:00 BRT
-    - cron: '30 16 * * *'  # 13:30 BRT
-    - cron: '0 18 * * *'   # 15:00 BRT
-    - cron: '30 19 * * *'  # 16:30 BRT
-    - cron: '0 21 * * *'   # 18:00 BRT
+    # Minutos com offset (:15) para evitar congestionamento de cron no GitHub Actions
+    # 7 ciclos diários x 30 e-mails = 210 e-mails/dia (cumpre a meta de 200 e-mails com 100% de segurança SMTP)
+    - cron: '15 10 * * *'  # 07:15 BRT
+    - cron: '15 12 * * *'  # 09:15 BRT
+    - cron: '15 14 * * *'  # 11:15 BRT
+    - cron: '15 16 * * *'  # 13:15 BRT
+    - cron: '15 18 * * *'  # 15:15 BRT
+    - cron: '15 20 * * *'  # 17:15 BRT
+    - cron: '15 22 * * *'  # 19:15 BRT
   workflow_dispatch:
     inputs:
       action:

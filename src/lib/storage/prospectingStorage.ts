@@ -560,12 +560,26 @@ export class ProspectingStorage {
     return record;
   }
 
-  public async listOutboundMessages(companyId?: string): Promise<OutboundMessageRecord[]> {
+  public async listOutboundMessages(companyId?: string, limitCount = 50): Promise<OutboundMessageRecord[]> {
+    try {
+      if (db) {
+        const q = query(collection(db, COLLECTIONS.OUTBOUND), limit(limitCount));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          snap.forEach((d) => {
+            const item = d.data() as OutboundMessageRecord;
+            outboundStore.set(item.id, item);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[ProspectingStorage] Firestore listOutboundMessages fallback:', e);
+    }
     let all = Array.from(outboundStore.values());
     if (companyId) {
       all = all.filter((m) => m.companyId === companyId);
     }
-    return all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    return all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()).slice(0, limitCount);
   }
 
   public async saveInboundReply(reply: InboundProspectReply): Promise<InboundProspectReply> {
