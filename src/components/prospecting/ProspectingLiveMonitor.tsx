@@ -22,6 +22,7 @@ import {
   Flame,
   Pause,
   Trash2,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -71,6 +72,36 @@ export function ProspectingLiveMonitor({
   // Purge state
   const [isPurging, setIsPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState<string | null>(null);
+
+  // Auto-Pilot Continuous Mode (dispara e busca sozinho no navegador)
+  const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
+  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(5);
+  const [countdownSeconds, setCountdownSeconds] = useState(300);
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Auto-Pilot countdown runner
+  useEffect(() => {
+    if (!autoPilotEnabled) return;
+
+    const timer = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          if (!isRunningCycle) {
+            handleRunFullCycle();
+          }
+          return cycleIntervalMinutes * 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [autoPilotEnabled, isRunningCycle, cycleIntervalMinutes]);
 
   // Load outbound messages
   const loadOutbound = async () => {
@@ -185,6 +216,7 @@ export function ProspectingLiveMonitor({
       alert('Erro de rede ao executar ciclo: ' + (err?.message || 'Falha de conexão'));
     } finally {
       setIsRunningCycle(false);
+      setCountdownSeconds(cycleIntervalMinutes * 60);
     }
   };
 
@@ -215,6 +247,92 @@ export function ProspectingLiveMonitor({
 
   return (
     <div className="space-y-6">
+      {/* Piloto Automático Contínuo no Navegador */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/40 p-4 sm:p-5 rounded-2xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30">
+            {autoPilotEnabled && !isRunningCycle ? (
+              <Zap className="w-6 h-6 text-yellow-300 animate-pulse" />
+            ) : isRunningCycle ? (
+              <RefreshCw className="w-6 h-6 text-white animate-spin" />
+            ) : (
+              <Pause className="w-6 h-6 text-slate-300" />
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-sm sm:text-base tracking-tight">Piloto Automático Contínuo no Navegador</h3>
+              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                autoPilotEnabled
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 animate-pulse'
+                  : 'bg-slate-700 text-slate-300 border-slate-600'
+              }`}>
+                {autoPilotEnabled ? 'Disparando Sozinho 24h' : 'Pausado'}
+              </span>
+            </div>
+            <p className="text-xs text-indigo-200/90 mt-0.5">
+              {autoPilotEnabled
+                ? `Varre o Google Gemini, valida MX e envia 5 e-mails com apresentação PDF a cada ${cycleIntervalMinutes} minutos automaticamente sem você precisar clicar.`
+                : 'O envio automático no navegador está pausado. Ative para deixar o SaaS disparando sozinho.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3.5 self-end md:self-auto flex-wrap">
+          <div className="text-right bg-black/40 px-3.5 py-2 rounded-xl border border-indigo-800/40">
+            <span className="text-[10px] uppercase text-indigo-300 font-bold block">
+              {isRunningCycle ? 'Status Atual' : 'Próximo Ciclo Automático'}
+            </span>
+            <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
+              {isRunningCycle ? 'Disparando...' : formatCountdown(countdownSeconds)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={cycleIntervalMinutes}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setCycleIntervalMinutes(val);
+                setCountdownSeconds(val * 60);
+              }}
+              className="bg-indigo-900/60 border border-indigo-600/50 rounded-xl px-2.5 py-2 text-xs font-semibold text-white focus:outline-hidden"
+              title="Intervalo entre ciclos automáticos"
+            >
+              <option value={3}>A cada 3 min</option>
+              <option value={5}>A cada 5 min</option>
+              <option value={10}>A cada 10 min</option>
+              <option value={15}>A cada 15 min</option>
+            </select>
+
+            <Button
+              size="sm"
+              variant={autoPilotEnabled ? 'secondary' : 'primary'}
+              onClick={() => {
+                const nextState = !autoPilotEnabled;
+                setAutoPilotEnabled(nextState);
+                if (nextState) setCountdownSeconds(cycleIntervalMinutes * 60);
+              }}
+              className={`text-xs font-bold gap-1.5 ${
+                autoPilotEnabled
+                  ? 'bg-amber-500/20 text-amber-200 border border-amber-400/30 hover:bg-amber-500/30'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-500'
+              }`}
+            >
+              {autoPilotEnabled ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" /> Pausar Piloto
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" /> Ligar Piloto
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Real-time Header Control Bar */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

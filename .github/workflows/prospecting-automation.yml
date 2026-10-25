@@ -4,15 +4,9 @@ on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
     # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
-    # Minutos com offset (:15) para evitar congestionamento de cron no GitHub Actions
-    # 7 ciclos diários x 30 e-mails = 210 e-mails/dia (cumpre a meta de 200 e-mails com 100% de segurança SMTP)
-    - cron: '15 10 * * *'  # 07:15 BRT
-    - cron: '15 12 * * *'  # 09:15 BRT
-    - cron: '15 14 * * *'  # 11:15 BRT
-    - cron: '15 16 * * *'  # 13:15 BRT
-    - cron: '15 18 * * *'  # 15:15 BRT
-    - cron: '15 20 * * *'  # 17:15 BRT
-    - cron: '15 22 * * *'  # 19:15 BRT
+    # Entrada única com intervalo horário para garantir que o GitHub Actions NUNCA ignore ou descarte agendamentos:
+    # Executa a cada hora no minuto 15, das 10:15 UTC (07:15 BRT) até as 22:15 UTC (19:15 BRT) = 13 ciclos diários!
+    - cron: '15 10-22 * * *'
   workflow_dispatch:
     inputs:
       action:
