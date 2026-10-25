@@ -38,18 +38,13 @@ jobs:
             sleep 3
           done
 
-      - name: Disparo Controlado de Campanha (Hostinger SMTP + PDF Anexo)
+      - name: Disparo Controlado de Campanha (Cadência Segura Anti-Bloqueio)
         if: github.event.inputs.action != 'discover'
         run: |
-          echo "Iniciando Disparo de E-mails via Hostinger SMTP (sub-lotes com anexo PDF)..."
-          for i in $(seq 1 6); do
-            echo "Disparando sub-lote $i de 5 e-mails..."
-            curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
-              -H "Content-Type: application/json" \
-              -H "x-manual-trigger: true" \
-              -d '{"limitCount": 5}'
-            sleep 4
-          done
+          echo "Disparando lote seguro e cadenciado via Hostinger SMTP..."
+          curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
+            -H "Content-Type: application/json" \
+            -d '{"limitCount": 5}'
 
       - name: Limpar Bounces e Notificações de Erro do Webmail Hostinger
         run: |

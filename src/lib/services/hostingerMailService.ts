@@ -27,67 +27,6 @@ export interface HostingerSendEmailResult {
   error?: string;
 }
 
-/**
- * Synchronizes an outbound email to Hostinger Webmail's "Enviados" folder (INBOX.Sent) via IMAP.
- */
-async function appendToHostingerSent(
-  mailOptions: any,
-  smtpUser: string,
-  smtpPass: string
-): Promise<boolean> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const MailComposer = require('nodemailer/lib/mail-composer');
-    const tls = await import('tls');
-
-    return new Promise((resolve) => {
-      const composer = new MailComposer(mailOptions);
-      composer.compile().build((err: any, rawBuf: Buffer) => {
-        if (err || !rawBuf) {
-          console.warn('[HostingerMailService] Erro ao compilar RFC822 para IMAP Sent:', err);
-          return resolve(false);
-        }
-
-        const client = tls.connect({ port: 993, host: 'imap.hostinger.com' });
-        let step = 0;
-
-        client.on('data', (data) => {
-          const str = data.toString();
-          if (step === 0 && str.includes('* OK')) {
-            step = 1;
-            client.write(`A1 LOGIN "${smtpUser}" "${smtpPass}"\r\n`);
-          } else if (step === 1 && str.includes('A1 OK')) {
-            step = 2;
-            const size = Buffer.byteLength(rawBuf);
-            client.write(`A2 APPEND "INBOX.Sent" (\\Seen) {${size}}\r\n`);
-          } else if (step === 2 && str.includes('+')) {
-            step = 3;
-            client.write(rawBuf);
-            client.write('\r\n');
-          } else if (step === 3 && (str.includes('A2 OK') || str.includes('A2 NO') || str.includes('A2 BAD'))) {
-            client.write('A3 LOGOUT\r\n');
-            client.destroy();
-            resolve(str.includes('A2 OK'));
-          }
-        });
-
-        client.on('error', (e) => {
-          console.warn('[HostingerMailService] IMAP Sent sync warning:', e.message);
-          resolve(false);
-        });
-
-        setTimeout(() => {
-          client.destroy();
-          resolve(false);
-        }, 12000);
-      });
-    });
-  } catch (err: any) {
-    console.warn('[HostingerMailService] Erro geral ao sincronizar Sent IMAP:', err?.message);
-    return false;
-  }
-}
-
 export class HostingerMailService {
   private static instance: HostingerMailService;
   private readonly defaultSender = 'contato@traduztudo.com';
@@ -397,15 +336,6 @@ export class HostingerMailService {
         const info = await transporter.sendMail(mailOptions);
 
         console.log(`[HostingerMailService] E-mail entregue com sucesso via Hostinger SMTP para [${params.to}]. Message-ID: ${info.messageId}`);
-
-        // Automatically sync to Hostinger Webmail's "Enviados" folder (INBOX.Sent)
-        appendToHostingerSent(mailOptions, smtpUser, smtpPass)
-          .then((synced) => {
-            if (synced) {
-              console.log(`[HostingerMailService] Mensagem arquivada com sucesso na pasta "Enviados" (INBOX.Sent) da Hostinger.`);
-            }
-          })
-          .catch((e) => console.warn('[HostingerMailService] IMAP sync notice:', e));
 
         return {
           success: true,

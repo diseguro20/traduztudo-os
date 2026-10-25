@@ -74,9 +74,9 @@ export function ProspectingLiveMonitor({
   const [purgeResult, setPurgeResult] = useState<string | null>(null);
 
   // Auto-Pilot Continuous Mode (dispara e busca sozinho no navegador)
-  const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
-  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(5);
-  const [countdownSeconds, setCountdownSeconds] = useState(300);
+  const [autoPilotEnabled, setAutoPilotEnabled] = useState(false); // Mantém pausado até o usuário reativar a conta
+  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(15);
+  const [countdownSeconds, setCountdownSeconds] = useState(900);
 
   const formatCountdown = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -185,7 +185,7 @@ export function ProspectingLiveMonitor({
             'Content-Type': 'application/json',
             'x-manual-trigger': 'true',
           },
-          body: JSON.stringify({ limitCount: 5, force: true }),
+          body: JSON.stringify({ limitCount: 3, force: true }),
         });
         const dataDispatch = await resDispatch.json();
         sentCount = dataDispatch.result?.sentCount || 0;
