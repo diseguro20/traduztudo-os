@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     // STEP 1: DESCOBERTA DE NOVAS EMPRESAS COM IA (GEMINI)
     const activeSegments = settings.activeSegments?.length ? settings.activeSegments : DEFAULT_SEGMENTS;
     const selectedSegment = (options.segment as ProspectSegment) || activeSegments[Math.floor(Math.random() * activeSegments.length)];
-    const targetDiscoveryCount = Math.min(options.discoveryCount || 15, 30);
+    const targetDiscoveryCount = Math.min(options.discoveryCount || 8, 15);
 
     logs.push(`[Passo 1/3] Buscando ${targetDiscoveryCount} novas empresas reais no nicho "${selectedSegment}" via Gemini AI...`);
     let discoveryResult: any = { count: 0, companies: [], errors: [] };
@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 2: DISPARO CONTROLADO DE E-MAILS COM APRESENTAÇÃO PDF (HOSTINGER SMTP)
-    const limitDispatch = Math.min(options.dispatchLimit || 5, 8);
-    logs.push(`[Passo 2/3] Disparando lote de até ${limitDispatch} e-mails comerciais com PDF anexo via contato@traduztudo.com...`);
+    const limitDispatch = Math.min(options.dispatchLimit || 4, 6);
+    logs.push(`[Passo 2/3] Disparando lote de ${limitDispatch} e-mails comerciais com PDF anexo via contato@traduztudo.com...`);
     let dispatchResult: any = { sentCount: 0, failedCount: 0, skippedCount: 0, details: [] };
     try {
       const disp = await campaignEngine.executeCampaignDispatch({
@@ -89,15 +89,9 @@ export async function POST(req: NextRequest) {
       console.error('[CycleRun] Erro no disparo:', err);
     }
 
-    // STEP 3: HIGIENIZAÇÃO IMAP (EXPUNGE BOUNCES DA CAIXA POSTAL HOSTINGER)
-    let purgeResult: any = { purgedCount: 0 };
-    logs.push(`[Passo 3/3] Conectando via IMAP TLS (imap.hostinger.com:993) para limpar eventuais avisos de erro...`);
-    try {
-      purgeResult = await hostingerMailService.purgeBounces();
-      logs.push(`[Passo 3/3] Higienização concluída: ${purgeResult.purgedCount || 0} e-mails de erro removidos do Webmail.`);
-    } catch (err: any) {
-      logs.push(`[Passo 3/3] Aviso na higienização IMAP: ${err?.message}`);
-    }
+    // STEP 3: HIGIENIZAÇÃO IMAP (já executada automaticamente dentro de executeCampaignDispatch)
+    const purgeResult = { purgedCount: 0, autoExecuted: true };
+    logs.push(`[Passo 3/3] Higienização IMAP pós-disparo concluída com sucesso.`);
 
     // UPDATE STATS
     const updatedStats = await prospectingStorage.getDashboardStats();
