@@ -285,9 +285,9 @@ export class CampaignEngine {
         });
       }
 
-      // Human-like cadence delay (8 to 15 seconds) between emails to protect SMTP sender reputation and avoid burst filters
+      // Human-like cadence delay (10 to 18 seconds) between emails to protect SMTP sender reputation and avoid burst filters
       if (result.processedCount < eligibleCompanies.length) {
-        const delayMs = 8000 + Math.floor(Math.random() * 7000);
+        const delayMs = 10000 + Math.floor(Math.random() * 8000);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }

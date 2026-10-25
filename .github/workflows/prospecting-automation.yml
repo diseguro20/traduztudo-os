@@ -4,9 +4,9 @@ on:
   schedule:
     # Horários em UTC (Horário de Brasília = UTC - 3)
     # Roda TODOS OS DIAS DA SEMANA (Segunda a Domingo sem interrupção)
-    # Entrada única com intervalo horário para garantir que o GitHub Actions NUNCA ignore ou descarte agendamentos:
-    # Executa a cada hora no minuto 15, das 10:15 UTC (07:15 BRT) até as 22:15 UTC (19:15 BRT) = 13 ciclos diários!
-    - cron: '15 10-22 * * *'
+    # Executa a cada 2 horas (07:15, 09:15, 11:15, 13:15, 15:15, 17:15, 19:15 BRT)
+    # Cadência suave de 4 e-mails por ciclo para blindagem total da conta Hostinger
+    - cron: '15 10,12,14,16,18,20,22 * * *'
   workflow_dispatch:
     inputs:
       action:
@@ -28,23 +28,20 @@ jobs:
         run: |
           echo "Iniciando Descoberta Contínua de Empresas com Gemini AI..."
           SEGMENTS=("CIDADANIA_ITALIANA" "ADVOCACIA_INTERNACIONAL" "COMERCIO_EXTERIOR" "VISTOS_IMIGRACAO")
-          # Sorteia 2 segmentos por ciclo para variedade constante
           SHUFFLED=($(shuf -e "${SEGMENTS[@]}"))
-          for seg in "${SHUFFLED[0]}" "${SHUFFLED[1]}"; do
-            echo "Buscando nicho: $seg..."
-            curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/search/ai" \
-              -H "Content-Type: application/json" \
-              -d "{\"segment\": \"$seg\", \"targetCount\": 15}"
-            sleep 3
-          done
+          seg="${SHUFFLED[0]}"
+          echo "Buscando nicho seguro: $seg..."
+          curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/search/ai" \
+            -H "Content-Type: application/json" \
+            -d "{\"segment\": \"$seg\", \"targetCount\": 10}"
 
       - name: Disparo Controlado de Campanha (Cadência Segura Anti-Bloqueio)
         if: github.event.inputs.action != 'discover'
         run: |
-          echo "Disparando lote seguro e cadenciado via Hostinger SMTP..."
+          echo "Disparando lote seguro e cadenciado via Hostinger SMTP (4 e-mails)..."
           curl -s -X POST "https://traduztudo-os.vercel.app/api/prospecting/cron/dispatch" \
             -H "Content-Type: application/json" \
-            -d '{"limitCount": 5}'
+            -d '{"limitCount": 4}'
 
       - name: Limpar Bounces e Notificações de Erro do Webmail Hostinger
         run: |

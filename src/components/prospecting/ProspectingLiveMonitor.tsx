@@ -73,10 +73,10 @@ export function ProspectingLiveMonitor({
   const [isPurging, setIsPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState<string | null>(null);
 
-  // Auto-Pilot Continuous Mode (dispara e busca sozinho no navegador)
-  const [autoPilotEnabled, setAutoPilotEnabled] = useState(false); // Mantém pausado até o usuário reativar a conta
-  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(15);
-  const [countdownSeconds, setCountdownSeconds] = useState(900);
+  // Auto-Pilot Continuous Mode (cadência segura anti-bloqueio)
+  const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
+  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(20);
+  const [countdownSeconds, setCountdownSeconds] = useState(1200);
 
   const formatCountdown = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -300,10 +300,10 @@ export function ProspectingLiveMonitor({
               className="bg-indigo-900/60 border border-indigo-600/50 rounded-xl px-2.5 py-2 text-xs font-semibold text-white focus:outline-hidden"
               title="Intervalo entre ciclos automáticos"
             >
-              <option value={3}>A cada 3 min</option>
-              <option value={5}>A cada 5 min</option>
-              <option value={10}>A cada 10 min</option>
               <option value={15}>A cada 15 min</option>
+              <option value={20}>A cada 20 min (Recomendado)</option>
+              <option value={30}>A cada 30 min</option>
+              <option value={45}>A cada 45 min</option>
             </select>
 
             <Button
