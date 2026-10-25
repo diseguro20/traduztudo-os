@@ -210,7 +210,7 @@ export function ProspectingLiveMonitor({
 
   // Calculate daily goal progress
   const targetPerDay = settings?.dailySendLimit || 200;
-  const emailsToday = stats.emailsSent || 0;
+  const emailsToday = stats.emailsSentToday !== undefined ? stats.emailsSentToday : 0;
   const percentGoal = Math.min(100, Math.round((emailsToday / targetPerDay) * 100));
 
   return (
@@ -441,7 +441,7 @@ export function ProspectingLiveMonitor({
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
             <span>Fila pronta: <strong className="text-blue-600">{stats.eligibleCount} empresas</strong></span>
-            <span>Taxa de entrega: <strong className="text-emerald-600">100%</strong></span>
+            <span>Histórico total: <strong className="text-slate-700 dark:text-slate-300">{stats.emailsSent}</strong></span>
           </div>
         </div>
 

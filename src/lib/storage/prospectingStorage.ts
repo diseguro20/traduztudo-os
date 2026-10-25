@@ -605,10 +605,12 @@ export class ProspectingStorage {
     await this.ensureCompaniesHydrated(500);
     const companies = Array.from(companiesStore.values());
     const total = companies.length;
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    // Use Brasília timezone (UTC-3) for accurate day calculation
+    const brtDate = new Date(Date.now() - 3 * 3600 * 1000);
+    const todayStr = brtDate.toISOString().split('T')[0];
 
-    const newToday = companies.filter((c) => (c.discoveredAt || c.createdAt).startsWith(todayStr)).length;
+    const newToday = companies.filter((c) => (c.discoveredAt || c.createdAt) && (c.discoveredAt || c.createdAt).includes(todayStr)).length;
+    const sentToday = companies.filter((c) => c.lastContactedAt && c.lastContactedAt.includes(todayStr)).length;
     const validContacts = companies.filter((c) => !!c.contactEmail && c.status !== 'CONTATO_INVALIDO').length;
     const eligible = companies.filter((c) => ['CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA'].includes(c.status) && !c.optOut).length;
     const sent = companies.filter((c) => ['EMAIL_ENVIADO', 'RESPOSTA_RECEBIDA', 'LEAD_QUALIFICADO', 'ORCAMENTO', 'NEGOCIACAO', 'CLIENTE'].includes(c.status)).length;
@@ -631,6 +633,7 @@ export class ProspectingStorage {
       validContactsCount: validContacts,
       eligibleCount: eligible,
       emailsSent: sent,
+      emailsSentToday: sentToday,
       deliveredCount: sent,
       repliesReceived: replies,
       interestedCount: interested,

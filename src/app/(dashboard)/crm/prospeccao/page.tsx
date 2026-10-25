@@ -60,6 +60,7 @@ export default function ProspeccaoInteligentePage() {
     validContactsCount: 0,
     eligibleCount: 0,
     emailsSent: 0,
+    emailsSentToday: 0,
     deliveredCount: 0,
     repliesReceived: 0,
     interestedCount: 0,
@@ -545,7 +546,7 @@ export default function ProspeccaoInteligentePage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">{stats.emailsSent}</p>
-          <span className="text-[11px] text-slate-400">Taxa de resposta: {stats.responseRate}%</span>
+          <span className="text-[11px] text-slate-400">+{stats.emailsSentToday || 0} enviados hoje • {stats.responseRate}% resposta</span>
         </div>
 
         <div className="card-hover bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">

@@ -226,7 +226,8 @@ export interface ProspectingDashboardStats {
   newCompaniesToday: number;
   validContactsCount: number;
   eligibleCount: number;
-  emailsSent: number;
+  emailsSent: number; // Total histórico acumulado
+  emailsSentToday: number; // Disparados especificamente hoje
   deliveredCount: number;
   repliesReceived: number;
   interestedCount: number;
