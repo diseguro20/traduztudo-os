@@ -347,7 +347,15 @@ export class HostingerMailService {
         };
       } catch (err: any) {
         console.error('[HostingerMailService] Erro no envio via Hostinger SMTP:', err?.message);
-        // We will continue to fallback if SMTP fails
+        return {
+          success: false,
+          messageId: '',
+          sender: smtpUser,
+          recipient: params.to,
+          timestamp,
+          mode: 'HOSTINGER_SMTP',
+          error: err?.message || 'Erro ao enviar via Hostinger SMTP',
+        };
       }
     }
 

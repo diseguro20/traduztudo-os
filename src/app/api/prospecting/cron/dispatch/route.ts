@@ -37,10 +37,10 @@ async function handleDispatch(req: NextRequest) {
       });
     }
 
-    // Strict Anti-Suspension: Daily Limit Protection
+    // Strict Anti-Suspension: Daily Limit Protection (Apenas para disparos em segundo plano)
     const stats = await prospectingStorage.getDashboardStats();
     const dailyLimit = settings.dailySendLimit || 70;
-    if (stats.emailsSentToday >= dailyLimit && !options.force) {
+    if (stats.emailsSentToday >= dailyLimit && !isManualTrigger) {
       return NextResponse.json({
         success: true,
         skipped: true,
@@ -56,7 +56,7 @@ async function handleDispatch(req: NextRequest) {
     // Guarantees execution stays well below Vercel's timeout and protects Hostinger SMTP reputation
     const remainingToday = Math.max(1, dailyLimit - (stats.emailsSentToday || 0));
     const batchLimit = Math.min(4, Math.max(2, Math.ceil(dailyLimit / 25)));
-    const limitCount = options.force
+    const limitCount = isManualTrigger
       ? Math.min(4, options.limitCount || batchLimit)
       : Math.min(remainingToday, options.limitCount || batchLimit);
 

@@ -184,7 +184,7 @@ export function ProspectingLiveMonitor({
             'Content-Type': 'application/json',
             'x-manual-trigger': isManual ? 'true' : 'false',
           },
-          body: JSON.stringify({ limitCount: 3, force: false }),
+          body: JSON.stringify({ limitCount: 3, force: isManual }),
         });
         const dataDispatch = await resDispatch.json();
         if (dataDispatch.skipped) {

@@ -179,10 +179,15 @@ export default function ProspeccaoInteligentePage() {
           'Content-Type': 'application/json',
           'x-manual-trigger': 'true',
         },
+        body: JSON.stringify({ limitCount: 3, force: true }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setActionSuccess(data.message);
+        if (data.skipped) {
+          alert(data.message || 'Disparo pausado pela proteção de limite diário.');
+        } else {
+          setActionSuccess(data.message);
+        }
         await fetchData();
       } else {
         alert(data.error || 'Falha ao despachar campanha.');
