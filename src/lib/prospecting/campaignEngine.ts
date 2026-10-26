@@ -173,6 +173,24 @@ export class CampaignEngine {
         continue;
       }
 
+      // 1.1 Pre-Flight MX DNS Guard: verify recipient domain accepts emails to prevent bounces
+      const isMxValid = await geminiCompanyFinder.verifyDomainMx(company.contactEmail);
+      if (!isMxValid) {
+        console.warn(`[CampaignEngine] Destinatário sem servidor MX válido: ${company.contactEmail}. Descartando e marcando CONTATO_INVALIDO.`);
+        await prospectingStorage.updateCompany(company.id, {
+          status: 'CONTATO_INVALIDO',
+        });
+        result.skippedCount++;
+        result.details.push({
+          companyId: company.id,
+          companyName: company.tradeName || company.name,
+          recipientEmail: company.contactEmail,
+          status: 'SKIPPED',
+          error: 'Domínio sem registro MX ativo no DNS (bloqueio preventivo contra bounces)',
+        });
+        continue;
+      }
+
       // 2. Generate Tailored Email Message via AI Agent
       const emailContent = prospectingAIAgent.generateOutreachEmail(company);
       const idempotencyKey = `idemp_${company.id}_${Date.now()}`;

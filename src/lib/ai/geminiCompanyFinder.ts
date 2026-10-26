@@ -48,33 +48,40 @@ export class GeminiCompanyFinder {
   }
 
   /**
-   * Verifies if a domain has active MX records or A records (mail exchanger or active server)
+   * Verifies if a domain has active MX records (strictly fail-closed to prevent bounces)
    */
-  public async verifyDomainMx(domain: string): Promise<boolean> {
+  public async verifyDomainMx(emailOrDomain: string): Promise<boolean> {
     try {
-      const clean = domain
-        .toLowerCase()
+      if (!emailOrDomain) return false;
+      
+      // Extract clean domain whether input is an email, URL or raw domain
+      let clean = emailOrDomain.toLowerCase().trim();
+      if (clean.includes('@')) {
+        clean = clean.split('@')[1];
+      }
+      clean = clean
         .replace(/^https?:\/\//, '')
         .replace(/^www\./, '')
         .split('/')[0]
         .split(':')[0]
         .trim();
 
-      if (!clean || clean.length < 3) return false;
+      if (!clean || clean.length < 4 || !clean.includes('.')) return false;
 
       // 1. Try native Node.js DNS resolveMx
       try {
         const records = await dns.promises.resolveMx(clean);
         if (records && records.length > 0) return true;
-      } catch {
-        // Fallback to DNS over HTTPS
+      } catch (err: any) {
+        if (err?.code === 'ENOTFOUND' || err?.code === 'ENODATA') {
+          return false;
+        }
       }
 
-      // 2. Google DNS over HTTPS (checks MX first, then A record fallback according to RFC 5321)
-      const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), 2500);
-
+      // 2. Google DNS over HTTPS (checks MX type 15 only)
       try {
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 2500);
         const res = await fetch(`https://dns.google/resolve?name=${clean}&type=MX`, {
           signal: ctrl.signal,
           headers: { Accept: 'application/dns-json' },
@@ -82,38 +89,21 @@ export class GeminiCompanyFinder {
         clearTimeout(timeoutId);
         if (res.ok) {
           const data = await res.json();
-          if (
-            data.Status === 0 &&
-            Array.isArray(data.Answer) &&
-            data.Answer.some((a: any) => a.type === 15 || a.type === 1 || a.type === 5)
-          ) {
-            return true;
+          if (data.Status === 0 && Array.isArray(data.Answer)) {
+            const hasMx = data.Answer.some((a: any) => a.type === 15);
+            if (hasMx) return true;
+          }
+          if (data.Status === 3) {
+            return false; // NXDOMAIN
           }
         }
       } catch {
-        // Continue to A record check
+        // network issue
       }
 
-      // 3. Check A record fallback
-      try {
-        const ctrlA = new AbortController();
-        const timeoutA = setTimeout(() => ctrlA.abort(), 2000);
-        const resA = await fetch(`https://dns.google/resolve?name=${clean}&type=A`, {
-          signal: ctrlA.signal,
-          headers: { Accept: 'application/dns-json' },
-        });
-        clearTimeout(timeoutA);
-        if (resA.ok) {
-          const dataA = await resA.json();
-          if (dataA.Status === 0 && Array.isArray(dataA.Answer) && dataA.Answer.length > 0) {
-            return true;
-          }
-        }
-      } catch {}
-
-      return true; // Fail-open to avoid losing valid prospects
+      return false; // STRICT FAIL-CLOSED: Sem registro MX = impossível receber e-mail
     } catch {
-      return true; // Fail-open
+      return false; // STRICT FAIL-CLOSED
     }
   }
 
@@ -693,7 +683,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         if (isSuppressed) continue;
 
         // MX Server Verification (guarantees real active email)
-        const isMxValid = await this.verifyDomainMx(candidate.website);
+        const isMxValid = await this.verifyDomainMx(candidate.contactEmail);
         if (!isMxValid) {
           continue;
         }
