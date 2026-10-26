@@ -2,20 +2,27 @@ name: Automação Contínua de Prospecção (50 e-mails/hora) TraduzTudo OS
 
 on:
   schedule:
-    # Executa a cada 30 minutos, dia e noite (24/7)
-    # Cada ciclo envia 25 e-mails espaçados a cada ~72 segundos = 50 e-mails por hora!
+    # Watchdog de batimento: verifica a cada 30 minutos dia e noite (24/7)
     - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
-      batchSize:
-        description: 'Quantidade de e-mails para este lote (padrão 25 = 30min de envio cadenciado)'
+      continuous:
+        description: 'Rodar em modo contínuo sem parar (true/false)'
         required: false
-        default: '25'
+        default: 'true'
+
+concurrency:
+  group: prospecting-automation-runner
+  cancel-in-progress: false
 
 jobs:
   prospecting:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 360 # Suporte total a 6 horas ininterruptas por runner
+    permissions:
+      actions: write
+      contents: write
+
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
@@ -25,7 +32,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Executar Motor de Cadência Contínua (50 e-mails/hora)
+      - name: Instalar GitHub CLI e Configurar Token
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BATCH="${{ github.event.inputs.batchSize || '25' }}"
-          node scripts/prospecting-pacer.mjs --batch "$BATCH"
+          echo "GH_TOKEN configured"
+
+      - name: Executar Motor de Cadência Contínua (50 e-mails/hora 24/7)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Executa continuamente por 330 minutos (~5h30min) antes de passar o bastão para o próximo ciclo
+          node scripts/prospecting-pacer.mjs --continuous --max-minutes 330

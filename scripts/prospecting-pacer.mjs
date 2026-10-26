@@ -5,11 +5,13 @@
  * - Mantém uma taxa exata de ~50 e-mails/hora (1 envio a cada ~72 segundos).
  * - Imune a timeouts de serverless (cada disparo individual leva 2-3s).
  * - Blindagem total contra suspensão da Hostinger (zero rajadas, entrega humana contínua).
- * - Auto-reposição: alimenta a fila com novas empresas via Gemini Flash AI sempre que a fila estiver baixa.
+ * - Auto-reposição contínua: alimenta a fila com novas empresas via Gemini Flash AI sempre que a fila estiver baixa.
  * - Limpeza periódica de bounces via IMAP sem sobrecarregar a caixa postal.
+ * - Suporta execução contínua 24/7 (relay race em GitHub Actions e daemon local).
  */
 
 import https from 'https';
+import { execSync } from 'child_process';
 
 const BASE_URL = process.env.BASE_URL || 'https://traduztudo-os.vercel.app';
 const TARGET_PER_HOUR = Number(process.env.TARGET_PER_HOUR) || 50;
@@ -74,9 +76,9 @@ async function ensureQueueReady() {
 
     if (eligible < 20) {
       log(`Fila baixa (${eligible} < 20). Auto-reabastecendo via IA com validação estrita de website...`);
-      const segs = ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO'];
+      const segs = ['COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO', 'CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL'];
       
-      for (const seg of segs.sort(() => 0.5 - Math.random()).slice(0, 2)) {
+      for (const seg of segs.sort(() => 0.5 - Math.random())) {
         const searchRes = await apiRequest('/api/prospecting/search/ai', 'POST', {
           segment: seg,
           targetCount: 15,
@@ -130,21 +132,40 @@ async function cleanBounces() {
   }
 }
 
-// 4. Executa o ciclo de disparos cadenciados
+// 4. Dispara o próximo runner caso este esteja prestes a encerrar a janela de 6 horas
+function triggerNextRunner() {
+  try {
+    log(`[Relay] Disparando próximo workflow de GitHub Actions para transição contínua sem parar...`);
+    execSync('gh workflow run prospecting-automation.yml', { stdio: 'inherit' });
+    log(`[Relay] Próximo workflow disparado com sucesso!`);
+  } catch (err) {
+    log(`[Relay] Aviso ao disparar próximo workflow: ${err.message}`);
+  }
+}
+
+// 5. Executa o ciclo de disparos cadenciados
 async function runCadencePacer() {
   const args = process.argv.slice(2);
   const isContinuous = args.includes('--continuous');
   
-  // No GitHub Actions (executa a cada 30 min): envia 25 e-mails (25 e-mails em ~30 min = 50/hora)
   let batchTarget = 25;
   const batchIdx = args.indexOf('--batch');
   if (batchIdx !== -1 && args[batchIdx + 1]) {
     batchTarget = parseInt(args[batchIdx + 1], 10) || 25;
   }
 
+  let maxMinutes = null;
+  const maxMinIdx = args.indexOf('--max-minutes');
+  if (maxMinIdx !== -1 && args[maxMinIdx + 1]) {
+    maxMinutes = parseInt(args[maxMinIdx + 1], 10);
+  }
+
+  const startTime = Date.now();
+
   log(`=== Iniciando Motor de Cadência Contínua (Meta: ${TARGET_PER_HOUR} envios/hora) ===`);
-  log(`Modo: ${isContinuous ? 'Contínuo (Daemon 24/7)' : `Lote de ${batchTarget} e-mails (~30 minutos)`}`);
+  log(`Modo: ${isContinuous ? 'Contínuo 24/7' : `Lote de ${batchTarget} e-mails`}`);
   log(`Intervalo entre envios: ~${DELAY_SECONDS} segundos`);
+  if (maxMinutes) log(`Duração máxima da sessão: ${maxMinutes} minutos`);
 
   // Garante empresas na fila antes de começar
   await ensureQueueReady();
@@ -153,7 +174,20 @@ async function runCadencePacer() {
   let cycle = 0;
   let consecutiveEmpty = 0;
 
-  while (isContinuous || sentInSession < batchTarget) {
+  while (true) {
+    // Checa tempo máximo da sessão (para runners do GitHub Actions)
+    if (maxMinutes && (Date.now() - startTime) >= maxMinutes * 60 * 1000) {
+      log(`Tempo máximo da sessão atingido (${maxMinutes} min). Preparando troca de bastão...`);
+      triggerNextRunner();
+      break;
+    }
+
+    // Se estiver em modo lote fixo e atingiu a meta, encerra
+    if (!isContinuous && sentInSession >= batchTarget) {
+      log(`Meta do lote atingida (${sentInSession} e-mails enviados)!`);
+      break;
+    }
+
     cycle++;
     
     // Dispara 1 e-mail
@@ -162,15 +196,15 @@ async function runCadencePacer() {
     if (result.skipped) {
       log(`⏸️  Pausa preventiva: ${result.message}`);
       if (!isContinuous) break;
-      // Se bateu cota, aguarda 10 minutos antes de checar novamente
-      await sleep(10 * 60 * 1000);
+      // Aguarda 5 minutos antes de checar novamente se a cota liberou
+      await sleep(5 * 60 * 1000);
       continue;
     }
 
     if (result.success && result.sentCount > 0) {
       sentInSession++;
       consecutiveEmpty = 0;
-      log(`[#${sentInSession}/${batchTarget}] ✅ Entregue para ${result.company} (${result.recipient}) | Message-ID: ${result.messageId}`);
+      log(`[#${sentInSession}${!isContinuous ? `/${batchTarget}` : ''}] ✅ Entregue para ${result.company} (${result.recipient}) | Message-ID: ${result.messageId}`);
     } else {
       consecutiveEmpty++;
       if (result.error) {
@@ -179,21 +213,23 @@ async function runCadencePacer() {
         log(`[#${cycle}] ℹ️ Nenhum e-mail elegível enviado neste ciclo.`);
       }
 
-      if (!isContinuous && consecutiveEmpty === 1) {
-        log(`Fila momentaneamente sem contatos. Executando auto-reabastecimento imediato...`);
+      if (isContinuous) {
+        log(`Fila necessita de novos contatos. Executando reabastecimento via Agente IA...`);
         await ensureQueueReady();
-      }
+        log(`Aguardando 30s para reprocessar fila...`);
+        await sleep(30 * 1000);
+        continue;
+      } else {
+        if (consecutiveEmpty === 1) {
+          log(`Fila momentaneamente sem contatos. Executando auto-reabastecimento imediato...`);
+          await ensureQueueReady();
+        }
 
-      if (!isContinuous && consecutiveEmpty >= 3) {
-        log(`Fila de envio vazia ou sem novos contatos elegíveis após reabastecimento. Finalizando lote com segurança.`);
-        break;
+        if (consecutiveEmpty >= 5) {
+          log(`Fila sem novos contatos elegíveis após 5 tentativas. Finalizando lote com segurança.`);
+          break;
+        }
       }
-    }
-
-    // Se atingiu a meta do lote no modo agendado, encerra
-    if (!isContinuous && sentInSession >= batchTarget) {
-      log(`Meta do lote atingida (${sentInSession} e-mails enviados)!`);
-      break;
     }
 
     // Intervalo cadenciado com pequena variação humana (ex: 68 a 76 segundos)
@@ -202,20 +238,20 @@ async function runCadencePacer() {
     log(`Aguardando ${actualDelay}s até o próximo disparo para manter cadência de 50/h...`);
     await sleep(actualDelay * 1000);
 
-    // A cada 5 disparos, higieniza a caixa postal para expurgar eventuais bounces
+    // A cada 5 disparos, higieniza a caixa postal para expurgar eventuais avisos
     if (cycle % 5 === 0) {
       await cleanBounces();
     }
 
-    // A cada 10 disparos, checa se a fila precisa de reposição
+    // A cada 10 disparos, checa se a fila precisa de reposição proativa
     if (cycle % 10 === 0) {
       await ensureQueueReady();
     }
   }
 
-  // Higieniza ao término do lote
+  // Higieniza ao término
   await cleanBounces();
-  log(`=== Ciclo de cadência finalizado. Total entregue: ${sentInSession} e-mails ===`);
+  log(`=== Ciclo finalizado. Total entregue: ${sentInSession} e-mails ===`);
 }
 
 runCadencePacer().catch((err) => {
