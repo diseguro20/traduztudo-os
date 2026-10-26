@@ -39,7 +39,7 @@ async function apiRequest(path, method = 'GET', data = null) {
         'User-Agent': 'TraduzTudo-Pacer/2.0',
         ...(data ? { 'Content-Length': Buffer.byteLength(bodyStr) } : {}),
       },
-      timeout: 30000,
+      timeout: 120000,
     };
 
     const req = https.request(options, (res) => {
@@ -72,17 +72,17 @@ async function ensureQueueReady() {
     const eligible = dash?.stats?.eligibleCount || 0;
     log(`Status da fila: ${eligible} empresas elegíveis para envio.`);
 
-    if (eligible < 25) {
-      log(`Fila baixa (< 25). Buscando novas empresas via Gemini Flash AI...`);
+    if (eligible < 20) {
+      log(`Fila baixa (${eligible} < 20). Auto-reabastecendo via IA com validação estrita de website...`);
       const segs = ['CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL', 'COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO'];
-      const randomSeg = segs[Math.floor(Math.random() * segs.length)];
       
-      const searchRes = await apiRequest('/api/prospecting/search/ai', 'POST', {
-        segment: randomSeg,
-        targetCount: 15,
-      });
-
-      log(`Busca IA concluída: +${searchRes.count || 0} novas empresas adicionadas.`);
+      for (const seg of segs.sort(() => 0.5 - Math.random()).slice(0, 2)) {
+        const searchRes = await apiRequest('/api/prospecting/search/ai', 'POST', {
+          segment: seg,
+          targetCount: 15,
+        });
+        log(`Busca IA (${seg}): +${searchRes.count || 0} novas empresas adicionadas.`);
+      }
     }
   } catch (err) {
     log(`Aviso ao checar fila: ${err.message}`);
@@ -179,8 +179,13 @@ async function runCadencePacer() {
         log(`[#${cycle}] ℹ️ Nenhum e-mail elegível enviado neste ciclo.`);
       }
 
-      if (!isContinuous && consecutiveEmpty >= 2) {
-        log(`Fila de envio vazia ou sem novos contatos elegíveis no momento. Finalizando lote com segurança.`);
+      if (!isContinuous && consecutiveEmpty === 1) {
+        log(`Fila momentaneamente sem contatos. Executando auto-reabastecimento imediato...`);
+        await ensureQueueReady();
+      }
+
+      if (!isContinuous && consecutiveEmpty >= 3) {
+        log(`Fila de envio vazia ou sem novos contatos elegíveis após reabastecimento. Finalizando lote com segurança.`);
         break;
       }
     }

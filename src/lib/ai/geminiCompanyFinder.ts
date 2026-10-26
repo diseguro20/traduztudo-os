@@ -60,6 +60,7 @@ export class GeminiCompanyFinder {
         ? fallbackEmail.split('@')[1].toLowerCase().trim()
         : websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase().trim();
       if (!domain) return { isConfirmedOnSite: false };
+      const cleanDomain = domain.replace(/^www\./, '').toLowerCase();
 
       const urlsToTry = [
         websiteUrl,
@@ -83,8 +84,12 @@ export class GeminiCompanyFinder {
           });
           clearTimeout(t);
           if (res.ok) {
-            allHtml += ' ' + (await res.text());
-            break;
+            const pageText = await res.text();
+            allHtml += ' ' + pageText;
+            // If already found email matching domain, break early
+            if (pageText.includes('@' + cleanDomain) || pageText.includes('.' + cleanDomain)) {
+              break;
+            }
           }
         } catch {
           // ignore individual timeout
@@ -93,7 +98,6 @@ export class GeminiCompanyFinder {
 
       if (!allHtml) return { isConfirmedOnSite: false };
 
-      const cleanDomain = domain.replace(/^www\./, '').toLowerCase();
       const matches = allHtml.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
       const validEmails: string[] = [];
       for (const m of matches) {
@@ -256,7 +260,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
   }
 ]`;
 
-    const modelNames = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.7-flash'];
+    const modelNames = ['gemini-flash-lite-latest', 'gemini-2.0-flash-exp', 'gemini-1.5-flash'];
 
     for (const modelName of modelNames) {
       try {
