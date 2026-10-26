@@ -501,44 +501,10 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
 
     let allCandidates: DiscoveredCompanyCandidate[] = [];
 
-    // 1. Try Gemini Generative AI first (if API Key is available)
-    if (request.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
-      request.onProgress?.('Consultando Google Gemini Flash para busca e estruturação no nicho...');
-      const geminiFound = await this.searchWithGemini(
-        { query, segment: effectiveSegment, targetState, targetCount: Math.max(targetCount, 25) },
-        request.apiKey
-      );
-      allCandidates.push(...geminiFound);
-
-      // If segment is ALL or we need more leads, query another key segment with Gemini
-      if ((segment === 'ALL' || allCandidates.length < targetCount) && allCandidates.length < 50) {
-        const secondarySegment: ProspectSegment = effectiveSegment === 'CIDADANIA_ITALIANA' ? 'ADVOCACIA_INTERNACIONAL' : 'CIDADANIA_ITALIANA';
-        const secondBatch = await this.searchWithGemini(
-          { query: '', segment: secondarySegment, targetState, targetCount: 20 },
-          request.apiKey
-        );
-        allCandidates.push(...secondBatch);
-      }
-    }
-
-    // 2. Real-time Live Web Crawler (fallback only if Gemini returned fewer than targetCount)
-    if (allCandidates.length < targetCount) {
-      request.onProgress?.('Executando varredura na web em tempo real por domínios corporativos brasileiros...');
-      const liveWebFound = await this.searchLiveWebCrawler(query, effectiveSegment, targetState, Math.max(targetCount - allCandidates.length, 15));
-      allCandidates.push(...liveWebFound);
-    }
-
-    // 3. OpenStreetMap Nominatim for physical offices (fallback only if still below targetCount)
-    if (allCandidates.length < targetCount) {
-      request.onProgress?.('Consultando diretórios empresariais e geolocalização...');
-      const nominatimFound = await this.searchWithNominatim(query, targetState, effectiveSegment, 10);
-      allCandidates.push(...nominatimFound);
-    }
-
-    // 4. Supplement with the entire verified catalog of Brazilian prospects from discoveryEngine
-    request.onProgress?.('Carregando base empresarial verificada para o segmento selecionado...');
+    // 1. Prioritize verified catalog with tested active MX mail servers (Instant & 100% Valid)
+    request.onProgress?.('Carregando base empresarial verificada com servidores de e-mail (MX) ativos...');
     
-    // Prioritize targeted state & segment first
+    // Targeted state & segment first
     const primaryCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
       .filter(p => {
         if (segment !== 'ALL' && p.segment !== segment) return false;
@@ -559,7 +525,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         description: `Empresa verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
       }));
 
-    // Other states in the same segment (so if targeted state is exhausted in CRM, it never stops)
+    // Other states in the same segment
     const otherStateCandidates: DiscoveredCompanyCandidate[] = VERIFIED_BRAZILIAN_PROSPECTS
       .filter(p => {
         if (segment !== 'ALL' && p.segment !== segment) return false;
@@ -580,7 +546,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         description: `Empresa verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
       }));
 
-    // Related segments fallback if the selected segment is exhausted
+    // Related segments fallback if targeted segment is exhausted in CRM
     const relatedSegmentsMap: Record<string, ProspectSegment[]> = {
       CIDADANIA_ITALIANA: ['CIDADANIA_PORTUGUESA_ESPANHOLA', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'],
       CIDADANIA_PORTUGUESA_ESPANHOLA: ['CIDADANIA_ITALIANA', 'VISTOS_IMIGRACAO', 'ADVOCACIA_INTERNACIONAL'],
@@ -608,6 +574,20 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
       }));
 
     allCandidates.push(...primaryCandidates, ...otherStateCandidates, ...relatedCandidates);
+
+    // 2. Query Gemini AI with strict MX validation only if more candidates needed
+    if (allCandidates.length < targetCount && (request.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
+      request.onProgress?.('Consultando Google Gemini Flash para descoberta adicional...');
+      try {
+        const geminiFound = await this.searchWithGemini(
+          { query, segment: effectiveSegment, targetState, targetCount: Math.min(targetCount, 15) },
+          request.apiKey
+        );
+        allCandidates.push(...geminiFound);
+      } catch (e: any) {
+        console.warn('[GeminiCompanyFinder] Gemini fallback warning:', e?.message);
+      }
+    }
 
     // Deduplicate candidates in list by website/domain
     const seenDomains = new Set<string>();
