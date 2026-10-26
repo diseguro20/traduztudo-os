@@ -202,6 +202,11 @@ async function runCadencePacer() {
     log(`Aguardando ${actualDelay}s até o próximo disparo para manter cadência de 50/h...`);
     await sleep(actualDelay * 1000);
 
+    // A cada 5 disparos, higieniza a caixa postal para expurgar eventuais bounces
+    if (cycle % 5 === 0) {
+      await cleanBounces();
+    }
+
     // A cada 10 disparos, checa se a fila precisa de reposição
     if (cycle % 10 === 0) {
       await ensureQueueReady();

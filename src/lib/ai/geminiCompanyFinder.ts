@@ -167,7 +167,16 @@ export class GeminiCompanyFinder {
       // 1. Try native Node.js DNS resolveMx
       try {
         const records = await dns.promises.resolveMx(clean);
-        if (records && records.length > 0) return true;
+        if (records && records.length > 0) {
+          // Anti-Relay Denied Guard: If domain points only to default Hostinger MX and is not TraduzTudo,
+          // it is typically an unconfigured Hostinger site builder park that will bounce with 554 5.7.1 Relay access denied.
+          const isAllHostinger = records.every((r) => r.exchange.toLowerCase().includes('hostinger'));
+          if (isAllHostinger && !clean.includes('traduztudo')) {
+            console.warn(`[verifyDomainMx] Domínio ${clean} possui apenas MX Hostinger padrão (sem plano de e-mail ativo). Descartando.`);
+            return false;
+          }
+          return true;
+        }
       } catch (err: any) {
         if (err?.code === 'ENOTFOUND' || err?.code === 'ENODATA') {
           return false;
@@ -186,8 +195,15 @@ export class GeminiCompanyFinder {
         if (res.ok) {
           const data = await res.json();
           if (data.Status === 0 && Array.isArray(data.Answer)) {
-            const hasMx = data.Answer.some((a: any) => a.type === 15);
-            if (hasMx) return true;
+            const mxAnswers = data.Answer.filter((a: any) => a.type === 15);
+            if (mxAnswers.length > 0) {
+              const isAllHostinger = mxAnswers.every((a: any) => typeof a.data === 'string' && a.data.toLowerCase().includes('hostinger'));
+              if (isAllHostinger && !clean.includes('traduztudo')) {
+                console.warn(`[verifyDomainMx] Domínio ${clean} possui apenas MX Hostinger padrão no DoH. Descartando.`);
+                return false;
+              }
+              return true;
+            }
           }
           if (data.Status === 3) {
             return false; // NXDOMAIN
