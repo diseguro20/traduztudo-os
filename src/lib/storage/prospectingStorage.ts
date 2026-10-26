@@ -21,6 +21,7 @@ import {
   query,
   where,
   limit,
+  orderBy,
 } from 'firebase/firestore';
 
 const COLLECTIONS = {
@@ -563,7 +564,7 @@ export class ProspectingStorage {
   public async listOutboundMessages(companyId?: string, limitCount = 50): Promise<OutboundMessageRecord[]> {
     try {
       if (db) {
-        const q = query(collection(db, COLLECTIONS.OUTBOUND), limit(limitCount));
+        const q = query(collection(db, COLLECTIONS.OUTBOUND), orderBy('sentAt', 'desc'), limit(limitCount));
         const snap = await getDocs(q);
         if (!snap.empty) {
           snap.forEach((d) => {
