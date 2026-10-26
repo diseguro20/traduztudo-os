@@ -151,6 +151,7 @@ async function runCadencePacer() {
 
   let sentInSession = 0;
   let cycle = 0;
+  let consecutiveEmpty = 0;
 
   while (isContinuous || sentInSession < batchTarget) {
     cycle++;
@@ -168,9 +169,20 @@ async function runCadencePacer() {
 
     if (result.success && result.sentCount > 0) {
       sentInSession++;
+      consecutiveEmpty = 0;
       log(`[#${sentInSession}/${batchTarget}] ✅ Entregue para ${result.company} (${result.recipient}) | Message-ID: ${result.messageId}`);
-    } else if (result.error) {
-      log(`[#${cycle}] ⚠️ Falha no envio: ${result.error}`);
+    } else {
+      consecutiveEmpty++;
+      if (result.error) {
+        log(`[#${cycle}] ⚠️ Falha no envio: ${result.error}`);
+      } else {
+        log(`[#${cycle}] ℹ️ Nenhum e-mail elegível enviado neste ciclo.`);
+      }
+
+      if (!isContinuous && consecutiveEmpty >= 2) {
+        log(`Fila de envio vazia ou sem novos contatos elegíveis no momento. Finalizando lote com segurança.`);
+        break;
+      }
     }
 
     // Se atingiu a meta do lote no modo agendado, encerra
