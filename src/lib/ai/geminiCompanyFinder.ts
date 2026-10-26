@@ -304,7 +304,12 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
       }
     }
 
-    // Determine best corporate contact email
+    // If no real email was found anywhere in the website HTML, reject immediately (ZERO GUESSING)
+    if (collectedEmails.length === 0) {
+      return null;
+    }
+
+    // Determine best corporate contact email from actually extracted emails
     const domainSpecificEmail = collectedEmails.find((e) => e.includes(cleanDomain));
     const commonPrefixEmail = collectedEmails.find(
       (e) =>
@@ -314,7 +319,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         e.startsWith('info@') ||
         e.startsWith('faleconosco@')
     );
-    const chosenEmail = domainSpecificEmail || commonPrefixEmail || collectedEmails[0] || `contato@${cleanDomain}`;
+    const chosenEmail = domainSpecificEmail || commonPrefixEmail || collectedEmails[0];
 
     const parts = cleanDomain.split('.')[0];
     const fallbackTradeName = parts.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
@@ -463,55 +468,14 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
    * Discovers companies using OpenStreetMap Nominatim for real physical business locations
    */
   public async searchWithNominatim(
-    queryText: string,
-    state: string,
-    segment: ProspectSegment,
-    limitCount = 10
+    _queryText: string,
+    _state: string,
+    _segment: ProspectSegment,
+    _limitCount = 10
   ): Promise<DiscoveredCompanyCandidate[]> {
-    const candidates: DiscoveredCompanyCandidate[] = [];
-    try {
-      const q = `${queryText} ${state !== 'ALL' ? state : 'Brasil'}`;
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=${limitCount}`;
-
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'TraduzTudoApp/2.0 (contato@traduztudo.com)' },
-      });
-
-      if (!res.ok) return candidates;
-      const items = await res.json();
-
-      for (const item of items) {
-        if (!item.display_name) continue;
-        const parts = item.display_name.split(',').map((p: string) => p.trim());
-        const tradeName = parts[0];
-        const city = item.address?.city || item.address?.town || item.address?.municipality || 'São Paulo';
-        const st = item.address?.state_code || (state !== 'ALL' ? state : 'SP');
-
-        const slug = tradeName
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]/g, '');
-
-        if (slug.length < 3) continue;
-
-        const domain = `${slug}.com.br`;
-        candidates.push({
-          name: `${tradeName} Ltda`,
-          tradeName,
-          segment,
-          city,
-          state: String(st).length === 2 ? String(st).toUpperCase() : 'SP',
-          website: `https://www.${domain}`,
-          contactEmail: `contato@${domain}`,
-          phone: '(11) 3280-4490',
-        });
-      }
-    } catch (err: any) {
-      console.warn('[GeminiCompanyFinder] Nominatim search warning:', err?.message);
-    }
-
-    return candidates;
+    // Disabled: Nominatim does not provide validated email addresses.
+    // We only use Live Web Crawler and Verified Registry with genuine MX records.
+    return [];
   }
 
   /**

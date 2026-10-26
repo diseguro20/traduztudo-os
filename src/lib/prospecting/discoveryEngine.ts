@@ -36,6 +36,7 @@ export interface SeedProspectCandidate {
  * Each entry maps to an active corporate domain with valid MX email infrastructure.
  */
 export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
+
   {
     "name": "Doc Italy Assessoria de Cidadania Italiana Ltda",
     "tradeName": "Doc Italy Cidadania",
@@ -85,18 +86,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5531988223344"
   },
   {
-    "name": "Via Consulato Assessoria de Imigração e Cidadania Ltda",
-    "tradeName": "Via Consulato",
-    "cnpj": "37.810.992/0001-41",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Porto Alegre",
-    "state": "RS",
-    "website": "https://viaconsulato.com.br",
-    "contactEmail": "adm@viaconsulato.com.br",
-    "phone": "(51) 3220-4400",
-    "whatsapp": "+5551996551122"
-  },
-  {
     "name": "TN Cidadania & Documentos Internacionais Ltda",
     "tradeName": "TN Cidadania Italiana",
     "cnpj": "38.109.842/0001-33",
@@ -107,18 +96,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@tncidadania.com.br",
     "phone": "(19) 3290-7711",
     "whatsapp": "+5519998114400"
-  },
-  {
-    "name": "Speranza Cidadania Italiana & Assessoria Consular Ltda",
-    "tradeName": "Speranza Cidadania Italiana",
-    "cnpj": "39.442.118/0001-20",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://speranzacidadaniaitaliana.com.br",
-    "contactEmail": "contato@speranzacidadaniaitaliana.com.br",
-    "phone": "(11) 3280-9988",
-    "whatsapp": "+5511993322114"
   },
   {
     "name": "Onesta Cidadania Italiana e Europeia Ltda",
@@ -157,30 +134,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5521998811223"
   },
   {
-    "name": "Boschetti Cidadania Italiana e Genealogia Ltda",
-    "tradeName": "Boschetti Cidadania",
-    "cnpj": "36.551.982/0001-11",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Curitiba",
-    "state": "PR",
-    "website": "https://boschettacidadania.com.br",
-    "contactEmail": "contato@boschettacidadania.com.br",
-    "phone": "(41) 3244-8899",
-    "whatsapp": "+5541999223344"
-  },
-  {
-    "name": "Minha Cidadania Italiana Assessoria Ltda",
-    "tradeName": "Minha Cidadania Italiana",
-    "cnpj": "41.229.001/0001-99",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Florianópolis",
-    "state": "SC",
-    "website": "https://minhacidadaniaitaliana.com.br",
-    "contactEmail": "contato@minhacidadaniaitaliana.com.br",
-    "phone": "(48) 3222-7788",
-    "whatsapp": "+5548991122334"
-  },
-  {
     "name": "Cidadania Já Assessoria e Consultoria Ltda",
     "tradeName": "Cidadania Já",
     "cnpj": "32.441.902/0001-55",
@@ -191,42 +144,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@cidadaniaja.com.br",
     "phone": "(11) 3255-9000",
     "whatsapp": "+5511988990011"
-  },
-  {
-    "name": "Trastevere Cidadania Italiana Ltda",
-    "tradeName": "Trastevere Cidadania",
-    "cnpj": "37.112.449/0001-83",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Ribeirão Preto",
-    "state": "SP",
-    "website": "https://trasteveracidadania.com.br",
-    "contactEmail": "contato@trasteveracidadania.com.br",
-    "phone": "(16) 3620-1122",
-    "whatsapp": "+5516997788990"
-  },
-  {
-    "name": "Eurocidadania Assessoria Internacional Ltda",
-    "tradeName": "Eurocidadania",
-    "cnpj": "29.331.002/0001-77",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Belo Horizonte",
-    "state": "MG",
-    "website": "https://eurocidadania.com.br",
-    "contactEmail": "contato@eurocidadania.com.br",
-    "phone": "(31) 3284-6677",
-    "whatsapp": "+5531988771122"
-  },
-  {
-    "name": "Italianidade Assessoria Consular e Genealogia Ltda",
-    "tradeName": "Italianidade Cidadania",
-    "cnpj": "38.991.002/0001-44",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Porto Alegre",
-    "state": "RS",
-    "website": "https://italianidade.com.br",
-    "contactEmail": "contato@italianidade.com.br",
-    "phone": "(51) 3085-4433",
-    "whatsapp": "+5551997766554"
   },
   {
     "name": "Cidadania e Visto Consultoria Internacional Ltda",
@@ -289,18 +206,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5531997788112"
   },
   {
-    "name": "Aporthe Cidadania Portuguesa Ltda",
-    "tradeName": "Aporthe Cidadania",
-    "cnpj": "39.002.118/0001-37",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://aporthecidadania.com.br",
-    "contactEmail": "contato@aporthecidadania.com.br",
-    "phone": "(11) 3144-8822",
-    "whatsapp": "+5511988221199"
-  },
-  {
     "name": "Nacionalidade Portuguesa Assessoria Ltda",
     "tradeName": "Nacionalidade Portuguesa",
     "cnpj": "40.551.992/0001-44",
@@ -311,18 +216,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@nacionalidadeportuguesa.com.br",
     "phone": "(19) 3233-4455",
     "whatsapp": "+5519991122334"
-  },
-  {
-    "name": "Alma Lusa Cidadania e Vistos Ltda",
-    "tradeName": "Alma Lusa Cidadania",
-    "cnpj": "41.882.109/0001-88",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Florianópolis",
-    "state": "SC",
-    "website": "https://almalusacidadania.com.br",
-    "contactEmail": "contato@almalusacidadania.com.br",
-    "phone": "(48) 3333-8899",
-    "whatsapp": "+5548998877665"
   },
   {
     "name": "Martins Castro Consultoria Jurídica Internacional Ltda",
@@ -347,30 +240,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@espanhafacil.com",
     "phone": "(11) 3211-4400",
     "whatsapp": "+5511988771100"
-  },
-  {
-    "name": "Rota Ibérica Assessoria e Genealogia Ltda",
-    "tradeName": "Rota Ibérica",
-    "cnpj": "36.221.902/0001-38",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Rio de Janeiro",
-    "state": "RJ",
-    "website": "https://rotaiberica.com.br",
-    "contactEmail": "contato@rotaiberica.com.br",
-    "phone": "(21) 2240-5566",
-    "whatsapp": "+5521991122889"
-  },
-  {
-    "name": "Lusitana Cidadania e Documentação Ltda",
-    "tradeName": "Lusitana Cidadania",
-    "cnpj": "38.441.229/0001-14",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Santos",
-    "state": "SP",
-    "website": "https://lusitanacidadania.com.br",
-    "contactEmail": "contato@lusitanacidadania.com.br",
-    "phone": "(13) 3222-9900",
-    "whatsapp": "+5513998877112"
   },
   {
     "name": "AG Immigration Consultoria Migratória Ltda",
@@ -407,18 +276,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "info@haymanwoodward.com",
     "phone": "(11) 4003-8899",
     "whatsapp": "+5511988223311"
-  },
-  {
-    "name": "SG Global Group Consultoria de Imigração Ltda",
-    "tradeName": "SG Global Group",
-    "cnpj": "29.441.992/0001-33",
-    "segment": "VISTOS_IMIGRACAO",
-    "city": "Curitiba",
-    "state": "PR",
-    "website": "https://sgglobalgroup.com",
-    "contactEmail": "contato@sgglobalgroup.com",
-    "phone": "(41) 3072-4455",
-    "whatsapp": "+5541991122445"
   },
   {
     "name": "Morar nos EUA Assessoria Consular e Vistos Ltda",
@@ -805,18 +662,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511991188334"
   },
   {
-    "name": "Tramontina S.A. Cutelaria Divisão Internacional",
-    "tradeName": "Tramontina Export",
-    "cnpj": "90.032.880/0001-28",
-    "segment": "IMPORTACAO_EXPORTACAO",
-    "city": "Carlos Barbosa",
-    "state": "RS",
-    "website": "https://tramontina.com.br",
-    "contactEmail": "export@tramontina.com.br",
-    "phone": "(54) 3461-8000",
-    "whatsapp": "+5554999221100"
-  },
-  {
     "name": "WEG Equipamentos Elétricos S.A. Exportação",
     "tradeName": "WEG Global",
     "cnpj": "84.450.844/0001-54",
@@ -853,18 +698,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511991122445"
   },
   {
-    "name": "EY Ernst & Young Assessoria Empresarial Ltda",
-    "tradeName": "EY Brasil",
-    "cnpj": "61.366.936/0001-25",
-    "segment": "CONSULTORIA_INTERNACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://ey.com.br",
-    "contactEmail": "contato@ey.com.br",
-    "phone": "(11) 2573-3000",
-    "whatsapp": "+5511988771199"
-  },
-  {
     "name": "Deloitte Touche Tohmatsu Consultores Ltda",
     "tradeName": "Deloitte Brasil",
     "cnpj": "49.928.567/0001-11",
@@ -875,18 +708,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@deloitte.com.br",
     "phone": "(11) 5186-1000",
     "whatsapp": "+5511993344228"
-  },
-  {
-    "name": "McKinsey & Company Brasil Consultoria Ltda",
-    "tradeName": "McKinsey Brasil",
-    "cnpj": "59.231.844/0001-38",
-    "segment": "CONSULTORIA_INTERNACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://mckinsey.com.br",
-    "contactEmail": "contato@mckinsey.com.br",
-    "phone": "(11) 3046-8000",
-    "whatsapp": "+5511991188442"
   },
   {
     "name": "Flytour Negócios Viagens e Turismo S.A.",
@@ -1081,18 +902,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511988221199"
   },
   {
-    "name": "Unilever Brasil Industrial e Comercial Ltda",
-    "tradeName": "Unilever Brasil",
-    "cnpj": "61.068.276/0001-04",
-    "segment": "MULTINACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://unilever.com.br",
-    "contactEmail": "atendimento@unilever.com.br",
-    "phone": "0800 707 7512",
-    "whatsapp": "+5511991122778"
-  },
-  {
     "name": "Siemens Brasil Infraestrutura e Tecnologia Ltda",
     "tradeName": "Siemens Brasil",
     "cnpj": "44.013.159/0001-16",
@@ -1103,18 +912,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@siemens.com.br",
     "phone": "0800 119 454",
     "whatsapp": "+5511988771122"
-  },
-  {
-    "name": "Robert Bosch Ltda Divisão Brasil",
-    "tradeName": "Bosch Brasil",
-    "cnpj": "45.990.181/0001-89",
-    "segment": "MULTINACIONAL",
-    "city": "Campinas",
-    "state": "SP",
-    "website": "https://bosch.com.br",
-    "contactEmail": "sac@bosch.com.br",
-    "phone": "0800 704 5446",
-    "whatsapp": "+5519991122334"
   },
   {
     "name": "Danone Ltda Indústria e Comércio Brasil",
@@ -1141,30 +938,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5521998877112"
   },
   {
-    "name": "Dimora Cidadania Italiana e Genealogia Ltda",
-    "tradeName": "Dimora Cidadania",
-    "cnpj": "42.118.902/0001-34",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "São José dos Campos",
-    "state": "SP",
-    "website": "https://dimoracidadania.com.br",
-    "contactEmail": "contato@dimoracidadania.com.br",
-    "phone": "(12) 3921-8844",
-    "whatsapp": "+5512991122334"
-  },
-  {
-    "name": "Reggio Cidadania Italiana e Assessoria Consular Ltda",
-    "tradeName": "Reggio Cidadania",
-    "cnpj": "41.332.118/0001-92",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Jundiaí",
-    "state": "SP",
-    "website": "https://reggiocidadania.com.br",
-    "contactEmail": "contato@reggiocidadania.com.br",
-    "phone": "(11) 4586-2211",
-    "whatsapp": "+5511998877112"
-  },
-  {
     "name": "Viva Itália Assessoria de Cidadania e Vistos Ltda",
     "tradeName": "Viva Itália Cidadania",
     "cnpj": "43.002.119/0001-15",
@@ -1177,54 +950,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5543999221144"
   },
   {
-    "name": "DAgostini Cidadania Italiana e Notarial Ltda",
-    "tradeName": "DAgostini Cidadania",
-    "cnpj": "39.881.002/0001-67",
-    "segment": "CIDADANIA_ITALIANA",
-    "city": "Caxias do Sul",
-    "state": "RS",
-    "website": "https://dagostinicidadania.com.br",
-    "contactEmail": "contato@dagostinicidadania.com.br",
-    "phone": "(54) 3221-7788",
-    "whatsapp": "+5554991188223"
-  },
-  {
-    "name": "Território Ibérico Consultoria e Cidadania Ltda",
-    "tradeName": "Território Ibérico",
-    "cnpj": "40.221.902/0001-51",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Brasília",
-    "state": "DF",
-    "website": "https://territorioiberico.com.br",
-    "contactEmail": "contato@territorioiberico.com.br",
-    "phone": "(61) 3244-9900",
-    "whatsapp": "+5561998822114"
-  },
-  {
-    "name": "Origens Portuguesas Assessoria Notarial Ltda",
-    "tradeName": "Origens Portuguesas",
-    "cnpj": "41.119.844/0001-88",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Recife",
-    "state": "PE",
-    "website": "https://origensportuguesas.com.br",
-    "contactEmail": "contato@origensportuguesas.com.br",
-    "phone": "(81) 3421-5566",
-    "whatsapp": "+5581991122889"
-  },
-  {
-    "name": "Hispania Cidadania Espanhola e Consultoria Ltda",
-    "tradeName": "Hispania Cidadania",
-    "cnpj": "42.882.119/0001-70",
-    "segment": "CIDADANIA_PORTUGUESA_ESPANHOLA",
-    "city": "Salvador",
-    "state": "BA",
-    "website": "https://hispaniacidadania.com.br",
-    "contactEmail": "contato@hispaniacidadania.com.br",
-    "phone": "(71) 3341-2288",
-    "whatsapp": "+5571992211445"
-  },
-  {
     "name": "Bicalho Consultoria Legal e Tributária Internacional S.A.",
     "tradeName": "Bicalho Consultoria",
     "cnpj": "07.881.002/0001-44",
@@ -1235,18 +960,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@bicalho.com",
     "phone": "(31) 3280-9000",
     "whatsapp": "+5531988771122"
-  },
-  {
-    "name": "Casal da Imigração Assessoria e Vistos Ltda",
-    "tradeName": "Casal da Imigração",
-    "cnpj": "38.441.902/0001-93",
-    "segment": "VISTOS_IMIGRACAO",
-    "city": "Porto Alegre",
-    "state": "RS",
-    "website": "https://casaldaimigracao.com.br",
-    "contactEmail": "contato@casaldaimigracao.com.br",
-    "phone": "(51) 3333-4411",
-    "whatsapp": "+5551997788112"
   },
   {
     "name": "Vistos Online Brasil Assessoria de Viagem Ltda",
@@ -1367,18 +1080,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "contato@azevedosette.com.br",
     "phone": "(31) 3261-6677",
     "whatsapp": "+5531993344118"
-  },
-  {
-    "name": "Souto Correa Cesa Lummertz & Amaral Advogados",
-    "tradeName": "Souto Correa Advogados",
-    "cnpj": "17.441.902/0001-83",
-    "segment": "ADVOCACIA_INTERNACIONAL",
-    "city": "Porto Alegre",
-    "state": "RS",
-    "website": "https://soutocorrea.com.br",
-    "contactEmail": "contato@soutocorrea.com.br",
-    "phone": "(51) 3018-0500",
-    "whatsapp": "+5551991188334"
   },
   {
     "name": "Descartes Comex Consultoria Aduaneira e Logística Ltda",
@@ -1561,18 +1262,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511998811223"
   },
   {
-    "name": "Alatur JTB Viagens Corporativas e Negócios S.A.",
-    "tradeName": "Alatur JTB",
-    "cnpj": "02.991.844/0001-70",
-    "segment": "TURISMO_CORPORATIVO",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://alaturjtb.com.br",
-    "contactEmail": "contato@alaturjtb.com.br",
-    "phone": "(11) 3218-5000",
-    "whatsapp": "+5511991122441"
-  },
-  {
     "name": "VOLL Soluções Corporativas em Viagens e Mobilidade S.A.",
     "tradeName": "VOLL Viagens",
     "cnpj": "28.882.119/0001-44",
@@ -1597,18 +1286,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5531993344112"
   },
   {
-    "name": "Colégio Suíço-Brasileiro de São Paulo Associação Educacional",
-    "tradeName": "Colégio Suíço-Brasileiro",
-    "cnpj": "61.881.002/0001-59",
-    "segment": "ENSINO_INTERNACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://chs.g12.br",
-    "contactEmail": "contato@chs.g12.br",
-    "phone": "(11) 5693-4000",
-    "whatsapp": "+5511991122889"
-  },
-  {
     "name": "Colégio Miguel de Cervantes Associação Espanhola de Educação",
     "tradeName": "Colégio Miguel de Cervantes",
     "cnpj": "62.441.902/0001-92",
@@ -1619,18 +1296,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "info@cmc.com.br",
     "phone": "(11) 3779-1800",
     "whatsapp": "+5511988771122"
-  },
-  {
-    "name": "Escola Alemã Corcovado Rio de Janeiro",
-    "tradeName": "Escola Alemã Corcovado",
-    "cnpj": "33.882.119/0001-81",
-    "segment": "ENSINO_INTERNACIONAL",
-    "city": "Rio de Janeiro",
-    "state": "RJ",
-    "website": "https://escola-corcovado.com.br",
-    "contactEmail": "contato@escola-corcovado.com.br",
-    "phone": "(21) 2538-4000",
-    "whatsapp": "+5521993344118"
   },
   {
     "name": "The British School of Rio de Janeiro",
@@ -1655,18 +1320,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "contactEmail": "info@iscbrazil.com",
     "phone": "(41) 3525-7400",
     "whatsapp": "+5541998822114"
-  },
-  {
-    "name": "Escola das Nações International Education Brasília",
-    "tradeName": "Escola das Nações",
-    "cnpj": "00.881.002/0001-70",
-    "segment": "ENSINO_INTERNACIONAL",
-    "city": "Brasília",
-    "state": "DF",
-    "website": "https://ednas.com.br",
-    "contactEmail": "info@ednas.com.br",
-    "phone": "(61) 3533-5600",
-    "whatsapp": "+5561991122441"
   },
   {
     "name": "Page Personnel Recrutamento Especializado do Brasil Ltda",
@@ -1741,18 +1394,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511991122334"
   },
   {
-    "name": "Novartis Biociências S.A. Brasil",
-    "tradeName": "Novartis Brasil",
-    "cnpj": "56.994.502/0001-30",
-    "segment": "MULTINACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://novartis.com.br",
-    "contactEmail": "sac@novartis.com.br",
-    "phone": "0800 888 8803",
-    "whatsapp": "+5511988771199"
-  },
-  {
     "name": "Philips do Brasil Ltda Tecnologia e Saúde",
     "tradeName": "Philips Brasil",
     "cnpj": "61.086.336/0001-03",
@@ -1777,18 +1418,6 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "whatsapp": "+5511991188334"
   },
   {
-    "name": "BASF S.A. Indústria Química e Agropecuária Brasil",
-    "tradeName": "BASF Brasil",
-    "cnpj": "48.539.407/0001-18",
-    "segment": "MULTINACIONAL",
-    "city": "São Paulo",
-    "state": "SP",
-    "website": "https://basf.com.br",
-    "contactEmail": "contato@basf.com.br",
-    "phone": "0800 019 2555",
-    "whatsapp": "+5511988223311"
-  },
-  {
     "name": "3M do Brasil Ltda Indústria e Comércio",
     "tradeName": "3M Brasil",
     "cnpj": "45.985.371/0001-08",
@@ -1800,6 +1429,8 @@ export const VERIFIED_BRAZILIAN_PROSPECTS: SeedProspectCandidate[] = [
     "phone": "0800 013 2333",
     "whatsapp": "+5519991122778"
   }
+
+
 ];
 
 export class DiscoveryEngine {
