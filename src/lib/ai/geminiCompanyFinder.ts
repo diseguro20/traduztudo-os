@@ -48,6 +48,98 @@ export class GeminiCompanyFinder {
   }
 
   /**
+   * Scrapes the target website looking for email addresses belonging to the same domain.
+   */
+  public async verifyWebsiteEmail(
+    websiteUrl: string,
+    fallbackEmail: string
+  ): Promise<{ isConfirmedOnSite: boolean; verifiedEmail?: string }> {
+    try {
+      if (!websiteUrl) return { isConfirmedOnSite: false };
+      const domain = fallbackEmail.includes('@')
+        ? fallbackEmail.split('@')[1].toLowerCase().trim()
+        : websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase().trim();
+      if (!domain) return { isConfirmedOnSite: false };
+
+      const urlsToTry = [
+        websiteUrl,
+        `https://www.${domain}`,
+        `https://${domain}`,
+        `https://www.${domain}/contato`,
+        `https://www.${domain}/fale-conosco`,
+      ];
+
+      let allHtml = '';
+      for (const u of urlsToTry) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 3500);
+          const res = await fetch(u, {
+            signal: ctrl.signal,
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            },
+          });
+          clearTimeout(t);
+          if (res.ok) {
+            allHtml += ' ' + (await res.text());
+            break;
+          }
+        } catch {
+          // ignore individual timeout
+        }
+      }
+
+      if (!allHtml) return { isConfirmedOnSite: false };
+
+      const cleanDomain = domain.replace(/^www\./, '').toLowerCase();
+      const matches = allHtml.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+      const validEmails: string[] = [];
+      for (const m of matches) {
+        const em = m.toLowerCase();
+        if (
+          em.endsWith('.png') ||
+          em.endsWith('.jpg') ||
+          em.endsWith('.webp') ||
+          em.includes('example') ||
+          em.includes('wixpress') ||
+          em.includes('schema.org') ||
+          em.includes('sentry') ||
+          em.includes('wordpress') ||
+          em.includes('cloudflare')
+        ) {
+          continue;
+        }
+        if (em.endsWith('@' + cleanDomain) || em.endsWith('.' + cleanDomain)) {
+          validEmails.push(em);
+        }
+      }
+
+      const unique = [...new Set(validEmails)];
+      if (unique.includes(fallbackEmail.toLowerCase())) {
+        return { isConfirmedOnSite: true, verifiedEmail: fallbackEmail };
+      }
+
+      if (unique.length > 0) {
+        const preferred =
+          unique.find(
+            (e) =>
+              e.startsWith('contato@') ||
+              e.startsWith('comercial@') ||
+              e.startsWith('atendimento@') ||
+              e.startsWith('sac@')
+          ) || unique[0];
+        return { isConfirmedOnSite: true, verifiedEmail: preferred };
+      }
+
+      return { isConfirmedOnSite: false };
+    } catch {
+      return { isConfirmedOnSite: false };
+    }
+  }
+
+  /**
    * Verifies if a domain has active MX records (strictly fail-closed to prevent bounces)
    */
   public async verifyDomainMx(emailOrDomain: string): Promise<boolean> {
@@ -638,11 +730,16 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         );
         if (isSuppressed) continue;
 
-        // MX Server Verification (guarantees real active email)
+        // MX Server Verification (guarantees domain accepts email)
         const isMxValid = await this.verifyDomainMx(candidate.contactEmail);
         if (!isMxValid) {
           continue;
         }
+
+        // Live Website Email Scraping Verification: confirm the email actually exists publicly
+        const webCheck = await this.verifyWebsiteEmail(candidate.website, candidate.contactEmail);
+        const resolvedEmail = webCheck.verifiedEmail || candidate.contactEmail;
+        const initialStatus: ProspectStage = webCheck.isConfirmedOnSite ? 'CONTATO_VERIFICADO' : 'CONTATO_PENDENTE';
 
         // AI Qualification
         const qualification = prospectingAIAgent.qualifyCompany({
@@ -652,7 +749,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
           city: candidate.city,
           state: candidate.state,
           website: candidate.website,
-          hasContactEmail: !!candidate.contactEmail,
+          hasContactEmail: !!resolvedEmail,
           hasPhone: !!candidate.phone,
         });
 
@@ -667,12 +764,15 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
           city: candidate.city,
           state: candidate.state,
           website: candidate.website,
-          contactEmail: candidate.contactEmail,
+          contactEmail: resolvedEmail,
           phone: candidate.phone,
           whatsapp: candidate.whatsapp,
           source: 'BUSCA_PUBLICA',
           discoveredAt: now,
-          status: 'CONTATO_VERIFICADO',
+          status: initialStatus,
+          notes: webCheck.isConfirmedOnSite
+            ? `E-mail verificado diretamente no website corporativo (${resolvedEmail}).`
+            : 'Pendente de validação no website (bloqueado preventivamente contra bounces).',
           fitScore: qualification.fitScore,
           relevantServices: qualification.relevantServices,
           targetLanguages: qualification.targetLanguages,

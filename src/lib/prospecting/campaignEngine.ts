@@ -161,14 +161,14 @@ export class CampaignEngine {
 
       // 1. Suppression List Check (Strict LGPD)
       const suppressed = await prospectingStorage.isSuppressed(company.contactEmail, company.website);
-      if (suppressed || company.optOut) {
+      if (suppressed || company.optOut || company.status === 'CONTATO_PENDENTE' || company.status === 'CONTATO_INVALIDO') {
         result.skippedCount++;
         result.details.push({
           companyId: company.id,
           companyName: company.tradeName || company.name,
           recipientEmail: company.contactEmail,
           status: 'SKIPPED',
-          error: 'Destinatário em lista de supressão (Opt-Out LGPD)',
+          error: 'Destinatário em lista de supressão ou contato pendente/inválido',
         });
         continue;
       }
@@ -179,6 +179,8 @@ export class CampaignEngine {
         console.warn(`[CampaignEngine] Destinatário sem servidor MX válido: ${company.contactEmail}. Descartando e marcando CONTATO_INVALIDO.`);
         await prospectingStorage.updateCompany(company.id, {
           status: 'CONTATO_INVALIDO',
+          optOut: true,
+          notes: 'Domínio sem registro MX ativo no DNS (bloqueio preventivo contra bounces)',
         });
         result.skippedCount++;
         result.details.push({
