@@ -285,9 +285,9 @@ export class CampaignEngine {
         });
       }
 
-      // Human-like cadence delay (10 to 18 seconds) between emails to protect SMTP sender reputation and avoid burst filters
+      // Serverless-safe cadence delay (3 to 5 seconds) between emails to prevent Vercel 60s timeout
       if (result.processedCount < eligibleCompanies.length) {
-        const delayMs = 10000 + Math.floor(Math.random() * 8000);
+        const delayMs = 3000 + Math.floor(Math.random() * 2000);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }

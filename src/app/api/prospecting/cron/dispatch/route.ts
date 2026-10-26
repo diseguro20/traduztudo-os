@@ -39,7 +39,7 @@ async function handleDispatch(req: NextRequest) {
 
     // Strict Anti-Suspension: Daily Limit Protection (Apenas para disparos em segundo plano)
     const stats = await prospectingStorage.getDashboardStats();
-    const dailyLimit = settings.dailySendLimit || 70;
+    const dailyLimit = settings.dailySendLimit || 400;
     if (stats.emailsSentToday >= dailyLimit && !isManualTrigger) {
       return NextResponse.json({
         success: true,
@@ -52,13 +52,13 @@ async function handleDispatch(req: NextRequest) {
       });
     }
 
-    // Enforce safe serverless batch size: 3 to 4 emails per invocation
-    // Guarantees execution stays well below Vercel's timeout and protects Hostinger SMTP reputation
+    // Safe serverless batch size: 1 to 4 emails per invocation
+    // Guarantees execution completes in 3-15s, well below Vercel timeouts
     const remainingToday = Math.max(1, dailyLimit - (stats.emailsSentToday || 0));
-    const batchLimit = Math.min(4, Math.max(2, Math.ceil(dailyLimit / 25)));
+    const requestedCount = options.limitCount ? Math.min(Math.max(1, Number(options.limitCount)), 4) : 1;
     const limitCount = isManualTrigger
-      ? Math.min(4, options.limitCount || batchLimit)
-      : Math.min(remainingToday, options.limitCount || batchLimit);
+      ? requestedCount
+      : Math.min(remainingToday, requestedCount);
 
     const result = await campaignEngine.executeCampaignDispatch({
       ...options,

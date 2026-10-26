@@ -73,10 +73,10 @@ export function ProspectingLiveMonitor({
   const [isPurging, setIsPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState<string | null>(null);
 
-  // Auto-Pilot Continuous Mode (cadência segura anti-bloqueio)
+  // Auto-Pilot Continuous Mode (cadência ativa de 50 e-mails/hora)
   const [autoPilotEnabled, setAutoPilotEnabled] = useState(true);
-  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(20);
-  const [countdownSeconds, setCountdownSeconds] = useState(1200);
+  const [cycleIntervalMinutes, setCycleIntervalMinutes] = useState(2.5);
+  const [countdownSeconds, setCountdownSeconds] = useState(150);
 
   const formatCountdown = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -94,7 +94,7 @@ export function ProspectingLiveMonitor({
           if (!isRunningCycle) {
             handleRunFullCycle(false);
           }
-          return cycleIntervalMinutes * 60;
+          return Math.round(cycleIntervalMinutes * 60);
         }
         return prev - 1;
       });
@@ -184,7 +184,7 @@ export function ProspectingLiveMonitor({
             'Content-Type': 'application/json',
             'x-manual-trigger': isManual ? 'true' : 'false',
           },
-          body: JSON.stringify({ limitCount: 3, force: isManual }),
+          body: JSON.stringify({ limitCount: isManual ? 3 : 2, force: isManual }),
         });
         const dataDispatch = await resDispatch.json();
         if (dataDispatch.skipped) {
@@ -225,7 +225,7 @@ export function ProspectingLiveMonitor({
       alert('Erro ao executar ciclo: ' + (err?.message || 'Falha de comunicação'));
     } finally {
       setIsRunningCycle(false);
-      setCountdownSeconds(cycleIntervalMinutes * 60);
+      setCountdownSeconds(Math.round(cycleIntervalMinutes * 60));
     }
   };
 
@@ -308,10 +308,10 @@ export function ProspectingLiveMonitor({
               className="bg-indigo-900/60 border border-indigo-600/50 rounded-xl px-2.5 py-2 text-xs font-semibold text-white focus:outline-hidden"
               title="Intervalo entre ciclos automáticos"
             >
-              <option value={15}>A cada 15 min</option>
-              <option value={20}>A cada 20 min (Recomendado)</option>
-              <option value={30}>A cada 30 min</option>
-              <option value={45}>A cada 45 min</option>
+              <option value={2.5}>Cadência Ativa (50 e-mails/h - a cada 2.5 min)</option>
+              <option value={5}>Cadência Moderada (25 e-mails/h - a cada 5 min)</option>
+              <option value={10}>Cadência Suave (15 e-mails/h - a cada 10 min)</option>
+              <option value={20}>Cadência Baixa (a cada 20 min)</option>
             </select>
 
             <Button
