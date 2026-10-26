@@ -371,7 +371,12 @@ export class ProspectingStorage {
 
     try {
       if (db) {
-        const q = query(collection(db, COLLECTIONS.COMPANIES), limit(filters?.limit || 200));
+        let q;
+        if (filters?.status && filters.status !== 'ALL') {
+          q = query(collection(db, COLLECTIONS.COMPANIES), where('status', '==', filters.status), limit(filters?.limit || 500));
+        } else {
+          q = query(collection(db, COLLECTIONS.COMPANIES), limit(1500));
+        }
         const snap = await getDocs(q);
         if (!snap.empty) {
           snap.forEach((d) => {
@@ -419,7 +424,7 @@ export class ProspectingStorage {
     return { items: paged, total };
   }
 
-  public async ensureCompaniesHydrated(limitCount = 500): Promise<void> {
+  public async ensureCompaniesHydrated(limitCount = 1500): Promise<void> {
     try {
       if (db) {
         const q = query(collection(db, COLLECTIONS.COMPANIES), limit(limitCount));
@@ -443,7 +448,7 @@ export class ProspectingStorage {
         const q = query(
           collection(db, COLLECTIONS.COMPANIES),
           where('status', 'in', ['DESCOBERTA', 'CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA']),
-          limit(limitCount * 3)
+          limit(Math.max(limitCount * 5, 200))
         );
         const snap = await getDocs(q);
         if (!snap.empty) {
@@ -454,10 +459,10 @@ export class ProspectingStorage {
         }
       } catch (e) {
         console.warn('[ProspectingStorage] Firestore eligible query fallback:', e);
-        await this.ensureCompaniesHydrated(500);
+        await this.ensureCompaniesHydrated(1500);
       }
     } else {
-      await this.ensureCompaniesHydrated(500);
+      await this.ensureCompaniesHydrated(1500);
     }
 
     const list = Array.from(companiesStore.values());
@@ -603,7 +608,7 @@ export class ProspectingStorage {
 
   // --- Comprehensive Dashboard Stats ---
   public async getDashboardStats(): Promise<ProspectingDashboardStats> {
-    await this.ensureCompaniesHydrated(500);
+    await this.ensureCompaniesHydrated(1500);
     const companies = Array.from(companiesStore.values());
     const total = companies.length;
     // Use Brasília timezone (UTC-3) for accurate day calculation

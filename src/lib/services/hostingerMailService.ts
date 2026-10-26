@@ -337,6 +337,16 @@ export class HostingerMailService {
 
         console.log(`[HostingerMailService] E-mail entregue com sucesso via Hostinger SMTP para [${params.to}]. Message-ID: ${info.messageId}`);
 
+        // Automatically append copy to Hostinger Webmail "INBOX.Sent" folder
+        this.appendToSentImap({
+          from: mailOptions.from,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+          bodyText: mailOptions.text,
+          bodyHtml: mailOptions.html,
+          messageId: info.messageId,
+        }).catch((err) => console.warn('[HostingerMailService] IMAP Sent append notice:', err?.message));
+
         return {
           success: true,
           messageId: info.messageId || `hostinger_smtp_${Date.now()}`,
@@ -433,6 +443,91 @@ export class HostingerMailService {
       timestamp,
       mode: 'SIMULATION',
     };
+  }
+
+  /**
+   * Appends a copy of a sent email to the Hostinger IMAP "INBOX.Sent" folder
+   * so that it appears in Webmail under "Itens Enviados".
+   */
+  public async appendToSentImap(mailOptions: {
+    from: string;
+    to: string;
+    subject: string;
+    bodyText?: string;
+    bodyHtml?: string;
+    messageId?: string;
+  }): Promise<boolean> {
+    const smtpPass = process.env.HOSTINGER_SMTP_PASS;
+    const smtpUser = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
+    if (!smtpPass) return false;
+
+    try {
+      const tls = await import('tls');
+      const rawMessage = [
+        `From: ${mailOptions.from}`,
+        `To: ${mailOptions.to}`,
+        `Subject: ${mailOptions.subject}`,
+        `Date: ${new Date().toUTCString()}`,
+        `Message-ID: ${mailOptions.messageId || `<${Date.now()}@traduztudo.com>`}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        mailOptions.bodyHtml || mailOptions.bodyText || '',
+      ].join('\r\n');
+
+      const byteLength = Buffer.byteLength(rawMessage, 'utf8');
+
+      return new Promise<boolean>((resolve) => {
+        const client = tls.connect({
+          host: 'imap.hostinger.com',
+          port: 993,
+          rejectUnauthorized: false,
+        });
+        client.setEncoding('utf8');
+
+        let buffer = '';
+        let step = 0;
+
+        const timeout = setTimeout(() => {
+          try { client.destroy(); } catch {}
+          resolve(false);
+        }, 10000);
+
+        client.on('data', (chunk) => {
+          buffer += chunk;
+          if (step === 0 && buffer.includes('* OK')) {
+            step = 1;
+            buffer = '';
+            client.write(`A1 LOGIN "${smtpUser}" "${smtpPass}"\r\n`);
+          } else if (step === 1 && buffer.includes('A1 OK')) {
+            step = 2;
+            buffer = '';
+            client.write(`A2 APPEND "INBOX.Sent" (\\Seen) {${byteLength}}\r\n`);
+          } else if (step === 2 && buffer.includes('+')) {
+            step = 3;
+            buffer = '';
+            client.write(rawMessage + '\r\n');
+          } else if (step === 3 && buffer.includes('A2 OK')) {
+            clearTimeout(timeout);
+            client.write('A3 LOGOUT\r\n');
+            try { client.end(); } catch {}
+            resolve(true);
+          } else if (buffer.includes('NO') || buffer.includes('BAD')) {
+            clearTimeout(timeout);
+            try { client.destroy(); } catch {}
+            resolve(false);
+          }
+        });
+
+        client.on('error', () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
+      });
+    } catch (e: any) {
+      console.warn('[HostingerMailService] Erro ao sincronizar com Itens Enviados (IMAP):', e?.message);
+      return false;
+    }
   }
 }
 
