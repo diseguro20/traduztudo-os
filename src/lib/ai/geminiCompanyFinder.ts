@@ -164,7 +164,7 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
   }
 ]`;
 
-    const modelNames = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+    const modelNames = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.7-flash'];
 
     for (const modelName of modelNames) {
       try {
@@ -573,19 +573,31 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         description: `Empresa parceira verificada atuante em ${p.segment} em ${p.city}/${p.state}.`,
       }));
 
-    allCandidates.push(...primaryCandidates, ...otherStateCandidates, ...relatedCandidates);
+    await prospectingStorage.ensureCompaniesHydrated(500);
 
-    // 2. Query Gemini AI with strict MX validation only if more candidates needed
+    // Only keep catalog candidates that are NOT ALREADY in the CRM database
+    const uningestedCatalog: DiscoveredCompanyCandidate[] = [];
+    for (const c of [...primaryCandidates, ...otherStateCandidates, ...relatedCandidates]) {
+      const exists = await prospectingStorage.hasCompany(c.cnpj, c.website, c.contactEmail);
+      if (!exists) {
+        uningestedCatalog.push(c);
+      }
+    }
+
+    allCandidates.push(...uningestedCatalog);
+
+    // 2. Query Gemini AI with strict MX validation whenever more candidates are needed
     if (allCandidates.length < targetCount && (request.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
-      request.onProgress?.('Consultando Google Gemini Flash para descoberta adicional...');
+      request.onProgress?.('Consultando Google Gemini Flash para descoberta adicional de empresas no nicho...');
       try {
+        const needed = Math.max(targetCount - allCandidates.length, 15);
         const geminiFound = await this.searchWithGemini(
-          { query, segment: effectiveSegment, targetState, targetCount: Math.min(targetCount, 15) },
+          { query, segment: effectiveSegment, targetState, targetCount: needed },
           request.apiKey
         );
         allCandidates.push(...geminiFound);
       } catch (e: any) {
-        console.warn('[GeminiCompanyFinder] Gemini fallback warning:', e?.message);
+        console.warn('[GeminiCompanyFinder] Gemini discovery warning:', e?.message);
       }
     }
 
