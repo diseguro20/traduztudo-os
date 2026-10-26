@@ -447,7 +447,7 @@ export class ProspectingStorage {
       try {
         const q = query(
           collection(db, COLLECTIONS.COMPANIES),
-          where('status', 'in', ['DESCOBERTA', 'CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA']),
+          where('status', 'in', ['CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA']),
           limit(Math.max(limitCount * 5, 200))
         );
         const snap = await getDocs(q);
@@ -467,22 +467,27 @@ export class ProspectingStorage {
 
     const list = Array.from(companiesStore.values());
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const seenEmails = new Set<string>();
 
     const eligible = list.filter((comp) => {
       // 1. Must not be opted out
-      if (comp.optOut || comp.status === 'DESCADASTRO' || comp.status === 'NAO_CONTACTAR' || comp.status === 'CONTATO_INVALIDO') {
+      if (comp.optOut || comp.status === 'DESCADASTRO' || comp.status === 'NAO_CONTACTAR' || comp.status === 'CONTATO_INVALIDO' || comp.status === 'CONTATO_PENDENTE') {
         return false;
       }
       // 2. Must have valid contact email
       if (!comp.contactEmail || !comp.contactEmail.includes('@')) {
         return false;
       }
+      const cleanEmail = comp.contactEmail.toLowerCase().trim();
+      if (seenEmails.has(cleanEmail)) {
+        return false;
+      }
       // 3. Segment filter if specified
       if (campaignSegment && campaignSegment !== 'ALL' && comp.segment !== campaignSegment) {
         return false;
       }
-      // 4. Must be in eligible stage
-      const validStages: ProspectStage[] = ['DESCOBERTA', 'CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA'];
+      // 4. Must be in verified stage
+      const validStages: ProspectStage[] = ['CONTATO_VERIFICADO', 'ELEGIBILIDADE_CONFIRMADA', 'CAMPANHA_PROGRAMADA'];
       if (!validStages.includes(comp.status)) {
         return false;
       }
@@ -491,6 +496,7 @@ export class ProspectingStorage {
         return false;
       }
 
+      seenEmails.add(cleanEmail);
       return true;
     });
 

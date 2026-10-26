@@ -29,6 +29,7 @@ export const PROSPECT_SEGMENT_LABELS: Record<ProspectSegment, string> = {
 
 export type ProspectStage =
   | 'DESCOBERTA'
+  | 'CONTATO_PENDENTE'
   | 'CONTATO_VERIFICADO'
   | 'ELEGIBILIDADE_CONFIRMADA'
   | 'CAMPANHA_PROGRAMADA'
@@ -47,6 +48,7 @@ export type ProspectStage =
 
 export const PROSPECT_STAGE_LABELS: Record<ProspectStage, { label: string; color: string }> = {
   DESCOBERTA: { label: 'Descoberta', color: 'slate' },
+  CONTATO_PENDENTE: { label: 'Pendente de Verificação', color: 'amber' },
   CONTATO_VERIFICADO: { label: 'Contato Verificado', color: 'blue' },
   ELEGIBILIDADE_CONFIRMADA: { label: 'Elegibilidade Confirmada', color: 'indigo' },
   CAMPANHA_PROGRAMADA: { label: 'Campanha Programada', color: 'amber' },
