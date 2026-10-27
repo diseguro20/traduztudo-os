@@ -216,8 +216,9 @@ async function runCadencePacer() {
       if (isContinuous) {
         log(`Fila necessita de novos contatos. Executando reabastecimento via Agente IA...`);
         await ensureQueueReady();
-        log(`Aguardando 30s para reprocessar fila...`);
-        await sleep(30 * 1000);
+        const waitEmpty = Math.min(Math.max(30, consecutiveEmpty * 30), 180);
+        log(`Aguardando ${waitEmpty}s para reprocessar fila...`);
+        await sleep(waitEmpty * 1000);
         continue;
       } else {
         if (consecutiveEmpty === 1) {

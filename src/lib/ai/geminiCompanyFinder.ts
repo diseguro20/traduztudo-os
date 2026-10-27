@@ -276,7 +276,12 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
   }
 ]`;
 
-    const modelNames = ['gemini-flash-lite-latest', 'gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+    const modelNames = [
+      'gemini-3-flash-preview',
+      'gemini-3.5-flash',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+    ];
 
     for (const modelName of modelNames) {
       try {
@@ -710,6 +715,17 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         allCandidates.push(...geminiFound);
       } catch (e: any) {
         console.warn('[GeminiCompanyFinder] Gemini discovery warning:', e?.message);
+      }
+    }
+
+    // 3. Fallback to Live Web Search Crawler if catalog and Gemini are insufficient
+    if (allCandidates.length < targetCount) {
+      console.log(`[GeminiCompanyFinder] Fila abaixo da meta (${allCandidates.length}/${targetCount}). Acionando Live Web Search Crawler para ${effectiveSegment}...`);
+      try {
+        const crawled = await this.searchLiveWebCrawler(query, effectiveSegment, targetState, targetCount);
+        allCandidates.push(...crawled);
+      } catch (err: any) {
+        console.warn('[GeminiCompanyFinder] Live crawler warning:', err?.message);
       }
     }
 
