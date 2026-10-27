@@ -67,24 +67,27 @@ async function apiRequest(path, method = 'GET', data = null) {
   });
 }
 
-// 1. Verifica status do dashboard e auto-reabastece com IA se fila baixa
+// 1. Verifica status do dashboard e auto-reabastece com IA se fila baixa (< 50 empresas)
 async function ensureQueueReady() {
   try {
     const dash = await apiRequest('/api/prospecting/dashboard');
     const eligible = dash?.stats?.eligibleCount || 0;
     log(`Status da fila: ${eligible} empresas elegíveis para envio.`);
 
-    if (eligible < 20) {
-      log(`Fila baixa (${eligible} < 20). Auto-reabastecendo via IA com validação estrita de website...`);
+    if (eligible < 50) {
+      log(`Fila abaixo da margem de segurança (${eligible} < 50). Auto-reabastecendo via IA e registros corporativos...`);
       const segs = ['COMERCIO_EXTERIOR', 'VISTOS_IMIGRACAO', 'CIDADANIA_ITALIANA', 'ADVOCACIA_INTERNACIONAL'];
       
       for (const seg of segs.sort(() => 0.5 - Math.random())) {
         const searchRes = await apiRequest('/api/prospecting/search/ai', 'POST', {
           segment: seg,
-          targetCount: 15,
+          targetCount: 20,
         });
         log(`Busca IA (${seg}): +${searchRes.count || 0} novas empresas adicionadas.`);
       }
+
+      const postDash = await apiRequest('/api/prospecting/dashboard');
+      log(`Fila atualizada após reabastecimento: ${postDash?.stats?.eligibleCount || 0} empresas elegíveis.`);
     }
   } catch (err) {
     log(`Aviso ao checar fila: ${err.message}`);
@@ -136,7 +139,7 @@ async function cleanBounces() {
 function triggerNextRunner() {
   try {
     log(`[Relay] Disparando próximo workflow de GitHub Actions para transição contínua sem parar...`);
-    execSync('gh workflow run prospecting-automation.yml', { stdio: 'inherit' });
+    execSync('gh workflow run prospecting-automation.yml', { stdio: 'inherit', env: { ...process.env } });
     log(`[Relay] Próximo workflow disparado com sucesso!`);
   } catch (err) {
     log(`[Relay] Aviso ao disparar próximo workflow: ${err.message}`);
@@ -216,8 +219,8 @@ async function runCadencePacer() {
       if (isContinuous) {
         log(`Fila necessita de novos contatos. Executando reabastecimento via Agente IA...`);
         await ensureQueueReady();
-        const waitEmpty = Math.min(Math.max(30, consecutiveEmpty * 30), 180);
-        log(`Aguardando ${waitEmpty}s para reprocessar fila...`);
+        const waitEmpty = Math.min(Math.max(15, consecutiveEmpty * 10), 45);
+        log(`Aguardando ${waitEmpty}s para retomar disparos...`);
         await sleep(waitEmpty * 1000);
         continue;
       } else {

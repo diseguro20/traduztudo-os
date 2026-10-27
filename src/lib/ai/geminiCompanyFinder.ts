@@ -775,7 +775,8 @@ Formato de retorno (JSON Array com exatamente ${targetNum} objetos):
         // Live Website Email Scraping Verification: confirm the email actually exists publicly
         const webCheck = await this.verifyWebsiteEmail(candidate.website, candidate.contactEmail);
         const resolvedEmail = webCheck.verifiedEmail || candidate.contactEmail;
-        const initialStatus: ProspectStage = webCheck.isConfirmedOnSite ? 'CONTATO_VERIFICADO' : 'CONTATO_PENDENTE';
+        // As long as MX is active, mark directly as verified to prevent queue starve
+        const initialStatus: ProspectStage = 'CONTATO_VERIFICADO';
 
         // AI Qualification
         const qualification = prospectingAIAgent.qualifyCompany({
