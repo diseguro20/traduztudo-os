@@ -212,7 +212,7 @@ Nosso compromisso é oferecer qualidade, agilidade, organização e preços alta
 
 Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela de parceiro com demandas recorrentes.
 
-📌 Segue em anexo nosso Portfólio Corporativo e Apresentação B2B em PDF.
+📌 Se fizer sentido para a ${targetName}, posso te encaminhar nosso Portfólio Corporativo e Tabela B2B em PDF? Ou se preferir, podemos conversar 5 minutos por aqui ou pelo WhatsApp.
 
 Será um prazer entender as necessidades da ${targetName} e apresentar uma proposta personalizada, com excelentes condições comerciais.
 
@@ -244,13 +244,13 @@ ${unsubUrl}`;
 `<div>- Prazos ágeis e atendimento dedicado via WhatsApp e e-mail.</div><div><br></div>` +
 `<div>Nosso compromisso é oferecer qualidade, agilidade, organização e preços altamente competitivos, atendendo desde demandas pontuais até grandes volumes corporativos.</div><div><br></div>` +
 `<div>Contamos com profissionais qualificados e buscamos construir parcerias duradouras, oferecendo condições comerciais diferenciadas e tabela exclusiva para parceiros com demandas recorrentes.</div><div><br></div>` +
-`<div>📌 Segue em anexo nosso Portfólio Corporativo e Apresentação B2B em PDF.<br></div><div><br></div>` +
+`<div>📌 Se fizer sentido para a <strong>${targetName}</strong>, posso te encaminhar nosso Portfólio Corporativo e Tabela B2B em PDF? Ou se preferir, podemos conversar 5 minutos por aqui ou pelo WhatsApp.<br></div><div><br></div>` +
 `<div>Será um prazer entender as necessidades da <strong>${targetName}</strong> e apresentar uma proposta personalizada, com excelentes condições comerciais.</div><div><br></div>` +
 `<div>Fico à disposição para conversarmos!</div><div><br></div>` +
 `<div>Atenciosamente,</div><div><br></div>` +
 `<div class="hmail-signature-prefix">--</div>` +
 `<div class="hmail-signature">` +
-`<div><img src="cid:cartao-traduztudo" width="556" height="207" style="width: 556px; max-width: 100%; height: auto; display: block;" alt="Traduz Tudo"><br></div>` +
+`<div><img src="https://traduztudo-os.vercel.app/attachments/assinatura-cartao-traduztudo.png" width="556" height="207" style="width: 556px; max-width: 100%; height: auto; display: block;" alt="Traduz Tudo"><br></div>` +
 `</div><div><br></div>` +
 `<div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.4;">` +
 `Comunicação corporativa B2B em conformidade com a LGPD (Lei 13.709/2018). Caso não queira mais receber nossas apresentações, ` +

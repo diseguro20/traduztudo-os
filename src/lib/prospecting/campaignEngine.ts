@@ -42,7 +42,10 @@ export class CampaignEngine {
   }
 
   /**
-   * Retrieves the official company proposal PDF and business card image for outbound prospecting.
+   * Retrieves attachments for outbound prospecting.
+   * ANTI-SUSPENSION RULE: Cold initial outreach must NEVER carry heavy PDF attachments (~1MB),
+   * as bulk PDF attachments trigger MailChannels and corporate spam filters (Proofpoint/Defender).
+   * Presentation is offered via direct link or upon reply.
    */
   public getStandardAttachments(): Array<{
     filename: string;
@@ -50,40 +53,8 @@ export class CampaignEngine {
     contentType?: string;
     cid?: string;
   }> {
-    const list: Array<{
-      filename: string;
-      content: Buffer;
-      contentType?: string;
-      cid?: string;
-    }> = [];
-
-    try {
-      const primaryPdfPath = path.join(process.cwd(), 'public', 'attachments', 'Apresentacao_Corporativa_Traduz_Tudo_B2B.pdf');
-      const fallbackPdfPath = path.join(process.cwd(), 'public', 'attachments', 'Proposta_Comercial_Traduz_Tudo_Italiano.pdf');
-      const pdfPath = fs.existsSync(primaryPdfPath) ? primaryPdfPath : fallbackPdfPath;
-
-      if (fs.existsSync(pdfPath)) {
-        list.push({
-          filename: 'Apresentacao_Corporativa_Traduz_Tudo_B2B.pdf',
-          content: fs.readFileSync(pdfPath),
-          contentType: 'application/pdf',
-        });
-      }
-
-      const imgPath = path.join(process.cwd(), 'public', 'attachments', 'assinatura-cartao-traduztudo.png');
-      if (fs.existsSync(imgPath)) {
-        list.push({
-          filename: 'assinatura corrigidda.jpeg',
-          content: fs.readFileSync(imgPath),
-          cid: 'cartao-traduztudo',
-          contentType: 'image/jpeg',
-        });
-      }
-    } catch (err: any) {
-      console.warn('[CampaignEngine] Erro ao carregar anexos padrão:', err?.message);
-    }
-
-    return list;
+    // Deliver cold outreach as clean, ultra-lightweight text/HTML (< 5 KB) for 100% inbox deliverability
+    return [];
   }
 
   /**

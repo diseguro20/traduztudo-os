@@ -30,6 +30,7 @@ export interface HostingerSendEmailResult {
 export class HostingerMailService {
   private static instance: HostingerMailService;
   private readonly defaultSender = 'contato@traduztudo.com';
+  private cachedMailboxId: string | null = null;
 
   private constructor() {}
 
@@ -38,6 +39,37 @@ export class HostingerMailService {
       HostingerMailService.instance = new HostingerMailService();
     }
     return HostingerMailService.instance;
+  }
+
+  /**
+   * Discovers the mailbox resource ID for Hostinger Mail API
+   */
+  public async getMailboxResourceId(token: string): Promise<string | null> {
+    if (this.cachedMailboxId) return this.cachedMailboxId;
+    if (process.env.HOSTINGER_MAILBOX_ID) {
+      this.cachedMailboxId = process.env.HOSTINGER_MAILBOX_ID;
+      return this.cachedMailboxId;
+    }
+
+    try {
+      const res = await fetch('https://api.mail.hostinger.com/api/v1/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const mb = json.data?.mailboxes?.[0]?.resourceId;
+        if (mb) {
+          this.cachedMailboxId = mb;
+          return mb;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[HostingerMailService] Erro ao obter mailboxResourceId:', err?.message);
+    }
+    return null;
   }
 
   /**
@@ -281,10 +313,10 @@ export class HostingerMailService {
       hasWebhookSecret,
       hasSmtp,
       autoSend,
-      activeProvider: hasSmtp
+      activeProvider: hasToken
+        ? 'Hostinger Mail API Oficial (Agentic Mail - Ativo)'
+        : hasSmtp
         ? 'Hostinger SMTP Corporativo Oficial (Ativo)'
-        : hasToken
-        ? 'Hostinger Mail API Oficial'
         : process.env.RESEND_API_KEY
         ? 'Resend API Gateway'
         : 'Ambiente de Simulação Seguro (Sandbox)',
@@ -298,7 +330,51 @@ export class HostingerMailService {
     const sender = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
     const timestamp = new Date().toISOString();
 
-    // 1. Direct Real Hostinger SMTP (Primary production delivery)
+    // 1. Hostinger Official REST API (Agentic Mail - Highest priority to bypass SMTP MailChannels bot heuristic)
+    const hostingerToken = process.env.HOSTINGER_API_TOKEN;
+    if (hostingerToken) {
+      try {
+        const mbId = (await this.getMailboxResourceId(hostingerToken)) || process.env.HOSTINGER_MAILBOX_ID || 'AC2dabd81fa6350e5328de6c5de63e';
+        const senderDisplayName = params.fromName || 'Iago Peixoto | Traduz Tudo';
+
+        const payload: any = {
+          to: [params.to],
+          displayName: senderDisplayName,
+          subject: params.subject,
+          text: params.bodyText,
+          html: params.bodyHtml || `<p style="white-space: pre-wrap;">${params.bodyText}</p>`,
+        };
+
+        const res = await fetch(`https://api.mail.hostinger.com/api/v1/mailboxes/${mbId}/send`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${hostingerToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.status === 204 || res.ok) {
+          const messageId = `hostinger_api_${Date.now()}`;
+          console.log(`[HostingerMailService] E-mail entregue com sucesso via Hostinger Mail API para [${params.to}].`);
+          return {
+            success: true,
+            messageId,
+            sender,
+            recipient: params.to,
+            timestamp,
+            mode: 'HOSTINGER_API',
+          };
+        } else {
+          const errBody = await res.text().catch(() => '');
+          console.warn(`[HostingerMailService] Hostinger Mail API retornou ${res.status}: ${errBody}. Tentando fallback SMTP...`);
+        }
+      } catch (err: any) {
+        console.warn('[HostingerMailService] Erro na Hostinger Mail API:', err?.message, 'Tentando fallback SMTP...');
+      }
+    }
+
+    // 2. Direct Real Hostinger SMTP (Seamless Fallback)
     const smtpPass = process.env.HOSTINGER_SMTP_PASS;
     const smtpUser = process.env.HOSTINGER_SMTP_USER || this.defaultSender;
     const smtpHost = process.env.HOSTINGER_SMTP_HOST || 'smtp.hostinger.com';
@@ -369,44 +445,7 @@ export class HostingerMailService {
       }
     }
 
-    // 2. Check if Hostinger Official REST API Token is provided
-    const hostingerToken = process.env.HOSTINGER_API_TOKEN;
-    const hostingerApiUrl = process.env.HOSTINGER_API_URL || 'https://api.hostinger.com/v1/mail';
 
-    if (hostingerToken) {
-      try {
-        const response = await fetch(`${hostingerApiUrl}/messages/send`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${hostingerToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: sender,
-            to: params.to,
-            subject: params.subject,
-            body_text: params.bodyText,
-            body_html: params.bodyHtml || `<p style="white-space: pre-wrap;">${params.bodyText}</p>`,
-            in_reply_to: params.inReplyTo,
-            references: params.references,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json().catch(() => ({}));
-          return {
-            success: true,
-            messageId: data.message_id || data.id || `hostinger_${Date.now()}`,
-            sender,
-            recipient: params.to,
-            timestamp,
-            mode: 'HOSTINGER_API',
-          };
-        }
-      } catch (err: any) {
-        console.warn('[HostingerMailService] Erro ao comunicar com Hostinger API:', err?.message);
-      }
-    }
 
     // 3. Fallback: Resend Gateway
     if (process.env.RESEND_API_KEY) {

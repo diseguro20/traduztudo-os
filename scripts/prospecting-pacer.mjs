@@ -14,8 +14,24 @@ import https from 'https';
 import { execSync } from 'child_process';
 
 const BASE_URL = process.env.BASE_URL || 'https://traduztudo-os.vercel.app';
-const TARGET_PER_HOUR = Number(process.env.TARGET_PER_HOUR) || 50;
-const DELAY_SECONDS = Math.round(3600 / TARGET_PER_HOUR); // ~72 segundos para 50/hora
+const TARGET_PER_HOUR = Number(process.env.TARGET_PER_HOUR) || 35; // Cadência calibrada para máxima entregabilidade sem bloqueio (30-35/h)
+const DELAY_SECONDS = Math.round(3600 / TARGET_PER_HOUR); // ~102 segundos
+
+function isBusinessHours() {
+  const now = new Date();
+  const brtStr = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+  const brtDate = new Date(brtStr);
+  const hour = brtDate.getHours();
+  const minute = brtDate.getMinutes();
+  const day = brtDate.getDay(); // 0 = Domingo, 6 = Sábado
+
+  // Segunda a Sexta: 08:30 às 18:30 BRT
+  const isWeekday = day >= 1 && day <= 5;
+  const timeInMinutes = hour * 60 + minute;
+  const isWithinHours = timeInMinutes >= (8 * 60 + 30) && timeInMinutes <= (18 * 60 + 30);
+
+  return isWeekday && isWithinHours;
+}
 
 function log(msg) {
   const time = new Date().toLocaleTimeString('pt-BR');
@@ -185,6 +201,14 @@ async function runCadencePacer() {
       break;
     }
 
+    // Blindagem de Reputação: Enviar apenas em horário comercial (08:30 às 18:30 BRT, Seg-Sex)
+    // E-mails disparados de madrugada acionam alertas do MailChannels e quebram reputação
+    if (!isBusinessHours()) {
+      log(`🌙 Fora do horário comercial (08:30 às 18:30 BRT, Seg-Sex). Pausando envios para proteger a conta Hostinger contra suspensões...`);
+      await sleep(10 * 60 * 1000); // Aguarda 10 minutos
+      continue;
+    }
+
     // Se estiver em modo lote fixo e atingiu a meta, encerra
     if (!isContinuous && sentInSession >= batchTarget) {
       log(`Meta do lote atingida (${sentInSession} e-mails enviados)!`);
@@ -236,10 +260,10 @@ async function runCadencePacer() {
       }
     }
 
-    // Intervalo cadenciado com pequena variação humana (ex: 68 a 76 segundos)
-    const jitter = Math.floor(Math.random() * 8) - 4; // -4s a +4s
-    const actualDelay = Math.max(30, DELAY_SECONDS + jitter);
-    log(`Aguardando ${actualDelay}s até o próximo disparo para manter cadência de 50/h...`);
+    // Intervalo cadenciado com variação humana e natural (ex: 85 a 120 segundos)
+    const jitter = Math.floor(Math.random() * 30) - 15; // -15s a +15s
+    const actualDelay = Math.max(60, DELAY_SECONDS + jitter);
+    log(`Aguardando ${actualDelay}s até o próximo disparo para manter cadência segura de ~${TARGET_PER_HOUR}/h...`);
     await sleep(actualDelay * 1000);
 
     // A cada 5 disparos, higieniza a caixa postal para expurgar eventuais avisos

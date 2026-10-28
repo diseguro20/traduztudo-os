@@ -38,10 +38,12 @@ jobs:
         run: |
           echo "GH_TOKEN configured"
 
-      - name: Executar Motor de Cadência Contínua (50 e-mails/hora 24/7)
+      - name: Executar Motor de Cadência Contínua (35 e-mails/hora Seg-Sex)
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          HOSTINGER_MAILBOX_ID: ${{ secrets.HOSTINGER_MAILBOX_ID }}
         run: |
           # Executa continuamente por 330 minutos (~5h30min) antes de passar o bastão para o próximo ciclo
           node scripts/prospecting-pacer.mjs --continuous --max-minutes 330
