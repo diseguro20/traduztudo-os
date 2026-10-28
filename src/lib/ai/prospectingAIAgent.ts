@@ -250,7 +250,7 @@ ${unsubUrl}`;
 `<div>Atenciosamente,</div><div><br></div>` +
 `<div class="hmail-signature-prefix">--</div>` +
 `<div class="hmail-signature">` +
-`<div><img src="https://traduztudo-os.vercel.app/attachments/assinatura-cartao-traduztudo.png" width="556" height="207" style="width: 556px; max-width: 100%; height: auto; display: block;" alt="Traduz Tudo"><br></div>` +
+`<div><img src="cid:cartao-traduztudo" width="556" height="207" style="width: 556px; max-width: 100%; height: auto; display: block;" alt="Traduz Tudo"><br></div>` +
 `</div><div><br></div>` +
 `<div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.4;">` +
 `Comunicação corporativa B2B em conformidade com a LGPD (Lei 13.709/2018). Caso não queira mais receber nossas apresentações, ` +

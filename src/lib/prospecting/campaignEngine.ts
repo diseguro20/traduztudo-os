@@ -43,9 +43,8 @@ export class CampaignEngine {
 
   /**
    * Retrieves attachments for outbound prospecting.
-   * ANTI-SUSPENSION RULE: Cold initial outreach must NEVER carry heavy PDF attachments (~1MB),
-   * as bulk PDF attachments trigger MailChannels and corporate spam filters (Proofpoint/Defender).
-   * Presentation is offered via direct link or upon reply.
+   * Embeds the official lightweight signature card image (43 KB) via CID,
+   * while keeping cold outreach 100% free of heavy 1MB PDF attachments to prevent spam flags.
    */
   public getStandardAttachments(): Array<{
     filename: string;
@@ -53,8 +52,28 @@ export class CampaignEngine {
     contentType?: string;
     cid?: string;
   }> {
-    // Deliver cold outreach as clean, ultra-lightweight text/HTML (< 5 KB) for 100% inbox deliverability
-    return [];
+    const list: Array<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+      cid?: string;
+    }> = [];
+
+    try {
+      const imgPath = path.join(process.cwd(), 'public', 'attachments', 'assinatura-cartao-traduztudo.png');
+      if (fs.existsSync(imgPath)) {
+        list.push({
+          filename: 'assinatura-cartao-traduztudo.png',
+          content: fs.readFileSync(imgPath),
+          cid: 'cartao-traduztudo',
+          contentType: 'image/png',
+        });
+      }
+    } catch (err: any) {
+      console.warn('[CampaignEngine] Erro ao carregar cartão de assinatura:', err?.message);
+    }
+
+    return list;
   }
 
   /**

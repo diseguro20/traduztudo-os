@@ -1,4 +1,6 @@
 import { emailService } from '@/lib/services/email';
+import fs from 'fs';
+import path from 'path';
 
 export interface HostingerSendEmailParams {
   to: string;
@@ -337,12 +339,32 @@ export class HostingerMailService {
         const mbId = (await this.getMailboxResourceId(hostingerToken)) || process.env.HOSTINGER_MAILBOX_ID || 'AC2dabd81fa6350e5328de6c5de63e';
         const senderDisplayName = params.fromName || 'Iago Peixoto | Traduz Tudo';
 
+        const apiAttachments = (params.attachments || []).map((att) => {
+          let contentBase64 = '';
+          if (Buffer.isBuffer(att.content)) {
+            contentBase64 = att.content.toString('base64');
+          } else if (typeof att.content === 'string') {
+            contentBase64 = Buffer.from(att.content).toString('base64');
+          } else if (att.path && fs.existsSync(att.path)) {
+            contentBase64 = fs.readFileSync(att.path).toString('base64');
+          }
+
+          return {
+            filename: att.filename,
+            content: contentBase64,
+            contentType: att.contentType || 'image/png',
+            cid: att.cid,
+            encoding: 'base64',
+          };
+        });
+
         const payload: any = {
           to: [params.to],
           displayName: senderDisplayName,
           subject: params.subject,
           text: params.bodyText,
           html: params.bodyHtml || `<p style="white-space: pre-wrap;">${params.bodyText}</p>`,
+          ...(apiAttachments.length > 0 ? { attachments: apiAttachments } : {}),
         };
 
         const res = await fetch(`https://api.mail.hostinger.com/api/v1/mailboxes/${mbId}/send`, {
