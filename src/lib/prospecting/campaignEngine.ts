@@ -3,6 +3,7 @@ import { prospectingStorage } from '@/lib/storage/prospectingStorage';
 import { prospectingAIAgent } from '@/lib/ai/prospectingAIAgent';
 import { hostingerMailService } from '@/lib/services/hostingerMailService';
 import { geminiCompanyFinder } from '@/lib/ai/geminiCompanyFinder';
+import { SIGNATURE_CARD_BASE64 } from '@/lib/assets/signatureCardBase64';
 import fs from 'fs';
 import path from 'path';
 
@@ -44,7 +45,7 @@ export class CampaignEngine {
   /**
    * Retrieves attachments for outbound prospecting.
    * Embeds the official lightweight signature card image (43 KB) via CID,
-   * while keeping cold outreach 100% free of heavy 1MB PDF attachments to prevent spam flags.
+   * bundled directly into the application runtime (works 100% on Vercel Serverless & GitHub Actions).
    */
   public getStandardAttachments(): Array<{
     filename: string;
@@ -52,28 +53,14 @@ export class CampaignEngine {
     contentType?: string;
     cid?: string;
   }> {
-    const list: Array<{
-      filename: string;
-      content: Buffer;
-      contentType?: string;
-      cid?: string;
-    }> = [];
-
-    try {
-      const imgPath = path.join(process.cwd(), 'public', 'attachments', 'assinatura-cartao-traduztudo.png');
-      if (fs.existsSync(imgPath)) {
-        list.push({
-          filename: 'assinatura-cartao-traduztudo.png',
-          content: fs.readFileSync(imgPath),
-          cid: 'cartao-traduztudo',
-          contentType: 'image/png',
-        });
-      }
-    } catch (err: any) {
-      console.warn('[CampaignEngine] Erro ao carregar cartão de assinatura:', err?.message);
-    }
-
-    return list;
+    return [
+      {
+        filename: 'assinatura-cartao-traduztudo.png',
+        content: Buffer.from(SIGNATURE_CARD_BASE64, 'base64'),
+        cid: 'cartao-traduztudo',
+        contentType: 'image/png',
+      },
+    ];
   }
 
   /**
