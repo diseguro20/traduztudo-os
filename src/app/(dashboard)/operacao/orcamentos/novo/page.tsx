@@ -45,6 +45,7 @@ function NovoOrcamentoContent() {
   const preTargetLang = searchParams.get('destino') || 'Inglês';
   const preObs = searchParams.get('obs') || '';
   const preCustomerId = searchParams.get('clienteId') || '';
+  const preRequestId = searchParams.get('solicitacaoId') || '';
 
   // Form states
   const [selectedCustomerId, setSelectedCustomerId] = useState(preCustomerId);
@@ -52,6 +53,7 @@ function NovoOrcamentoContent() {
   const [customerEmail, setCustomerEmail] = useState(preEmail);
   const [customerPhone, setCustomerPhone] = useState(prePhone);
   const [customerDocument, setCustomerDocument] = useState('');
+  const [requestId] = useState(preRequestId);
 
   const [assignedUserName, setAssignedUserName] = useState('Juliana Mendes');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
@@ -168,6 +170,9 @@ function NovoOrcamentoContent() {
       targetCustomerId = newCust.id;
     }
 
+    const foundReq = requestId ? databaseStore.getRequests().find((r) => r.id === requestId) : undefined;
+    const reqFiles = foundReq?.files || [];
+
     const created = databaseStore.createQuote({
       tenantId: tenant.id,
       customerId: targetCustomerId,
@@ -175,6 +180,8 @@ function NovoOrcamentoContent() {
       customerEmail,
       customerPhone,
       customerDocument,
+      requestId: requestId || undefined,
+      files: reqFiles,
       assignedUserId: 'user-juliana',
       assignedUserName,
       issueDate: new Date(issueDate).toISOString(),

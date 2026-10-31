@@ -1854,9 +1854,53 @@ class DatabaseStore {
       if (!filter.workOrderId && !filter.quoteId && !filter.leadId && !filter.customerId) {
         return activeDocs;
       }
+
+      const quote = filter.quoteId
+        ? this.quotes.find((q) => q.id === filter.quoteId || (q.code && q.code.toLowerCase() === filter.quoteId!.toLowerCase()))
+        : undefined;
+
+      // Auto-reconcile documents from quote.files if any are missing in this.documents
+      if (quote && Array.isArray(quote.files) && quote.files.length > 0) {
+        quote.files.forEach((f: any) => {
+          const fileName = typeof f === 'string' ? f : f?.name;
+          if (!fileName) return;
+          const matchExisting = activeDocs.some(
+            (d) =>
+              (d.quoteId === quote.id || (d.quoteId && d.quoteId.toLowerCase() === quote.code.toLowerCase())) &&
+              d.name.toLowerCase() === fileName.toLowerCase()
+          );
+          if (!matchExisting) {
+            const dataUrl = typeof f === 'object' ? f.dataUrl : undefined;
+            const fileUrl = typeof f === 'object' ? (f.url || f.fileUrl) : undefined;
+            const size = typeof f === 'object' ? f.size : 0;
+            const type = typeof f === 'object' ? f.type : 'application/pdf';
+            const newDoc = this.createDocument({
+              tenantId: quote.tenantId || this.tenant.id,
+              customerId: quote.customerId,
+              quoteId: quote.id,
+              name: fileName,
+              category: 'original',
+              fileUrl: fileUrl || '',
+              url: fileUrl,
+              dataUrl: dataUrl,
+              fileSize: size || (dataUrl ? Math.round(dataUrl.length * 0.75) : 1024),
+              fileType: type || 'application/pdf',
+              uploaderUserId: quote.customerId || 'cliente',
+              uploaderName: quote.customerName || 'Cliente',
+            });
+            activeDocs.push(newDoc);
+          }
+        });
+      }
+
       return activeDocs.filter((d) => {
         if (filter.workOrderId && d.workOrderId !== filter.workOrderId) return false;
-        if (filter.quoteId && d.quoteId !== filter.quoteId) return false;
+        if (filter.quoteId) {
+          const matchesQuote =
+            d.quoteId === filter.quoteId ||
+            (quote && (d.quoteId === quote.id || (d.quoteId && d.quoteId.toLowerCase() === quote.code.toLowerCase())));
+          if (!matchesQuote) return false;
+        }
         if (filter.leadId && d.leadId !== filter.leadId) return false;
         if (filter.customerId && d.customerId !== filter.customerId) return false;
         return true;

@@ -31,6 +31,7 @@ import { databaseStore } from '@/lib/db';
 import { Quote, QuoteStatus } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { DocumentProcessingSection } from '@/components/documents/DocumentProcessingSection';
+import { downloadDocumentFile } from '@/lib/storage/documentStorage';
 
 export default function OrcamentosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,8 +65,10 @@ export default function OrcamentosPage() {
 
   const getQuoteDocuments = (q: Quote) => {
     const docs: Array<{
+      id?: string;
       name: string;
       url?: string;
+      fileUrl?: string;
       dataUrl?: string;
       size?: number;
       type?: string;
@@ -73,28 +76,47 @@ export default function OrcamentosPage() {
 
     // 1. Directly from q.files
     if (Array.isArray(q.files)) {
-      q.files.forEach((f: any) => {
+      q.files.forEach((f: any, idx) => {
         if (typeof f === 'string') {
-          docs.push({ name: f });
+          docs.push({ id: `${q.id}-file-${idx}`, name: f });
         } else if (f && f.name) {
-          docs.push(f);
+          docs.push({
+            id: f.id || `${q.id}-file-${idx}`,
+            name: f.name,
+            url: f.url,
+            fileUrl: f.fileUrl,
+            dataUrl: f.dataUrl,
+            size: f.size,
+            type: f.type,
+          });
         }
       });
     }
 
     // 2. From DocumentItem collection in databaseStore
     const linkedDocs = databaseStore.getDocuments().filter(
-      (d) => d.quoteId === q.id || (d.quoteId && d.quoteId.toLowerCase() === q.code.toLowerCase())
+      (d) =>
+        d.quoteId === q.id ||
+        (d.quoteId && d.quoteId.toLowerCase() === q.code.toLowerCase()) ||
+        (q.customerId && d.customerId === q.customerId)
     );
     linkedDocs.forEach((d) => {
-      if (!docs.some((existing) => existing.name === d.name)) {
+      const existing = docs.find((x) => x.name.toLowerCase() === d.name.toLowerCase());
+      if (!existing) {
         docs.push({
+          id: d.id,
           name: d.name,
           url: d.fileUrl || d.url,
+          fileUrl: d.fileUrl,
           dataUrl: d.dataUrl,
           size: d.fileSize,
           type: d.fileType,
         });
+      } else {
+        if (!existing.dataUrl && d.dataUrl) existing.dataUrl = d.dataUrl;
+        if (!existing.id && d.id) existing.id = d.id;
+        if (!existing.size && d.fileSize) existing.size = d.fileSize;
+        if (!existing.type && d.fileType) existing.type = d.fileType;
       }
     });
 
@@ -102,10 +124,16 @@ export default function OrcamentosPage() {
     if (q.requestId) {
       const req = databaseStore.getRequests().find((r) => r.id === q.requestId);
       if (req && Array.isArray(req.files)) {
-        req.files.forEach((f: any) => {
+        req.files.forEach((f: any, idx) => {
           const name = typeof f === 'string' ? f : f.name;
-          if (!docs.some((existing) => existing.name === name)) {
-            docs.push(typeof f === 'string' ? { name: f } : f);
+          if (!name) return;
+          const existing = docs.find((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (!existing) {
+            docs.push(typeof f === 'string' ? { id: `${req.id}-file-${idx}`, name: f } : { ...f, id: f.id || `${req.id}-file-${idx}` });
+          } else if (typeof f !== 'string') {
+            if (!existing.dataUrl && f.dataUrl) existing.dataUrl = f.dataUrl;
+            if (!existing.url && f.url) existing.url = f.url;
+            if (!existing.size && f.size) existing.size = f.size;
           }
         });
       }
@@ -116,15 +144,49 @@ export default function OrcamentosPage() {
       const match = q.notes.match(/(?:Documentos(?: anexados)?(?:\s*\(\d+\))?:\s*)([^\n]+)/i);
       if (match && match[1]) {
         const names = match[1].split(',').map((s) => s.trim()).filter(Boolean);
-        names.forEach((name) => {
-          if (!docs.some((existing) => existing.name === name)) {
-            docs.push({ name });
+        names.forEach((name, idx) => {
+          if (!docs.some((existing) => existing.name.toLowerCase() === name.toLowerCase())) {
+            docs.push({ id: `${q.id}-note-${idx}`, name });
           }
         });
       }
     }
 
     return docs;
+  };
+
+  const handleDownloadDoc = async (doc: {
+    id?: string;
+    name: string;
+    url?: string;
+    fileUrl?: string;
+    dataUrl?: string;
+    size?: number;
+    type?: string;
+  }) => {
+    try {
+      await downloadDocumentFile(doc);
+    } catch (e) {
+      console.error('Erro ao baixar documento do orçamento:', e);
+      alert('Não foi possível realizar o download do documento.');
+    }
+  };
+
+  const handleDownloadAllDocs = async (docs: Array<{
+    id?: string;
+    name: string;
+    url?: string;
+    fileUrl?: string;
+    dataUrl?: string;
+    size?: number;
+    type?: string;
+  }>) => {
+    for (let i = 0; i < docs.length; i++) {
+      await handleDownloadDoc(docs[i]);
+      if (i < docs.length - 1) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
   };
 
   const handleCopyLink = (token: string) => {
@@ -257,18 +319,36 @@ export default function OrcamentosPage() {
                         </p>
                         <p className="text-xs text-slate-500">{q.customerEmail}</p>
                         {qDocs.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedQuoteForDocs(q);
-                              setPreviewDoc(null);
-                            }}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2 py-0.5 rounded-md transition-colors mt-1"
-                            title="Clique para visualizar os documentos enviados"
-                          >
-                            <Paperclip className="w-3 h-3 text-blue-600" />
-                            {qDocs.length} documento(s)
-                          </button>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedQuoteForDocs(q);
+                                setPreviewDoc(null);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2 py-0.5 rounded-md transition-colors"
+                              title="Clique para visualizar os documentos enviados"
+                            >
+                              <Paperclip className="w-3 h-3 text-blue-600" />
+                              {qDocs.length} doc{qDocs.length > 1 ? 's' : ''}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (qDocs.length === 1) {
+                                  await handleDownloadDoc(qDocs[0]);
+                                } else {
+                                  await handleDownloadAllDocs(qDocs);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md transition-colors shadow-2xs"
+                              title={qDocs.length === 1 ? `Baixar arquivo: ${qDocs[0].name}` : `Baixar todos os ${qDocs.length} documentos`}
+                            >
+                              <Download className="w-3 h-3 text-emerald-600" />
+                              Baixar
+                            </button>
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-slate-700">
@@ -350,6 +430,25 @@ export default function OrcamentosPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-blue-600" /> Ver Documentos
                           </Button>
+
+                          {/* Direct Download Button */}
+                          {qDocs.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                if (qDocs.length === 1) {
+                                  await handleDownloadDoc(qDocs[0]);
+                                } else {
+                                  setSelectedQuoteForDocs(q);
+                                }
+                              }}
+                              className="text-xs gap-1 text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 font-bold"
+                              title={qDocs.length === 1 ? `Baixar ${qDocs[0].name}` : `Ver e baixar documentos (${qDocs.length})`}
+                            >
+                              <Download className="w-3.5 h-3.5 text-emerald-600" /> Baixar Doc
+                            </Button>
+                          )}
 
                           {/* 1-Click Convert to Work Order */}
                           {q.status !== 'aprovado' ? (
@@ -449,6 +548,99 @@ export default function OrcamentosPage() {
               </div>
             )}
 
+            {/* Documentos Enviados pelo Cliente */}
+            {(() => {
+              const modalDocs = getQuoteDocuments(selectedQuoteForDocs);
+              if (modalDocs.length === 0) return null;
+
+              return (
+                <div className="bg-gradient-to-r from-blue-50/90 via-slate-50 to-indigo-50/70 p-4 rounded-2xl border-2 border-blue-200 shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-blue-200/60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                          Documentos Enviados pelo Cliente
+                          <span className="bg-blue-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold shadow-2xs">
+                            {modalDocs.length} {modalDocs.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-600">
+                          Arquivos enviados pelo cliente na solicitação deste orçamento prontos para download imediato.
+                        </p>
+                      </div>
+                    </div>
+
+                    {modalDocs.length > 1 && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownloadAllDocs(modalDocs)}
+                        className="gap-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs self-start sm:self-auto"
+                      >
+                        <Download className="w-4 h-4" /> Baixar Todos ({modalDocs.length})
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Grid of customer files */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+                    {modalDocs.map((doc, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-xs transition-all gap-2.5"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="p-2 rounded-lg bg-blue-50 text-blue-700 shrink-0 border border-blue-100">
+                            {doc.name.toLowerCase().endsWith('.pdf') ? (
+                              <FileText className="w-5 h-5 text-rose-600" />
+                            ) : doc.name.toLowerCase().match(/\.(docx?|odt)$/) ? (
+                              <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <Paperclip className="w-5 h-5 text-indigo-600" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-900 truncate" title={doc.name}>
+                              {doc.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                              <span>{doc.size ? `${(doc.size / 1024).toFixed(1)} KB` : 'Tamanho não especificado'}</span>
+                              <span>•</span>
+                              <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                Disponível
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPreviewDoc(doc)}
+                            className="text-xs gap-1 text-slate-700 hover:bg-slate-50 border-slate-200 h-8 px-2.5"
+                            title="Visualizar documento"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-blue-600" /> Ver
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleDownloadDoc(doc)}
+                            className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 px-3 shadow-2xs"
+                            title="Baixar este documento para o seu computador"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Baixar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Módulo Integrado de Documentos + OCR + Word + Contagem + Assinaturas */}
             <div className="pt-1">
               <DocumentProcessingSection
@@ -463,33 +655,60 @@ export default function OrcamentosPage() {
             </div>
 
             {/* Embedded Live Preview */}
-            {previewDoc && (previewDoc.dataUrl || previewDoc.url) && (
-              <div className="p-3 bg-slate-900 rounded-xl text-white space-y-2 animate-in fade-in">
-                <div className="flex items-center justify-between text-xs text-slate-300 pb-1 border-b border-slate-800">
-                  <span className="font-semibold truncate">{previewDoc.name}</span>
-                  <a
-                    href={previewDoc.dataUrl || previewDoc.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-400 hover:underline flex items-center gap-1"
-                  >
-                    <ExternalLink className="w-3 h-3" /> Abrir em tela cheia
-                  </a>
+            {previewDoc && (
+              <div className="p-3.5 bg-slate-900 rounded-xl text-white space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-between text-xs text-slate-300 pb-1.5 border-b border-slate-800">
+                  <span className="font-bold truncate text-white">{previewDoc.name}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadDoc(previewDoc)}
+                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors"
+                      title="Baixar este documento agora"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Baixar Documento
+                    </button>
+                    {(previewDoc.dataUrl || previewDoc.url) && (
+                      <a
+                        href={previewDoc.dataUrl || previewDoc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Abrir em tela cheia
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-slate-950 rounded-lg overflow-hidden flex items-center justify-center min-h-[280px]">
-                  {['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(previewDoc.name.split('.').pop()?.toLowerCase() || '') ? (
-                    <img
-                      src={previewDoc.dataUrl || previewDoc.url}
-                      alt={previewDoc.name}
-                      className="max-h-[440px] w-auto object-contain mx-auto"
-                    />
+                  {previewDoc.dataUrl || previewDoc.url ? (
+                    ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(previewDoc.name.split('.').pop()?.toLowerCase() || '') ? (
+                      <img
+                        src={previewDoc.dataUrl || previewDoc.url}
+                        alt={previewDoc.name}
+                        className="max-h-[440px] w-auto object-contain mx-auto"
+                      />
+                    ) : (
+                      <iframe
+                        src={previewDoc.dataUrl || previewDoc.url}
+                        title={previewDoc.name}
+                        className="w-full h-[440px] bg-white rounded"
+                      />
+                    )
                   ) : (
-                    <iframe
-                      src={previewDoc.dataUrl || previewDoc.url}
-                      title={previewDoc.name}
-                      className="w-full h-[440px] bg-white rounded"
-                    />
+                    <div className="p-8 text-center text-slate-400 space-y-2">
+                      <FileText className="w-12 h-12 text-slate-600 mx-auto" />
+                      <p className="font-semibold text-white">{previewDoc.name}</p>
+                      <p className="text-xs text-slate-400">Clique em &quot;Baixar Documento&quot; para abrir este arquivo no seu computador.</p>
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownloadDoc(previewDoc)}
+                        className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5"
+                      >
+                        <Download className="w-4 h-4" /> Baixar Documento Agora
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

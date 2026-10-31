@@ -55,7 +55,7 @@ import {
   generateCertifiedSignedPdf,
 } from '@/lib/documents/documentProcessor';
 import { UniversalDocumentViewerModal } from './UniversalDocumentViewerModal';
-import { saveDocumentBlob, getDocumentBlob, isValidPdfBlob } from '@/lib/storage/documentStorage';
+import { saveDocumentBlob, getDocumentBlob, isValidPdfBlob, downloadDocumentFile } from '@/lib/storage/documentStorage';
 
 interface DocumentProcessingSectionProps {
   quoteId?: string;
@@ -258,6 +258,15 @@ export function DocumentProcessingSection({
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } else {
       alert('Não foi possível gerar o arquivo para download.');
+    }
+  };
+
+  const handleDownloadOriginalDoc = async (doc: DocumentItem) => {
+    try {
+      await downloadDocumentFile(doc);
+    } catch (e) {
+      console.error('Erro ao baixar documento original:', e);
+      alert('Não foi possível realizar o download do documento original.');
     }
   };
 
@@ -1633,6 +1642,17 @@ export function DocumentProcessingSection({
                     className="gap-1.5 text-slate-700 hover:bg-slate-50"
                   >
                     <Eye className="w-3.5 h-3.5 text-blue-600" /> Ver Original
+                  </Button>
+
+                  {/* Baixar Original */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownloadOriginalDoc(doc)}
+                    className="gap-1.5 text-blue-700 bg-blue-50/70 hover:bg-blue-100 border-blue-200 font-semibold"
+                    title="Baixar o arquivo original enviado pelo cliente"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-600" /> Baixar Original
                   </Button>
 
                   {/* Ver PDF Assinado */}

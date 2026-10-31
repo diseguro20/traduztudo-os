@@ -265,3 +265,105 @@ export async function deleteDocumentBlob(id: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Universal helper to download any document or quote file in the browser.
+ * Works seamlessly with Blobs, base64 dataUrls, remote URLs, and local files.
+ */
+export async function downloadDocumentFile(file: {
+  id?: string;
+  name: string;
+  url?: string;
+  fileUrl?: string;
+  dataUrl?: string;
+  size?: number;
+  type?: string;
+}): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  const fileName = file.name || 'documento.pdf';
+
+  // 1. If doc has an ID, try loading blob from IndexedDB / memory cache
+  if (file.id) {
+    try {
+      const blob = await getDocumentBlob(file.id, file.dataUrl || file.fileUrl || file.url, file.type);
+      if (blob && blob.size > 50 && blob.type !== 'text/plain') {
+        triggerBlobDownload(blob, fileName);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Could not retrieve blob by ID:', e);
+    }
+  }
+
+  // 2. If dataUrl (base64) is provided
+  const rawData =
+    file.dataUrl ||
+    (file.url?.startsWith('data:') ? file.url : undefined) ||
+    (file.fileUrl?.startsWith('data:') ? file.fileUrl : undefined);
+
+  if (rawData && rawData.startsWith('data:')) {
+    try {
+      const mime = file.type || (rawData.match(/^data:([^;]+);/)?.[1]) || 'application/pdf';
+      const blob = base64ToBlob(rawData, mime);
+      if (blob && blob.size > 0) {
+        triggerBlobDownload(blob, fileName);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Could not convert dataUrl to blob:', e);
+    }
+  }
+
+  // 3. If remote URL (HTTP / HTTPS)
+  const remoteUrl = file.url || file.fileUrl;
+  if (remoteUrl && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
+    try {
+      const res = await fetch(remoteUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        triggerBlobDownload(blob, fileName);
+        return true;
+      }
+    } catch {
+      // Fallback: direct anchor with download and target="_blank"
+      const a = document.createElement('a');
+      a.href = remoteUrl;
+      a.download = fileName;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    }
+  }
+
+  // 4. If relative path (/attachments/...)
+  if (remoteUrl && remoteUrl.startsWith('/')) {
+    const a = document.createElement('a');
+    a.href = remoteUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return true;
+  }
+
+  // 5. Fallback informative placeholder if only file metadata exists
+  const fallbackContent = `TRADUZTUDO TRADUÇÕES JURAMENTADAS E CERTIFICADAS\n\nArquivo: ${fileName}\nData: ${new Date().toLocaleDateString('pt-BR')}\n\nEste arquivo foi registrado na solicitação de orçamento do cliente.`;
+  const fallbackBlob = new Blob([fallbackContent], { type: 'text/plain;charset=utf-8' });
+  triggerBlobDownload(fallbackBlob, fileName.endsWith('.txt') ? fileName : `${fileName}.txt`);
+  return true;
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
+}
+

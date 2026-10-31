@@ -15,6 +15,7 @@ import {
   Mail,
   Phone,
   Paperclip,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -22,6 +23,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { databaseStore } from '@/lib/db';
 import { InboundRequest } from '@/types';
 import { formatDate } from '@/lib/utils';
+import { downloadDocumentFile } from '@/lib/storage/documentStorage';
 
 export default function SolicitacoesPage() {
   const router = useRouter();
@@ -175,6 +177,27 @@ export default function SolicitacoesPage() {
                   <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-4 py-3.5 font-semibold text-slate-900">
                       {req.customerName}
+                      {req.files && req.files.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-1.5 py-0.5 rounded">
+                            <Paperclip className="w-3 h-3 text-blue-600" />
+                            {req.files.length} anexo(s)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              for (const f of req.files!) {
+                                await downloadDocumentFile(typeof f === 'string' ? { name: f } : f);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded transition-colors shadow-2xs"
+                            title="Baixar anexo(s) do cliente"
+                          >
+                            <Download className="w-3 h-3 text-emerald-600" />
+                            Baixar
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-xs text-slate-500 space-y-0.5">
                       <p className="flex items-center gap-1">

@@ -15,12 +15,16 @@ import {
   Mail,
   Printer,
   FileSpreadsheet,
+  Download,
+  FileText,
+  Paperclip,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { databaseStore } from '@/lib/db';
 import { formatCurrency, formatDate, formatDocument } from '@/lib/utils';
 import { TraduzTudoLogo } from '@/components/ui/TraduzTudoLogo';
+import { downloadDocumentFile } from '@/lib/storage/documentStorage';
 
 export default function PublicQuoteApprovalPage() {
   const params = useParams();
@@ -225,6 +229,47 @@ export default function PublicQuoteApprovalPage() {
               </table>
             </div>
           </div>
+
+          {/* Documentos Anexados à Proposta */}
+          {Array.isArray(quote.files) && quote.files.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-blue-600" /> Documentos Anexados à Proposta ({quote.files.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {quote.files.map((file: any, idx: number) => {
+                  const fileName = typeof file === 'string' ? file : file.name;
+                  const fileSize = typeof file === 'object' ? file.size : null;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-blue-50/40 hover:border-blue-300 transition-all gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText className="w-5 h-5 text-rose-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate" title={fileName}>
+                            {fileName}
+                          </p>
+                          {fileSize && (
+                            <p className="text-[11px] text-slate-500">{(fileSize / 1024).toFixed(1)} KB</p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => downloadDocumentFile(typeof file === 'string' ? { name: file } : file)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-colors shrink-0"
+                        title="Baixar documento"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Baixar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Terms, Conditions, Delivery */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
