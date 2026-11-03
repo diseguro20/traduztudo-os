@@ -101,10 +101,10 @@ const defaultSettings: ProspectingSettings = {
   id: 'settings-default',
   tenantId: 'traduztudo-matriz',
   dailyDiscoveryTarget: 100,
-  dailySendLimit: 200,
-  intervalMinutes: 10,
-  autoSendEligible: true, // Controlled autonomous daily outreach (Target: 200/day distributed in safe batches)
-  warmupMode: false, // Set to true for new domains, or false for immediate 200/day capacity
+  dailySendLimit: 50, // Blindagem Hostinger: Teto seguro de 50 e-mails/dia
+  intervalMinutes: 11, // ~5 envios/hora (1 a cada ~11-12 min)
+  autoSendEligible: true, // Disparo autônomo diário ativo
+  warmupMode: false,
   warmupDay: 14,
   senderName: 'Iago Peixoto | Traduz Tudo',
   senderEmail: 'contato@traduztudo.com',

@@ -39,7 +39,7 @@ async function handleDispatch(req: NextRequest) {
 
     // Strict Anti-Suspension: Daily Limit Protection (Apenas para disparos em segundo plano)
     const stats = await prospectingStorage.getDashboardStats();
-    const dailyLimit = settings.dailySendLimit || 400;
+    const dailyLimit = settings.dailySendLimit || 50;
     if (stats.emailsSentToday >= dailyLimit && !isManualTrigger) {
       return NextResponse.json({
         success: true,

@@ -1,9 +1,9 @@
-name: Automação Contínua de Prospecção (50 e-mails/hora) TraduzTudo OS
+name: Automação Contínua de Prospecção (50 e-mails/dia) TraduzTudo OS
 
 on:
   schedule:
-    # Watchdog de batimento: verifica a cada 15 minutos dia e noite (24/7)
-    - cron: '*/15 * * * *'
+    # Watchdog de batimento: verifica a cada 30 minutos em horário comercial
+    - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
       continuous:
@@ -38,12 +38,14 @@ jobs:
         run: |
           echo "GH_TOKEN configured"
 
-      - name: Executar Motor de Cadência Contínua (35 e-mails/hora Seg-Sex)
+      - name: Executar Motor de Cadência Segura (50 e-mails/dia - 5 por hora em horário comercial)
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
           HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
           HOSTINGER_MAILBOX_ID: ${{ secrets.HOSTINGER_MAILBOX_ID }}
+          TARGET_PER_HOUR: '5'
+          DAILY_LIMIT: '50'
         run: |
           # Executa continuamente por 330 minutos (~5h30min) antes de passar o bastão para o próximo ciclo
           node scripts/prospecting-pacer.mjs --continuous --max-minutes 330

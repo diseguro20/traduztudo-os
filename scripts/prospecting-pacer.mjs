@@ -1,21 +1,22 @@
 /**
- * TraduzTudo OS - Motor de Cadência Contínua de Prospecção (50 e-mails/hora)
+ * TraduzTudo OS - Motor de Cadência Contínua de Prospecção (50 e-mails/dia)
  * 
  * Funcionalidade:
- * - Mantém uma taxa exata de ~50 e-mails/hora (1 envio a cada ~72 segundos).
- * - Imune a timeouts de serverless (cada disparo individual leva 2-3s).
+ * - Mantém uma taxa segura de ~5 e-mails/hora (1 envio a cada ~11-12 minutos).
+ * - Teto diário estrito de 50 e-mails/dia em horário comercial (08:30 às 18:00 BRT).
  * - Blindagem total contra suspensão da Hostinger (zero rajadas, entrega humana contínua).
  * - Auto-reposição contínua: alimenta a fila com novas empresas via Gemini Flash AI sempre que a fila estiver baixa.
  * - Limpeza periódica de bounces via IMAP sem sobrecarregar a caixa postal.
- * - Suporta execução contínua 24/7 (relay race em GitHub Actions e daemon local).
+ * - Suporta execução contínua (relay race em GitHub Actions e daemon local).
  */
 
 import https from 'https';
 import { execSync } from 'child_process';
 
 const BASE_URL = process.env.BASE_URL || 'https://traduztudo-os.vercel.app';
-const TARGET_PER_HOUR = Number(process.env.TARGET_PER_HOUR) || 35; // Cadência calibrada para máxima entregabilidade sem bloqueio (30-35/h)
-const DELAY_SECONDS = Math.round(3600 / TARGET_PER_HOUR); // ~102 segundos
+const TARGET_PER_HOUR = Number(process.env.TARGET_PER_HOUR) || 5; // 5 envios/hora = ~50/dia em 10 horas comerciais
+const DELAY_SECONDS = Math.round(3600 / TARGET_PER_HOUR); // ~720 segundos (~12 minutos)
+const DAILY_LIMIT = Number(process.env.DAILY_LIMIT) || 50; // Teto rígido diário
 
 function isBusinessHours() {
   const now = new Date();
@@ -25,10 +26,10 @@ function isBusinessHours() {
   const minute = brtDate.getMinutes();
   const day = brtDate.getDay(); // 0 = Domingo, 6 = Sábado
 
-  // Segunda a Sexta: 08:30 às 18:30 BRT
+  // Segunda a Sexta: 08:30 às 18:00 BRT
   const isWeekday = day >= 1 && day <= 5;
   const timeInMinutes = hour * 60 + minute;
-  const isWithinHours = timeInMinutes >= (8 * 60 + 30) && timeInMinutes <= (18 * 60 + 30);
+  const isWithinHours = timeInMinutes >= (8 * 60 + 30) && timeInMinutes <= (18 * 60);
 
   return isWeekday && isWithinHours;
 }
@@ -201,11 +202,22 @@ async function runCadencePacer() {
       break;
     }
 
-    // Blindagem de Reputação: Enviar apenas em horário comercial (08:30 às 18:30 BRT, Seg-Sex)
-    // E-mails disparados de madrugada acionam alertas do MailChannels e quebram reputação
+    // Blindagem de Reputação: Enviar apenas em horário comercial (08:30 às 18:00 BRT, Seg-Sex)
+    // E-mails disparados de madrugada ou fim de semana acionam alertas do MailChannels e quebram reputação
     if (!isBusinessHours()) {
-      log(`🌙 Fora do horário comercial (08:30 às 18:30 BRT, Seg-Sex). Pausando envios para proteger a conta Hostinger contra suspensões...`);
+      log(`🌙 Fora do horário comercial (08:30 às 18:00 BRT, Seg-Sex). Pausando envios para proteger a conta Hostinger contra suspensões...`);
       await sleep(10 * 60 * 1000); // Aguarda 10 minutos
+      continue;
+    }
+
+    // Blindagem de Volume: Não ultrapassar o teto diário de 50 e-mails
+    const dash = await apiRequest('/api/prospecting/dashboard');
+    const sentToday = dash?.stats?.emailsSentToday || 0;
+    if (sentToday >= DAILY_LIMIT) {
+      log(`🎯 Teto diário de segurança atingido (${sentToday}/${DAILY_LIMIT} e-mails enviados hoje).`);
+      log(`Pausando disparos para proteger a conta. Retomará na próxima janela comercial às 08:30 BRT.`);
+      if (!isContinuous) break;
+      await sleep(15 * 60 * 1000); // Aguarda 15 minutos antes de verificar novamente
       continue;
     }
 
@@ -231,7 +243,7 @@ async function runCadencePacer() {
     if (result.success && result.sentCount > 0) {
       sentInSession++;
       consecutiveEmpty = 0;
-      log(`[#${sentInSession}${!isContinuous ? `/${batchTarget}` : ''}] ✅ Entregue para ${result.company} (${result.recipient}) | Message-ID: ${result.messageId}`);
+      log(`[#${sentInSession}${!isContinuous ? `/${batchTarget}` : ''} | Hoje: ${sentToday + 1}/${DAILY_LIMIT}] ✅ Entregue para ${result.company} (${result.recipient}) | Message-ID: ${result.messageId}`);
     } else {
       consecutiveEmpty++;
       if (result.error) {
@@ -260,10 +272,11 @@ async function runCadencePacer() {
       }
     }
 
-    // Intervalo cadenciado com variação humana e natural (ex: 85 a 120 segundos)
-    const jitter = Math.floor(Math.random() * 30) - 15; // -15s a +15s
-    const actualDelay = Math.max(60, DELAY_SECONDS + jitter);
-    log(`Aguardando ${actualDelay}s até o próximo disparo para manter cadência segura de ~${TARGET_PER_HOUR}/h...`);
+    // Intervalo cadenciado com variação humana e natural (ex: 600s a 780s = 10 a 13 minutos)
+    const jitter = Math.floor(Math.random() * 120) - 60; // -60s a +60s
+    const actualDelay = Math.max(540, DELAY_SECONDS + jitter);
+    const minStr = (actualDelay / 60).toFixed(1);
+    log(`Aguardando ${actualDelay}s (~${minStr} min) até o próximo disparo para manter cadência segura (~${TARGET_PER_HOUR}/h | Teto: ${DAILY_LIMIT}/dia)...`);
     await sleep(actualDelay * 1000);
 
     // A cada 5 disparos, higieniza a caixa postal para expurgar eventuais avisos
