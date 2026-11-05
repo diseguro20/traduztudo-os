@@ -85,6 +85,7 @@ class DatabaseStore {
   private workOrders: WorkOrder[] = [];
   private documents: DocumentItem[] = [];
   private deletedDocIds: Set<string> = new Set<string>();
+  private deletedEntityIds: Set<string> = new Set<string>();
   private tasks: OrderTask[] = [];
   private translators: Translator[] = [];
   private reviewers: Reviewer[] = [];
@@ -133,6 +134,16 @@ class DatabaseStore {
             this.listeners.forEach((fn) => {
               try { fn(); } catch (e) {}
             });
+          } else if (event.data?.type === 'ENTITY_DELETED') {
+            const id = event.data?.id;
+            if (id) {
+              this.deletedEntityIds.add(id);
+              this.deletedDocIds.add(id);
+              this.purgeDeletedEntities();
+              this.listeners.forEach((fn) => {
+                try { fn(); } catch (e) {}
+              });
+            }
           }
         };
       }
@@ -230,31 +241,37 @@ class DatabaseStore {
             });
           }
         }
-        if (Array.isArray(parsed.customers)) this.customers = parsed.customers;
-        if (Array.isArray(parsed.leads)) this.leads = parsed.leads;
-        if (Array.isArray(parsed.services) && parsed.services.length > 0) this.services = parsed.services;
-        if (Array.isArray(parsed.languages) && parsed.languages.length > 0) this.languages = parsed.languages;
-        if (Array.isArray(parsed.requests)) this.requests = parsed.requests;
-        if (Array.isArray(parsed.quotes)) this.quotes = parsed.quotes;
-        if (Array.isArray(parsed.workOrders)) this.workOrders = parsed.workOrders;
         try {
+          const savedTombstones = localStorage.getItem('traduztudo_tombstone_ids');
           const savedDeletedIds = localStorage.getItem('traduztudo_deleted_doc_ids');
+          const ids: string[] = [];
+          if (savedTombstones) {
+            const arr = JSON.parse(savedTombstones);
+            if (Array.isArray(arr)) ids.push(...arr);
+          }
           if (savedDeletedIds) {
             const arr = JSON.parse(savedDeletedIds);
-            if (Array.isArray(arr)) {
-              this.deletedDocIds = new Set(arr);
-            }
+            if (Array.isArray(arr)) ids.push(...arr);
           }
+          this.deletedEntityIds = new Set(ids);
+          this.deletedDocIds = new Set(ids);
         } catch {}
+        if (Array.isArray(parsed.customers)) this.customers = parsed.customers.filter((c: any) => !c.deletedAt && !this.deletedEntityIds.has(c.id));
+        if (Array.isArray(parsed.leads)) this.leads = parsed.leads.filter((l: any) => !l.deletedAt && !this.deletedEntityIds.has(l.id));
+        if (Array.isArray(parsed.services) && parsed.services.length > 0) this.services = parsed.services;
+        if (Array.isArray(parsed.languages) && parsed.languages.length > 0) this.languages = parsed.languages;
+        if (Array.isArray(parsed.requests)) this.requests = parsed.requests.filter((r: any) => !this.deletedEntityIds.has(r.id));
+        if (Array.isArray(parsed.quotes)) this.quotes = parsed.quotes.filter((q: any) => !this.deletedEntityIds.has(q.id));
+        if (Array.isArray(parsed.workOrders)) this.workOrders = parsed.workOrders.filter((w: any) => !this.deletedEntityIds.has(w.id));
         if (Array.isArray(parsed.documents)) {
-          this.documents = parsed.documents.filter((d: any) => !d.deletedAt && !this.deletedDocIds.has(d.id));
+          this.documents = parsed.documents.filter((d: any) => !d.deletedAt && !this.deletedEntityIds.has(d.id));
         }
-        if (Array.isArray(parsed.tasks)) this.tasks = parsed.tasks;
-        if (Array.isArray(parsed.translators)) this.translators = parsed.translators;
-        if (Array.isArray(parsed.reviewers)) this.reviewers = parsed.reviewers;
-        if (Array.isArray(parsed.receivables)) this.receivables = parsed.receivables;
-        if (Array.isArray(parsed.payables)) this.payables = parsed.payables;
-        if (Array.isArray(parsed.expenses)) this.expenses = parsed.expenses;
+        if (Array.isArray(parsed.tasks)) this.tasks = parsed.tasks.filter((t: any) => !this.deletedEntityIds.has(t.id));
+        if (Array.isArray(parsed.translators)) this.translators = parsed.translators.filter((t: any) => !this.deletedEntityIds.has(t.id));
+        if (Array.isArray(parsed.reviewers)) this.reviewers = parsed.reviewers.filter((r: any) => !this.deletedEntityIds.has(r.id));
+        if (Array.isArray(parsed.receivables)) this.receivables = parsed.receivables.filter((r: any) => !this.deletedEntityIds.has(r.id));
+        if (Array.isArray(parsed.payables)) this.payables = parsed.payables.filter((p: any) => !this.deletedEntityIds.has(p.id));
+        if (Array.isArray(parsed.expenses)) this.expenses = parsed.expenses.filter((e: any) => !this.deletedEntityIds.has(e.id));
         if (Array.isArray(parsed.notifications)) this.notifications = parsed.notifications;
         if (Array.isArray(parsed.auditLogs)) this.auditLogs = parsed.auditLogs;
         if (typeof parsed.isDemoMode === 'boolean') this.isDemoMode = parsed.isDemoMode;
@@ -457,11 +474,60 @@ class DatabaseStore {
     }
   }
 
+  private saveDeletedEntityIds() {
+    if (typeof window === 'undefined') return;
+    try {
+      const arr = Array.from(this.deletedEntityIds);
+      localStorage.setItem('traduztudo_tombstone_ids', JSON.stringify(arr));
+      localStorage.setItem('traduztudo_deleted_doc_ids', JSON.stringify(arr));
+    } catch {}
+  }
+
+  private purgeDeletedEntities() {
+    this.receivables = this.receivables.filter((r) => !this.deletedEntityIds.has(r.id));
+    this.payables = this.payables.filter((p) => !this.deletedEntityIds.has(p.id));
+    this.expenses = this.expenses.filter((e) => !this.deletedEntityIds.has(e.id));
+    this.documents = this.documents.filter((d) => !this.deletedEntityIds.has(d.id));
+    this.quotes = this.quotes.filter((q) => !this.deletedEntityIds.has(q.id));
+    this.workOrders = this.workOrders.filter((w) => !this.deletedEntityIds.has(w.id));
+    this.customers = this.customers.filter((c) => !this.deletedEntityIds.has(c.id));
+    this.leads = this.leads.filter((l) => !this.deletedEntityIds.has(l.id));
+    this.tasks = this.tasks.filter((t) => !this.deletedEntityIds.has(t.id));
+    this.translators = this.translators.filter((t) => !this.deletedEntityIds.has(t.id));
+    this.reviewers = this.reviewers.filter((r) => !this.deletedEntityIds.has(r.id));
+    this.requests = this.requests.filter((r) => !this.deletedEntityIds.has(r.id));
+  }
+
   async deleteFirestore(collectionName: string, id: string): Promise<void> {
+    this.deletedEntityIds.add(id);
+    this.deletedDocIds.add(id);
+    this.deletedEntityIds.add(`${collectionName}_${id}`);
+    this.saveDeletedEntityIds();
+    this.purgeDeletedEntities();
+
+    // Broadcast immediate deletion to all tabs in same browser via BroadcastChannel
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'ENTITY_DELETED',
+          collectionName,
+          id,
+        });
+      } catch {}
+    }
+
     if (this.isSyncingFromRemote) return;
     try {
       const docRef = doc(db, 'traduztudo_' + collectionName, id);
       await deleteDoc(docRef);
+
+      // Record tombstone in Firestore so all other user accounts/devices receive deletion instantly in real time
+      const tombstoneRef = doc(db, 'traduztudo_tombstones', `${collectionName}_${id}`);
+      await setDoc(tombstoneRef, {
+        collectionName,
+        itemId: id,
+        deletedAt: new Date().toISOString(),
+      });
     } catch (e) {
       console.warn(`Firestore delete note for ${collectionName}/${id}:`, e);
     }
@@ -520,6 +586,38 @@ class DatabaseStore {
     if (typeof window === 'undefined' || this.hasStartedRealtime) return;
     this.hasStartedRealtime = true;
 
+    // Realtime subscription for tombstones (instant deletion synchronization across all devices and users)
+    try {
+      const tombstonesRef = collection(db, 'traduztudo_tombstones');
+      onSnapshot(
+        tombstonesRef,
+        (snapshot) => {
+          let hasNewTombstone = false;
+          snapshot.docs.forEach((docSnap) => {
+            const data = docSnap.data();
+            const itemId = data?.itemId || docSnap.id;
+            if (itemId && !this.deletedEntityIds.has(itemId)) {
+              this.deletedEntityIds.add(itemId);
+              hasNewTombstone = true;
+            }
+          });
+
+          if (hasNewTombstone) {
+            this.saveDeletedEntityIds();
+            this.purgeDeletedEntities();
+            this.isSyncingFromRemote = true;
+            this.persistAndNotify();
+            this.isSyncingFromRemote = false;
+          }
+        },
+        (err) => {
+          console.warn('Realtime tombstones note:', err);
+        }
+      );
+    } catch (e) {
+      console.warn('Tombstones setup note:', e);
+    }
+
     const syncCollection = <T extends { id: string }>(
       name: string,
       getList: () => T[],
@@ -537,22 +635,27 @@ class DatabaseStore {
               .filter((item: any) => {
                 if (!item || !item.id) return false;
                 if (item.deletedAt) return false;
-                if (name === 'documents' && this.deletedDocIds.has(item.id)) return false;
+                if (this.deletedEntityIds.has(item.id)) return false;
                 return true;
               });
 
-            // Merge with local items: never discard local items that aren't yet in Firestore
             const currentItems = getList().filter((item: any) => {
               if (!item || !item.id) return false;
               if (item.deletedAt) return false;
-              if (name === 'documents' && this.deletedDocIds.has(item.id)) return false;
+              if (this.deletedEntityIds.has(item.id)) return false;
               return true;
             });
             const remoteIds = new Set(remoteItems.map((r) => r.id));
-            const localOnly = currentItems.filter((local: any) => {
+
+            // CRITICAL FIX: Only keep local items if they are brand new in-flight local creations (<60s)
+            // Anything older that does not exist in Firestore was deleted or is obsolete/duplicate mock data!
+            const now = Date.now();
+            const localPending = currentItems.filter((local: any) => {
+              if (remoteIds.has(local.id)) return false;
+              if (this.deletedEntityIds.has(local.id)) return false;
               if (local.deletedAt) return false;
-              if (name === 'documents' && this.deletedDocIds.has(local.id)) return false;
-              return !remoteIds.has(local.id);
+              const createdTime = local.createdAt ? new Date(local.createdAt).getTime() : 0;
+              return createdTime > 0 && (now - createdTime < 60000);
             });
 
             const mergedRemote = remoteItems.map((remote: any) => {
@@ -574,7 +677,7 @@ class DatabaseStore {
               return remote;
             });
 
-            const combinedList = [...localOnly, ...mergedRemote];
+            const combinedList = [...localPending, ...mergedRemote];
 
             // Order by createdAt descending when present
             combinedList.sort((a: any, b: any) => {
@@ -2427,10 +2530,11 @@ class DatabaseStore {
 
   deleteReceivable(id: string): boolean {
     const idx = this.receivables.findIndex((r) => r.id === id);
-    if (idx === -1) return false;
-    const desc = this.receivables[idx].description;
-    const workOrderId = this.receivables[idx].workOrderId;
-    this.receivables.splice(idx, 1);
+    const desc = idx !== -1 ? this.receivables[idx].description : 'Lançamento';
+    const workOrderId = idx !== -1 ? this.receivables[idx].workOrderId : undefined;
+    if (idx !== -1) {
+      this.receivables.splice(idx, 1);
+    }
     this.deleteFirestore('accountsReceivable', id);
 
     if (workOrderId) {
@@ -2500,9 +2604,10 @@ class DatabaseStore {
 
   deletePayable(id: string): boolean {
     const idx = this.payables.findIndex((p) => p.id === id);
-    if (idx === -1) return false;
-    const desc = this.payables[idx].description;
-    this.payables.splice(idx, 1);
+    const desc = idx !== -1 ? this.payables[idx].description : 'Lançamento';
+    if (idx !== -1) {
+      this.payables.splice(idx, 1);
+    }
     this.deleteFirestore('accountsPayable', id);
     this.logAudit(this.getCurrentUser().name, 'Exclusão de Conta a Pagar', 'AccountPayable', id, `Removeu conta a pagar: ${desc}`);
     this.persistAndNotify();
@@ -2527,9 +2632,10 @@ class DatabaseStore {
 
   deleteExpense(id: string): boolean {
     const idx = this.expenses.findIndex((e) => e.id === id);
-    if (idx === -1) return false;
-    const desc = this.expenses[idx].description;
-    this.expenses.splice(idx, 1);
+    const desc = idx !== -1 ? this.expenses[idx].description : 'Lançamento';
+    if (idx !== -1) {
+      this.expenses.splice(idx, 1);
+    }
     this.deleteFirestore('expenses', id);
     this.logAudit(this.getCurrentUser().name, 'Exclusão de Despesa', 'Expense', id, `Removeu despesa: ${desc}`);
     this.persistAndNotify();

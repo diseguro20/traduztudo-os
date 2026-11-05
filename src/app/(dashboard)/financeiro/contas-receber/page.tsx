@@ -229,6 +229,7 @@ export default function ContasReceberPage() {
                         onClick={() => {
                           if (confirm(`Deseja realmente excluir o recebimento de "${rec.customerName}"?`)) {
                             databaseStore.deleteReceivable(rec.id);
+                            setRefresh((r) => r + 1);
                           }
                         }}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
